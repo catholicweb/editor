@@ -1,0 +1,78 @@
+:root {
+  --pe-bg: #f6f7f9;
+  --pe-panel: #ffffff;
+  --pe-border: #e2e4e9;
+  --pe-border-strong: #d4d7df;
+  --pe-text: #1c1f26;
+  --pe-muted: #767c8a;
+  --pe-hover: #f0f1f4;
+  --pe-input-bg: #fbfbfc;
+  --pe-accent: #3457d5;
+  --pe-accent-hover: #2a47b8;
+  --pe-accent-soft: rgba(52, 87, 213, 0.1);
+  --pe-accent-soft-hover: rgba(52, 87, 213, 0.16);
+  --pe-danger: #d1453a;
+  --pe-danger-soft: rgba(209, 69, 58, 0.1);
+  --pe-success: #1f9d6b;
+
+  --pe-radius-sm: 6px;
+  --pe-radius: 10px;
+  --pe-radius-lg: 14px;
+
+  --pe-shadow-sm: 0 1px 2px rgba(28, 31, 38, 0.06), 0 1px 1px rgba(28, 31, 38, 0.04);
+  --pe-shadow: 0 4px 12px rgba(28, 31, 38, 0.08), 0 1px 3px rgba(28, 31, 38, 0.06);
+  --pe-shadow-lg: 0 18px 40px rgba(28, 31, 38, 0.16), 0 4px 10px rgba(28, 31, 38, 0.08);
+
+  --pe-ring: 0 0 0 3px var(--pe-accent-soft);
+  --pe-transition: 160ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark {
+  --pe-bg: #14161a;
+  --pe-panel: #1b1e24;
+  --pe-border: #2c303a;
+  --pe-border-strong: #3a3f4c;
+  --pe-text: #eceef2;
+  --pe-muted: #8b909e;
+  --pe-hover: #23262e;
+  --pe-input-bg: #20232a;
+  --pe-accent: #6d8bff;
+  --pe-accent-hover: #5a78f2;
+  --pe-accent-soft: rgba(109, 139, 255, 0.15);
+  --pe-accent-soft-hover: rgba(109, 139, 255, 0.22);
+  --pe-danger: #ff6b62;
+  --pe-danger-soft: rgba(255, 107, 98, 0.15);
+  --pe-success: #4dd39a;
+
+  --pe-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --pe-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.25);
+  --pe-shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.5), 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Thin, theme-aware scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--pe-border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--pe-border-strong);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--pe-muted);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
