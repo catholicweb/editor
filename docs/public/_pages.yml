@@ -362,7 +362,7 @@ content:
         type: places-autodiscover
 
 
-  - name: config
+  - name: site
     icon: cog-6-tooth
     type: superfield
     label: Configuración

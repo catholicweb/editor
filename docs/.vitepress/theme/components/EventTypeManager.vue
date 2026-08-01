@@ -14,7 +14,7 @@ const props = defineProps({
 const editingIndex = ref(null);
 // Available Heroicon names for event type icons
 const heroiconNames = [
-  'user', 'clock', 'calendar', 'church', 'home', 'building-office', 'academic-cap',
+  'user', 'clock', 'calendar', 'home', 'building-office', 'building-library', 'academic-cap',
   'heart', 'star', 'check-circle', 'x-circle', 'plus-circle', 'bell', 'book-open',
   'gift', 'key', 'lock-closed', 'shield-check', 'sparkles', 'sun', 'moon',
 ];

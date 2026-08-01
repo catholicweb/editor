@@ -1,7 +1,7 @@
 import { reactive } from 'vue';
 
 // Small shared UI state so components that aren't direct children of
-// EditorApp (e.g. FileBrowser) can react to / drive the sidebar drawer.
+// EditorApp (e.g. FieldBrowser) can react to / drive the sidebar drawer.
 const MOBILE_BREAK = 860;
 const LS_KEY = 'pe:sidebar';
 

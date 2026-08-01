@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { Icon } from '@iconify/vue';
 
 const props = defineProps({
   name: { type: String, required: true },
@@ -7,29 +8,24 @@ const props = defineProps({
   type: { type: String, default: 'solid' }, // 'solid' or 'outline'
 });
 
-// Heroicons CDN base URL (uses unpkg to serve SVG files directly)
-const HEROICONS_CDN = computed(() => {
-  return `https://unpkg.com/heroicons@2.1.1/24/${props.type}`;
-});
+// Convert Heroicon names to Iconify format
+// Iconify uses: heroicons-solid:icon-name for solid, heroicons:icon-name for outline
+const iconName = computed(() => {
+  // If the name already contains a colon, assume it's already in Iconify format
+  if (props.name.includes(':')) return props.name;
 
-// Check if the icon name is a Heroicon (doesn't contain / or .)
-const isHeroicon = computed(() => !props.name.includes('/') && !props.name.includes('.'));
-
-// Compute the icon source
-const iconSrc = computed(() => {
-  if (isHeroicon.value) {
-    return `${HEROICONS_CDN.value}/${props.name}.svg`;
-  }
-  return props.name; // Assume it's a path to a local SVG
+  // Convert Heroicon name to Iconify format
+  const prefix = props.type === 'solid' ? 'heroicons-solid' : 'heroicons';
+  return `${prefix}:${props.name}`;
 });
 </script>
 
 <template>
-  <img
-    :src="iconSrc"
-    :alt="name"
+  <Icon
+    :icon="iconName"
+    :width="size"
+    :height="size"
     class="pe-icon"
-    :style="{ width: size + 'px', height: size + 'px' }"
   />
 </template>
 

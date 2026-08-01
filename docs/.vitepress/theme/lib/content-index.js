@@ -37,7 +37,24 @@ export function buildFileIndex(schema, rawTokens) {
   const entries = [];
 
   for (const c of schema.content || []) {
-    if (c.type === 'file') {
+    if (c.type === 'superfield') {
+      // superfield entries reference a field within the config.json file
+      const configRelPath = 'pages/config.json'; // Single config file
+      const configToken = byRelPath.get(configRelPath) || null;
+      entries.push({
+        kind: 'superfield',
+        contentName: c.name,
+        contentLabel: c.label || c.name,
+        fields: c.fields,
+        relPath: configRelPath,
+        fileToken: configToken,
+        format: 'json',
+        displayName: c.label || c.name,
+        groupLabel: c.label || c.name,
+        icon: c.icon || null,
+        superfieldPath: c.path, // The field path within config.json (e.g., 'events', 'pages')
+      });
+    } else if (c.type === 'file') {
       const relPath = stripLocalRoot(c.path);
       const format = (c.format || guessFormat(relPath));
       entries.push({

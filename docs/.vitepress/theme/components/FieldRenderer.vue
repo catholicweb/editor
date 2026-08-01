@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import FieldsGroup from './FieldsGroup.vue';
 import ScalarInput from './ScalarInput.vue';
 import CalendarEditor from './CalendarEditor.vue';
+import PlacesAutodiscover from './PlacesAutodiscover.vue';
 import {
   isRepeatable,
   defaultForField,
@@ -191,6 +192,14 @@ function closeModal() {
   <!-- CALENDAR EDITOR (custom full-width editor for the `calendario` type) -->
   <CalendarEditor
     v-else-if="field.type === 'calendario'"
+    :field="field"
+    :container="container"
+    :key-name="keyName"
+  />
+
+  <!-- CUSTOM COMPONENTS -->
+  <PlacesAutodiscover
+    v-else-if="field.type === 'places-autodiscover'"
     :field="field"
     :container="container"
     :key-name="keyName"

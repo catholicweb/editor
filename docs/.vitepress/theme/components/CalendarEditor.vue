@@ -1,10 +1,10 @@
 <script setup>
-import { computed, ref, nextTick } from 'vue';
+import { computed, ref, nextTick, reactive } from 'vue';
 import WeekGrid from './WeekGrid.vue';
 import EventEditorModal from './EventEditorModal.vue';
 import EventTypeManager from './EventTypeManager.vue';
 import { newEvent, generateId, defaultParroco, startOfWeek, ensureEventTypes, DEFAULT_EVENT_TYPES, getEventFields } from '../lib/calendar.js';
-import { saveCurrent, state } from '../lib/store.js';
+import { saveCurrent, state, configData } from '../lib/store.js';
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -12,46 +12,19 @@ const props = defineProps({
   keyName: { type: [String, Number], required: true },
 });
 
-// Ensure the document object has all expected top-level keys.
-function ensureShape() {
-  const v = props.container[props.keyName];
-  if (v == null || typeof v !== 'object' || Array.isArray(v)) {
-    props.container[props.keyName] = { events: [], defaults: {}, urls: [], celebrants: [], eventTypes: [] };
-  } else {
-    const o = props.container[props.keyName];
-    if (!Array.isArray(o.events)) o.events = [];
-    if (!o.defaults || typeof o.defaults !== 'object') o.defaults = {};
-    if (!Array.isArray(o.urls)) o.urls = [];
-    if (!Array.isArray(o.celebrants)) o.celebrants = [];
-    if (!Array.isArray(o.eventTypes)) o.eventTypes = [];
-    // Migrate: if groups exist but events don't, convert groups+actos → events
-    if (Array.isArray(o.groups) && o.groups.length && !o.events.length) {
-      o.events = migrateGroupsToEvents(o.groups);
-      delete o.groups; // Clean up old data
-    }
-    // Migrate: if eventTypes is empty, populate from defaults
-    ensureEventTypes(o);
-    // A parish always has at least one celebrant (the párroco / moderador)
-    if (!o.celebrants.length) o.celebrants.push(defaultParroco());
-  }
+// Ensure configData.site.events.list exists
+function ensureEventsShape() {
+  if (!configData.site) configData.site = {};
+  if (!configData.site.events) configData.site.events = {};
+  if (!Array.isArray(configData.site.events.list)) configData.site.events.list = [];
+  if (!configData.site.events.celebrants) configData.site.events.celebrants = [];
+  if (!configData.site.events.eventTypes) configData.site.events.eventTypes = [];
+  // A parish always has at least one celebrant (the párroco / moderador)
+  if (!configData.site.events.celebrants.length) configData.site.events.celebrants.push(defaultParroco());
 }
-// Convert old groups[] (with actos[]) to flat events[].
-function migrateGroupsToEvents(groups) {
-  const events = [];
-  (groups || []).forEach((g) => {
-    const actos = Array.isArray(g.actos) && g.actos.length ? g.actos : [{}];
-    actos.forEach((acto) => {
-      const evt = { ...g, ...acto };
-      delete evt.actos; // Remove nesting
-      if (!evt.id.startsWith('evt-')) evt.id = generateId('evt');
-      events.push(evt);
-    });
-  });
-  return events;
-}
-ensureShape();
+ensureEventsShape();
 
-const value = computed(() => props.container[props.keyName]);
+const value = computed(() => configData.site);
 
 // Get event fields from schema
 const eventFields = computed(() => {
@@ -76,10 +49,10 @@ function openEventTypeManager() { showEventTypeManager.value = true; }
 function closeEventTypeManager() { showEventTypeManager.value = false; }
 
 // Event modal ----------------------------------------------------------
-const editingIndex = ref(null); // index into value.events
+const editingIndex = ref(null); // index into value.events.list
 const modalOpen = computed(() => editingIndex.value !== null);
 const editingEvent = computed(() =>
-  editingIndex.value === null ? null : value.value.events[editingIndex.value]
+  editingIndex.value === null ? null : value.events?.list?.[editingIndex.value]
 );
 const presetOccurrence = ref(null); // occurrence clicked on the grid, used as default for exceptions
 
@@ -97,16 +70,19 @@ function addEvent(preset = {}) {
   if (preset.time) evt.times = preset.time ? [preset.time] : [];
   // New events default to the first celebrant (the párroco / moderador) so
   // they're never left without one.
-  const first = value.value.celebrants[0];
+  const first = value.events?.celebrants?.[0];
   if (first) evt.celebrants = [first.id];
-  value.value.events.push(evt);
-  editingIndex.value = value.value.events.length - 1;
+  if (!value.events?.list) value.events.list = [];
+  value.events.list.push(evt);
+  editingIndex.value = value.events.list.length - 1;
 }
 function removeEvent() {
   const i = editingIndex.value;
   if (i === null) return;
   if (!confirm('¿Eliminar este evento?')) return;
-  value.value.events.splice(i, 1);
+  if (value.events?.list) {
+    value.events.list.splice(i, 1);
+  }
   editingIndex.value = null;
 }
 async function duplicateEvent() {
@@ -122,8 +98,9 @@ async function duplicateEvent() {
   // Copy all fields except id (generate a new one) and except (start empty).
   const { id, except, ...rest } = src;
   const evt = { ...rest, id: generateId('evt'), except: [] };
-  value.value.events.push(evt);
-  const newIndex = value.value.events.length - 1;
+  if (!value.events?.list) value.events.list = [];
+  value.events.list.push(evt);
+  const newIndex = value.events.list.length - 1;
   closeModal();
   // Open the new event after the modal resets.
   nextTick(() => {
@@ -148,10 +125,10 @@ function closeModal() {
 <template>
   <div class="calendar-editor">
     <WeekGrid
-      :events="value.events"
-      :celebrants="value.celebrants"
-      :defaults="value.defaults"
-      :event-types="value.eventTypes"
+      :events="value.events?.list || []"
+      :celebrants="value.events?.celebrants || []"
+      :defaults="value.events?.defaults || {}"
+      :event-types="value.events?.eventTypes || []"
       :week-start="weekStart"
       @update:week-start="weekStart = $event"
       @edit-event="editEvent"
@@ -163,9 +140,9 @@ function closeModal() {
       v-if="modalOpen && editingEvent"
       :event="editingEvent"
       :event-index="editingIndex"
-      :celebrants="value.celebrants"
-      :defaults="value.defaults"
-      :event-types="value.eventTypes"
+      :celebrants="value.events?.celebrants || []"
+      :defaults="value.events?.defaults || {}"
+      :event-types="value.events?.eventTypes || []"
       :week-start="weekStart"
       :preset-occurrence="presetOccurrence"
       @close="closeModal"
@@ -184,8 +161,8 @@ function closeModal() {
         </header>
         <div class="modal-body">
           <EventTypeManager
-            :event-types="value.eventTypes"
-            :celebrants="value.celebrants"
+            :event-types="value.events?.eventTypes || []"
+            :celebrants="value.events?.celebrants || []"
           />
         </div>
       </div>

@@ -35,6 +35,11 @@ export function resolveFieldDef(raw, components) {
     if (raw[k] !== undefined) out[k] = raw[k];
   }
   out.name = raw.name;
+  // Preserve the component property from the component definition (Vue component name)
+  // if the raw field's component property is just a reference to a component definition
+  if (base.component && raw.component && components[raw.component]) {
+    out.component = base.component;
+  }
   if (raw.fields) out.fields = raw.fields.map((f) => resolveFieldDef(f, components));
   else if (base.fields) out.fields = base.fields;
   if (raw.blocks) out.blocks = raw.blocks.map((b) => resolveFieldDef(b, components));
@@ -51,11 +56,11 @@ export function resolveFieldDef(raw, components) {
   return out;
 }
 
-export async function normalizeSchema(raw) {
+export async function normalizeSchema(raw, configLoader) {
   const components = raw.components || {};
 
   // Load external options for components that specify options.source
-  await loadExternalOptions(components);
+  await loadExternalOptions(components, configLoader);
 
   const content = (raw.content || []).map((c) => ({
     ...c,
@@ -75,20 +80,36 @@ export async function normalizeSchema(raw) {
 }
 
 // Load options from external JSON files for components that specify options.source
-async function loadExternalOptions(components) {
+async function loadExternalOptions(components, configLoader) {
   for (const [name, comp] of Object.entries(components)) {
     if (comp.options && comp.options.source) {
       try {
-        const response = await fetch(comp.options.source);
-        if (response.ok) {
-          const data = await response.json();
-          // Extract options from the JSON structure
-          // Expected format: { "list": [{ "name": "..." }, ...] }
-          const values = (data.list || []).map((item) => ({
-            value: item.name,
-            label: item.name,
-          }));
-          comp.options = { ...comp.options, values };
+        // Handle "config>field" syntax to read from config.json
+        if (comp.options.source.startsWith('config>')) {
+          if (configLoader) {
+            const fieldPath = comp.options.source.slice(7); // Remove "config>"
+            const data = await configLoader(fieldPath);
+            if (data && Array.isArray(data)) {
+              const values = data.map((item) => ({
+                value: item.name || item.id || item,
+                label: item.name || item.id || item,
+              }));
+              comp.options = { ...comp.options, values };
+            }
+          }
+        } else {
+          // Original behavior: fetch from URL
+          const response = await fetch(comp.options.source);
+          if (response.ok) {
+            const data = await response.json();
+            // Extract options from the JSON structure
+            // Expected format: { "list": [{ "name": "..." }, ...] }
+            const values = (data.list || []).map((item) => ({
+              value: item.name,
+              label: item.name,
+            }));
+            comp.options = { ...comp.options, values };
+          }
         }
       } catch (err) {
         console.error(`Failed to load options for component ${name}:`, err);

@@ -12,6 +12,15 @@ const AUTOSAVE_DELAY = 10000; // 10 seconds
 
 const LS_PREFIX = 'parroquiaEditor';
 
+// Cache for config.json data to avoid re-reading from server
+let configCache = null;
+let configCacheToken = null;
+
+// Reactive config data for PWA and accent color
+export const configData = reactive({
+  site: null,
+});
+
 function lsKey(...parts) {
   return [LS_PREFIX, ...parts].join(':');
 }
@@ -110,19 +119,59 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken }) {
     ]);
 
     const rawSchema = yaml.load(schemaText);
-    const schema = await normalizeSchema(rawSchema || {});
 
+    // Get file list and build fileIndex first
     const { files } = await api.listFiles(apiBase, slug);
 
     state.slug = slug;
-    state.schema = schema;
+    state.schema = null;
     state.rawTokens = files || [];
+    const tempFileIndex = buildFileIndex({ content: rawSchema.content || [] }, state.rawTokens);
+
+    // Fetch config.json during login and cache it
+    let config = null;
+    const configEntry = tempFileIndex.find(e => e.contentName === 'config');
+    if (configEntry && configEntry.fileToken) {
+      try {
+        const text = await api.getFileText(state.dataBase, state.slug, configEntry.fileToken);
+        if (text) {
+          config = JSON.parse(text);
+          // Cache the config
+          configCache = config;
+          configCacheToken = configEntry.fileToken;
+        }
+      } catch (err) {
+        console.error('Failed to fetch config during login:', err);
+      }
+    }
+
+    // Create a configLoader callback that uses the cache
+    const configLoader = async (fieldPath) => {
+      try {
+        if (!configCache) return null;
+
+        // Navigate the field path (e.g., "site>collaborators" -> config.site.collaborators)
+        const pathParts = fieldPath.split('>');
+        let data = configCache;
+        for (const part of pathParts) {
+          data = data?.[part];
+        }
+        return data;
+      } catch (err) {
+        console.error('Failed to load config data:', err);
+        return null;
+      }
+    };
+
+    const schema = await normalizeSchema(rawSchema || {}, configLoader);
+
+    state.schema = schema;
     state.fileIndex = buildFileIndex(schema, state.rawTokens);
     state.refIndex = buildCollectionRefIndex(schema, state.rawTokens);
     state.mediaFiles = listMediaFiles(schema, state.rawTokens);
 
-    // Load config.json to get accent color
-    await loadConfigAccentColor();
+    // Process config reactively (accepts config as parameter)
+    loadConfigReactive(config);
 
     // Auto-open the first file if no file is currently open
     if (!state.currentEntry && state.fileIndex.length > 0) {
@@ -139,27 +188,40 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken }) {
   }
 }
 
-// Load config.json and apply accent color
-async function loadConfigAccentColor() {
+// Process config.json reactively for accent color
+// Accepts config as parameter (config is already fetched during login)
+function loadConfigReactive(config) {
   try {
-    // Find config entry in fileIndex
-    const configEntry = state.fileIndex.find(e => e.contentName === 'config');
-    if (!configEntry || !configEntry.fileToken) return;
-
-    const text = await api.getFileText(state.dataBase, state.slug, configEntry.fileToken);
-    if (!text) return;
-
-    const config = JSON.parse(text);
-    if (config.accentColor) {
-      applyAccentColor(config.accentColor);
+    // Store config reactively
+    if (config && config.site) {
+      configData.site = config.site;
     }
+
+    // Apply accent color initially
+    applyAccentColorFromConfig();
   } catch (err) {
-    console.error('Failed to load config accent color:', err);
+    console.error('Failed to process config reactively:', err);
   }
 }
 
+// Apply accent color from reactive config data
+function applyAccentColorFromConfig() {
+  const color = configData.site?.theme?.accentColor;
+  if (color) {
+    applyAccentColor(color);
+  }
+}
+
+// Watch for accent color changes
+watch(() => configData.site?.theme?.accentColor, (newColor) => {
+  if (newColor) {
+    applyAccentColor(newColor);
+  }
+});
+
 // Apply accent color to CSS variables
 function applyAccentColor(color) {
+  console.log(color)
   const root = document.documentElement;
   root.style.setProperty('--pe-accent', color);
   root.style.setProperty('--pe-accent-hover', adjustColor(color, -20));
@@ -214,6 +276,10 @@ export function logout() {
   state.baselineText = '';
   state.status = '';
   state.error = '';
+
+  // Clear config cache
+  configCache = null;
+  configCacheToken = null;
 }
 
 // ---------------------------------------------------------------------------
@@ -248,25 +314,63 @@ function serializeCurrent() {
 export async function openEntry(entry) {
   state.error = '';
   state.loading = true;
+
+  // Cancel any pending autosave timer when switching entries
+  // The autosave will fire naturally if there are changes, or the
+  // beforeunload handler will warn the user if they try to leave
+  if (autosaveTimer) {
+    clearTimeout(autosaveTimer);
+    autosaveTimer = null;
+  }
+
   try {
     let text = null;
-    if (entry.fileToken) {
+    let configData = null;
+
+    // For superfield entries, use cached config.json data if available
+    if (entry.kind === 'superfield' && entry.fileToken) {
+      // Check if we have cached data for this token
+      if (configCache && configCacheToken === entry.fileToken) {
+        configData = configCache;
+      } else {
+        // Load from server and cache
+        text = await api.getFileText(state.dataBase, state.slug, entry.fileToken);
+        if (text) {
+          configData = JSON.parse(text);
+          configCache = configData;
+          configCacheToken = entry.fileToken;
+        }
+      }
+    } else if (entry.fileToken) {
       text = await api.getFileText(state.dataBase, state.slug, entry.fileToken);
+    }
+
+    // For superfield entries, extract the relevant field from config.json
+    let data;
+    if (entry.kind === 'superfield' && entry.superfieldPath) {
+      data = configData ? (configData[entry.superfieldPath] || {}) : {};
+    } else {
+      data = parseContent(text, entry.format);
     }
 
     // Baseline = remote content (or empty) with schema defaults applied, so
     // that opening a file does not mark it dirty: FieldRenderer fills the
     // same defaults during render, so the draft round-trips identically.
-    const baselineText = text != null ? text : '';
-    const baselineBody = extractBody(baselineText, entry.format);
-    const data = parseContent(baselineText, entry.format);
     applyDefaults(entry.fields, data);
-    const baseline = serializeContent(data, entry.format, baselineBody);
+
+    // For superfield entries, we need to serialize just the field value for dirty checking
+    let baselineText;
+    if (entry.kind === 'superfield') {
+      baselineText = JSON.stringify(data, null, 2);
+    } else {
+      const baselineBody = extractBody(text, entry.format);
+      baselineText = serializeContent(data, entry.format, baselineBody);
+    }
 
     state.currentEntry = entry;
     state.draft = reactive(data);
-    state.currentBody = baselineBody;
-    state.baselineText = baseline;
+    state.currentBody = '';
+    state.baselineText = baselineText;
     state.status = '';
   } catch (err) {
     state.error = err.message || String(err);
@@ -281,26 +385,66 @@ export async function saveCurrent() {
   state.error = '';
   try {
     const entry = state.currentEntry;
-    const text = serializeCurrent();
-    const contentType = entry.format === 'md'
-      ? 'text/markdown; charset=utf-8'
-      : 'application/json; charset=utf-8';
 
-    let fileToken = entry.fileToken;
-    if (!fileToken) {
-      fileToken = encodePath(entry.relPath);
-      entry.fileToken = fileToken;
-    }
+    // For superfield entries, we need to update the config.json file
+    if (entry.kind === 'superfield') {
+      // Use cached config data or load from server
+      let configData;
+      if (configCache && configCacheToken === entry.fileToken) {
+        configData = configCache;
+      } else {
+        let configText = '';
+        if (entry.fileToken) {
+          configText = await api.getFileText(state.dataBase, state.slug, entry.fileToken);
+        }
+        configData = configText ? JSON.parse(configText) : {};
+      }
 
-    await api.putFile(state.apiBase, state.slug, state.editorToken, fileToken, text, contentType);
+      // Update the specific field
+      configData[entry.superfieldPath] = { ...state.draft };
 
-    state.baselineText = text;
-    state.status = 'Guardado.';
+      // Update the cache
+      configCache = configData;
+      configCacheToken = entry.fileToken;
 
-    if (!state.rawTokens.includes(fileToken)) {
-      state.rawTokens.push(fileToken);
-      state.fileIndex = buildFileIndex(state.schema, state.rawTokens);
-      state.refIndex = buildCollectionRefIndex(state.schema, state.rawTokens);
+      // Serialize and save the entire config
+      const text = JSON.stringify(configData, null, 2) + '\n';
+      const contentType = 'application/json; charset=utf-8';
+
+      let fileToken = entry.fileToken;
+      if (!fileToken) {
+        fileToken = encodePath(entry.relPath);
+        entry.fileToken = fileToken;
+      }
+
+      await api.putFile(state.apiBase, state.slug, state.editorToken, fileToken, text, contentType);
+
+      // Update baseline to the saved field value
+      state.baselineText = JSON.stringify(state.draft, null, 2);
+      state.status = 'Guardado.';
+    } else {
+      // Regular file entry - save as before
+      const text = serializeCurrent();
+      const contentType = entry.format === 'md'
+        ? 'text/markdown; charset=utf-8'
+        : 'application/json; charset=utf-8';
+
+      let fileToken = entry.fileToken;
+      if (!fileToken) {
+        fileToken = encodePath(entry.relPath);
+        entry.fileToken = fileToken;
+      }
+
+      await api.putFile(state.apiBase, state.slug, state.editorToken, fileToken, text, contentType);
+
+      state.baselineText = text;
+      state.status = 'Guardado.';
+
+      if (!state.rawTokens.includes(fileToken)) {
+        state.rawTokens.push(fileToken);
+        state.fileIndex = buildFileIndex(state.schema, state.rawTokens);
+        state.refIndex = buildCollectionRefIndex(state.schema, state.rawTokens);
+      }
     }
   } catch (err) {
     state.error = err.message || String(err);
@@ -376,10 +520,32 @@ export async function deleteCurrent() {
   state.loading = true;
   state.error = '';
   try {
-    await api.deleteFile(state.apiBase, state.slug, state.editorToken, state.currentEntry.fileToken);
+    // For superfield entries, remove the field from config.json
+    if (state.currentEntry.kind === 'superfield') {
+      // Load the full config.json
+      const configText = await api.getFileText(state.dataBase, state.slug, state.currentEntry.fileToken);
+      const configData = configText ? JSON.parse(configText) : {};
 
-    const idx = state.rawTokens.indexOf(state.currentEntry.fileToken);
-    if (idx !== -1) state.rawTokens.splice(idx, 1);
+      // Remove the field
+      delete configData[state.currentEntry.superfieldPath];
+
+      // Save the updated config
+      const text = JSON.stringify(configData, null, 2) + '\n';
+      await api.putFile(
+        state.apiBase,
+        state.slug,
+        state.editorToken,
+        state.currentEntry.fileToken,
+        text,
+        'application/json; charset=utf-8'
+      );
+    } else {
+      // Regular file entry - delete the file
+      await api.deleteFile(state.apiBase, state.slug, state.editorToken, state.currentEntry.fileToken);
+
+      const idx = state.rawTokens.indexOf(state.currentEntry.fileToken);
+      if (idx !== -1) state.rawTokens.splice(idx, 1);
+    }
 
     state.fileIndex = buildFileIndex(state.schema, state.rawTokens);
     state.refIndex = buildCollectionRefIndex(state.schema, state.rawTokens);

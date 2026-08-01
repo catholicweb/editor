@@ -1,16 +1,28 @@
 <script setup>
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import LoginView from './LoginView.vue';
-import FileBrowser from './FileBrowser.vue';
+import FieldBrowser from './FieldBrowser.vue';
 import FieldsGroup from './FieldsGroup.vue';
 import DirtyGuardModal from './DirtyGuardModal.vue';
-import { state, isLoggedIn, saveCurrent, logout, login, loadSavedSession, deleteCurrent } from '../lib/store.js';
+import { state, isLoggedIn, isDirty, saveCurrent, logout, login, loadSavedSession, deleteCurrent } from '../lib/store.js';
 import { ui, initUi, toggleSidebar } from '../lib/ui.js';
 
 const booting = ref(false);
 
+// Keyboard shortcuts
+function handleKeyDown(e) {
+  // Ctrl+S or Cmd+S to save
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    if (isDirty.value && !state.loading) {
+      onSave();
+    }
+  }
+}
+
 onMounted(async () => {
   initUi();
+  window.addEventListener('keydown', handleKeyDown);
   // Auto-login when a session with a token is already saved locally. The
   // user can still log out later. On failure we fall through to the login
   // form, prefilled with the saved values and showing the error.
@@ -25,6 +37,10 @@ onMounted(async () => {
       booting.value = false;
     }
   }
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown);
 });
 
 async function onDelete() {
@@ -90,7 +106,7 @@ async function onLogout() {
           </div>
         </div>
       </div>
-      <FileBrowser />
+      <FieldBrowser />
       <div class="sidebar-footer">
         <button
           class="sidebar-logout-btn"
@@ -108,20 +124,6 @@ async function onLogout() {
       <transition name="fade">
         <p v-if="state.error" class="error banner">{{ state.error }}</p>
       </transition>
-
-      <!-- Floating save button -->
-      <button
-        v-if="state.currentEntry"
-        class="floating-save-btn"
-        :class="{ dirty: isDirty }"
-        :disabled="!isDirty || state.loading"
-        @click="onSave"
-        :title="state.loading ? 'Guardando…' : (isDirty ? 'Guardar cambios' : 'Guardado')"
-        aria-label="Guardar cambios"
-      >
-        <span v-if="state.loading" class="save-spinner"></span>
-        <span v-else class="save-icon">💾</span>
-      </button>
 
       <div
         v-if="state.currentEntry && state.draft"
@@ -288,72 +290,6 @@ async function onLogout() {
   padding: 36px 36px 96px;
   min-width: 0;
   position: relative;
-}
-
-/* ---------- Floating save button ---------- */
-.floating-save-btn {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: none;
-  background: var(--pe-panel);
-  color: var(--pe-muted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  box-shadow: var(--pe-shadow-lg);
-  transition: background var(--pe-transition), transform var(--pe-transition), box-shadow var(--pe-transition);
-  z-index: 100;
-}
-
-.floating-save-btn:hover:not(:disabled) {
-  transform: scale(1.05);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-}
-
-.floating-save-btn.dirty {
-  background: var(--pe-accent);
-  color: white;
-  animation: pulse 2s infinite;
-}
-
-.floating-save-btn:disabled {
-  cursor: default;
-  opacity: 0.5;
-}
-
-.save-icon {
-  font-size: 24px;
-  line-height: 1;
-}
-
-.save-spinner {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 2px solid var(--pe-border);
-  border-top-color: var(--pe-accent);
-  animation: spin 0.7s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(var(--pe-accent-rgb), 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(var(--pe-accent-rgb), 0);
-  }
 }
 
 /* ---------- Banners ---------- */

@@ -4,44 +4,34 @@ import { state, openEntry } from '../lib/store.js';
 import { onNavigate } from '../lib/ui.js';
 import PeIcon from './PeIcon.vue';
 
-const groups = computed(() => {
-  const map = new Map();
-  for (const entry of state.fileIndex) {
-    if (!map.has(entry.contentName)) {
-      map.set(entry.contentName, { label: entry.groupLabel, entry: null });
-    }
-    map.get(entry.contentName).entry = entry;
-  }
-  return [...map.values()];
-});
+// Show all entries from fileIndex (not grouped)
+const entries = computed(() => state.fileIndex);
 
-function isCurrentGroup(group) {
-  return state.currentEntry && group.entry && state.currentEntry.relPath === group.entry.relPath;
+function isCurrentEntry(entry) {
+  return state.currentEntry && state.currentEntry === entry;
 }
 
-async function selectGroup(group) {
-  if (!group.entry) return;
-  if (isCurrentGroup(group)) return;
-  // With autosave, we don't need to prompt before switching files
-  await openEntry(group.entry);
+async function selectEntry(entry) {
+  if (isCurrentEntry(entry)) return;
+  // openEntry() now saves unsaved changes before switching
+  await openEntry(entry);
   onNavigate();
 }
 </script>
 
 <template>
-  <nav class="file-browser">
+  <nav class="field-browser">
     <button
-      v-for="group in groups"
-      :key="group.label"
-      class="group-item"
-      :class="{ active: isCurrentGroup(group) }"
-      :disabled="!group.entry"
-      @click="selectGroup(group)"
+      v-for="entry in entries"
+      :key="entry.contentName"
+      class="entry-item"
+      :class="{ active: isCurrentEntry(entry) }"
+      @click="selectEntry(entry)"
     >
-      <span v-if="group.entry && group.entry.icon" class="icon">
-        <PeIcon :name="group.entry.icon" :size="20" />
+      <span v-if="entry.icon" class="icon">
+        <PeIcon :name="entry.icon" :size="20" />
       </span>
-      <span class="name">{{ group.label }}</span>
+      <span class="name">{{ entry.contentLabel }}</span>
     </button>
     <p v-if="!state.fileIndex.length" class="empty">
       No hay ficheros gestionados por el esquema todavía.
@@ -50,7 +40,7 @@ async function selectGroup(group) {
 </template>
 
 <style scoped>
-.file-browser {
+.field-browser {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -67,15 +57,9 @@ async function selectGroup(group) {
   flex-shrink: 0;
 }
 
-.icon-img {
-  width: 18px;
-  height: 18px;
-  object-fit: contain;
-}
-
 /* Mobile: horizontal layout for bottom toolbar */
 @media (max-width: 768px) {
-  .file-browser {
+  .field-browser {
     flex-direction: row;
     gap: 4px;
     padding: 8px 12px;
@@ -84,7 +68,7 @@ async function selectGroup(group) {
     justify-content: space-around;
   }
 
-  .group-item {
+  .entry-item {
     flex-direction: column;
     width: auto;
     padding: 6px 12px;
@@ -93,7 +77,7 @@ async function selectGroup(group) {
     justify-content: center;
   }
 
-  .group-item::before {
+  .entry-item::before {
     display: none;
   }
 
@@ -106,16 +90,11 @@ async function selectGroup(group) {
     justify-content: center;
   }
 
-  .icon-img {
-    width: 20px;
-    height: 20px;
-  }
-
   .empty {
     display: none;
   }
 }
-.group-item {
+.entry-item {
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -133,7 +112,7 @@ async function selectGroup(group) {
   position: relative;
   transition: background var(--pe-transition), color var(--pe-transition);
 }
-.group-item::before {
+.entry-item::before {
   content: '';
   position: absolute;
   left: 4px;
@@ -145,18 +124,18 @@ async function selectGroup(group) {
   background: var(--pe-accent);
   transition: transform var(--pe-transition);
 }
-.group-item:hover:not(:disabled) {
+.entry-item:hover:not(:disabled) {
   background: var(--pe-hover);
 }
-.group-item.active {
+.entry-item.active {
   background: var(--pe-accent-soft);
   color: var(--pe-accent);
   font-weight: 600;
 }
-.group-item.active::before {
+.entry-item.active::before {
   transform: translateY(-50%) scaleY(1);
 }
-.group-item:disabled {
+.entry-item:disabled {
   opacity: 0.5;
   cursor: default;
 }
@@ -164,17 +143,6 @@ async function selectGroup(group) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.badge {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: var(--pe-accent-soft);
-  color: var(--pe-accent);
-  flex-shrink: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
 }
 .empty {
   padding: 0 10px;
