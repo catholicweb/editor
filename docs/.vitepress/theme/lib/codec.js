@@ -1,3 +1,14 @@
+/**
+ * ⚠️⚠️⚠️ CRITICAL INTER-DEPENDENCY WARNING ⚠️⚠️⚠️
+ *
+ * This file's encodePath/decodeToken MUST match:
+ *   - config-api/src/index.js (TOKEN_RE validation)
+ *   - web-template/docs/.vitepress/migrate.js (Node-side encode/decode)
+ *
+ * BEFORE making changes, ensure all three files produce identical results!
+ * See ../../../../CLAUDE.md for full dependency documentation.
+ */
+
 // Mirrors migrate.js's encodePath/decodeToken exactly (base64url, unpadded,
 // UTF-8 bytes), but browser-safe (no Buffer). Must stay byte-for-byte
 // compatible with the Node version so the editor and migrate.js produce

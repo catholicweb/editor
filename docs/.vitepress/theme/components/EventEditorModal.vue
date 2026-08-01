@@ -1,11 +1,10 @@
 <script setup>
 import { computed, ref, watch, onMounted } from 'vue';
 import FieldRenderer from './FieldRenderer.vue';
+import PeIcon from './PeIcon.vue';
 import { state } from '../lib/store.js';
 import { resolveFieldDef } from '../lib/schema.js';
 import {
-  EVENT_FIELDS,
-  ICON_GLYPHS,
   newException,
   occurrenceLabel,
   expandUpcomingOccurrences,
@@ -13,6 +12,7 @@ import {
   hasRepetition,
   isoToDate,
   getEventTypeOptions,
+  getEventFields,
   getTypeConfig,
   getTypeFieldDefaults,
   mergeTypeDefaults,
@@ -28,7 +28,7 @@ const props = defineProps({
   eventTypes: { type: Array, default: () => [] },
   presetOccurrence: { type: Object, default: null }, // occurrence clicked on the grid
 });
-const emit = defineEmits(['close', 'remove', 'duplicate', 'save']);
+const emit = defineEmits(['close', 'remove', 'duplicate', 'save', 'openEventTypeManager']);
 
 const components = computed(() => state.schema?.components || {});
 
@@ -41,22 +41,12 @@ const components = computed(() => state.schema?.components || {});
 function fieldDefFor(f) {
   if (f.component) {
     const def = resolveFieldDef({ name: f.name, component: f.component, label: f.label }, components.value);
-    // Force single-value for location and times in the event editor.
-    if ((f.name === 'location' || f.name === 'times') && def.options) {
+    // Force single-value for location and times in the event editor
+    // only if the field is not set to multiple in pages.yml.
+    if ((f.name === 'location' || f.name === 'times') && def.options && !def.options.multiple) {
       def.options = { ...def.options, multiple: false };
     }
     return def;
-  }
-  if (f.name === 'celebrants') {
-    return {
-      name: 'celebrants',
-      label: 'Celebrantes',
-      type: 'select',
-      options: {
-        multiple: true,
-        values: props.celebrants.map((c) => ({ value: c.id, label: c.name || '(sin nombre)' })),
-      },
-    };
   }
   return { ...f };
 }
@@ -84,9 +74,10 @@ const eventFieldDefs = computed(() => {
   const allowed = allowedFields(props.event.type, props.eventTypes);
   const showCeleb = showCelebrants.value;
   const hidden = typeDefaultFieldNames.value;
+  const eventFields = state.schema?.eventFields || getEventFields();
   return [
     { name: 'type', label: 'Tipo de evento', type: 'select', options: { values: getEventTypeOptions(props.eventTypes) } },
-    ...EVENT_FIELDS
+    ...eventFields
       .filter((f) => allowed.includes(f.name))
       .filter((f) => !hidden.has(f.name))
       .filter((f) => f.name !== 'celebrants' || showCeleb)
@@ -106,31 +97,29 @@ const effEvent = computed(() => mergeTypeDefaults(props.event, props.eventTypes)
 const repeats = computed(() => hasRepetition(effEvent.value));
 
 // Build field defs for an exception's editable overrides (newTime, newPlace).
-// Reuses the `times` and `location` components from pages.yml so the options
-// (values, creatable) stay in sync. The fields are forced to single-value
-// (multiple: false) and bound to `newTime` / `newPlace` on the exception.
-function exceptionFieldDefFor(baseName) {
-  const comps = components.value;
-  const base = comps[baseName];
-  if (!base) return null;
-  const def = resolveFieldDef({ name: baseName, component: baseName, label: base.label }, comps);
-  def.name = baseName === 'times' ? 'newTime' : 'newPlace';
-  def.label = baseName === 'times' ? 'Nueva hora (vacío = original)' : 'Nuevo lugar (vacío = original)';
-  if (def.options) def.options = { ...def.options, multiple: false };
-  return def;
-}
-
-// Override field defs for an exception: when "takes place", the user can set
-// a new hora / lugar / celebrante for that specific occurrence (empty =>
-// inherit the original). Reuses the `times` and `location` components from
-// pages.yml so the options stay in sync with the rest of the editor.
+// Reads the 'exception' component from pages.yml to get the field definitions.
 function exceptionFieldDefs(ex) {
   if (!ex.takesPlace) return [];
+  const comps = components.value;
+  const exceptionComp = comps['exception'];
+
+  // If exception component is defined in pages.yml, use it
+  if (exceptionComp && exceptionComp.fields) {
+    return exceptionComp.fields.map(f => resolveFieldDef(f, comps));
+  }
+
+  // Fallback to hardcoded fields if exception component is not defined
   const fields = [];
-  const timeDef = exceptionFieldDefFor('times');
-  if (timeDef) fields.push(timeDef);
-  const placeDef = exceptionFieldDefFor('location');
-  if (placeDef) fields.push(placeDef);
+  const timeDef = resolveFieldDef({ name: 'newTime', component: 'times', label: 'Nueva hora (vacío = original)' }, comps);
+  if (timeDef) {
+    if (timeDef.options) timeDef.options = { ...timeDef.options, multiple: false };
+    fields.push(timeDef);
+  }
+  const placeDef = resolveFieldDef({ name: 'newPlace', component: 'location', label: 'Nuevo lugar (vacío = original)' }, comps);
+  if (placeDef) {
+    if (placeDef.options) placeDef.options = { ...placeDef.options, multiple: false };
+    fields.push(placeDef);
+  }
   fields.push({
     name: 'celebrants',
     label: 'Celebrantes',
@@ -183,7 +172,6 @@ function pickOccurrence(ex, event) {
   Object.assign(ex, newException(pick));
 }
 function removeException(i) {
-  if (!confirm('¿Eliminar esta excepción?')) return;
   ensureExcept().splice(i, 1);
 }
 function moveException(i, dir) {
@@ -206,7 +194,8 @@ const firstCelebrant = computed(() => {
   return props.celebrants.find((c) => c.id === id) || null;
 });
 const headerColor = computed(() => firstCelebrant.value?.color || NEUTRAL_COLOR);
-const headerIcon = computed(() => ICON_GLYPHS[typeStyle.value.icon] || typeStyle.value.icon);
+const headerIcon = computed(() => typeStyle.value.icon || 'calendar');
+
 
 // Delete past exceptions on modal open
 function deletePastExceptions() {
@@ -234,13 +223,18 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
     <div class="modal">
       <header class="modal-header">
         <div class="title-wrap">
-          <span class="type-dot" :style="{ background: headerColor }">{{ headerIcon }}</span>
+          <span class="type-dot" :style="{ background: headerColor }">
+            <PeIcon :name="headerIcon" :size="18" color="#fff" />
+          </span>
           <h2>{{ event.title || 'Nuevo evento' }}</h2>
           <span class="event-idx">#{{ eventIndex + 1 }}</span>
         </div>
-        <!--<div class="header-actions">
-          <button class="close" @click="emit('close')">✕</button>
-        </div>-->
+        <div class="header-actions">
+          <button class="manage-types-btn" @click="emit('openEventTypeManager')" title="Gestionar tipos de eventos">
+            <PeIcon name="adjustments-vertical" :size="16" />
+          </button>
+          <!--<button class="close" @click="emit('close')">✕</button>-->
+        </div>
       </header>
       <div class="modal-body">
         <section class="event-section">
@@ -323,6 +317,13 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
   z-index: 1000;
   padding: 0;
 }
+
+/* On mobile, leave space for the bottom toolbar */
+@media (max-width: 768px) {
+  .overlay {
+    bottom: 60px; /* Height of the bottom toolbar */
+  }
+}
 .modal {
   background: var(--pe-panel);
   border-radius: 0;
@@ -353,15 +354,19 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
   min-width: 0;
 }
 .type-dot {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 30px;
   height: 30px;
   border-radius: 50%;
   color: #fff;
-  font-size: 15px;
   flex-shrink: 0;
 }
+.type-dot :deep(img) {
+  filter: brightness(0) invert(1); /* Make icon white on colored background */
+}
+
 .modal-header h2 {
   font-size: 16px;
   margin: 0;
@@ -379,6 +384,21 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+.manage-types-btn {
+  border: none;
+  background: transparent;
+  color: var(--pe-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--pe-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.manage-types-btn:hover {
+  background: var(--pe-hover);
+  color: var(--pe-accent);
 }
 .danger {
   padding: 6px 12px;

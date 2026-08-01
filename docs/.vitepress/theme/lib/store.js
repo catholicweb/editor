@@ -1,10 +1,14 @@
-import { reactive, computed } from 'vue';
+import { reactive, computed, watch } from 'vue';
 import yaml from 'js-yaml';
 import * as api from './api.js';
 import { encodePath, decodeToken } from './codec.js';
 import { parseFrontmatter, stringifyFrontmatter } from './frontmatter.js';
 import { normalizeSchema, applyDefaults } from './schema.js';
 import { buildFileIndex, buildCollectionRefIndex, listMediaFiles } from './content-index.js';
+
+// Autosave: debounce timer per file
+let autosaveTimer = null;
+const AUTOSAVE_DELAY = 10000; // 10 seconds
 
 const LS_PREFIX = 'parroquiaEditor';
 
@@ -106,7 +110,7 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken }) {
     ]);
 
     const rawSchema = yaml.load(schemaText);
-    const schema = normalizeSchema(rawSchema || {});
+    const schema = await normalizeSchema(rawSchema || {});
 
     const { files } = await api.listFiles(apiBase, slug);
 
@@ -117,14 +121,66 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken }) {
     state.refIndex = buildCollectionRefIndex(schema, state.rawTokens);
     state.mediaFiles = listMediaFiles(schema, state.rawTokens);
 
+    // Load config.json to get accent color
+    await loadConfigAccentColor();
+
+    // Auto-open the first file if no file is currently open
+    if (!state.currentEntry && state.fileIndex.length > 0) {
+      await openEntry(state.fileIndex[0]);
+    }
+
     saveSession();
-    state.status = `Conectado a "${slug}" (${state.fileIndex.length} ficheros editables).`;
+    state.status = ''; // Removed connection banner
   } catch (err) {
     state.error = err.message || String(err);
     throw err;
   } finally {
     state.loading = false;
   }
+}
+
+// Load config.json and apply accent color
+async function loadConfigAccentColor() {
+  try {
+    // Find config entry in fileIndex
+    const configEntry = state.fileIndex.find(e => e.contentName === 'config');
+    if (!configEntry || !configEntry.fileToken) return;
+
+    const text = await api.getFileText(state.dataBase, state.slug, configEntry.fileToken);
+    if (!text) return;
+
+    const config = JSON.parse(text);
+    if (config.accentColor) {
+      applyAccentColor(config.accentColor);
+    }
+  } catch (err) {
+    console.error('Failed to load config accent color:', err);
+  }
+}
+
+// Apply accent color to CSS variables
+function applyAccentColor(color) {
+  const root = document.documentElement;
+  root.style.setProperty('--pe-accent', color);
+  root.style.setProperty('--pe-accent-hover', adjustColor(color, -20));
+  root.style.setProperty('--pe-accent-soft', adjustColor(color, 90) + '1a');
+}
+
+// Helper to adjust color brightness
+function adjustColor(color, amount) {
+  // Simple hex color adjustment (supports #RGB and #RRGGBB)
+  if (color.startsWith('#')) {
+    const hex = color.slice(1);
+    const num = parseInt(hex, 16);
+    let r = (num >> 16) + amount;
+    let g = ((num >> 8) & 0x00FF) + amount;
+    let b = (num & 0x0000FF) + amount;
+    r = Math.max(0, Math.min(255, r));
+    g = Math.max(0, Math.min(255, g));
+    b = Math.max(0, Math.min(255, b));
+    return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  }
+  return color;
 }
 
 async function fetchSchemaText(schemaUrl) {
@@ -254,13 +310,38 @@ export async function saveCurrent() {
   }
 }
 
+// Autosave: debounced save after edits
+export function scheduleAutosave() {
+  // Clear existing timer
+  if (autosaveTimer) {
+    clearTimeout(autosaveTimer);
+    autosaveTimer = null;
+  }
+
+  // Set new timer
+  autosaveTimer = setTimeout(async () => {
+    if (!state.currentEntry || state.draft == null) return;
+
+    // Check if there are changes
+    const currentText = serializeCurrent();
+    if (currentText === state.baselineText) return; // No changes
+
+    // Save
+    try {
+      await saveCurrent();
+    } catch {
+      // Error already handled in saveCurrent
+    }
+  }, AUTOSAVE_DELAY);
+}
+
 export async function createPage(title) {
   const pagesContent = (state.schema?.content || []).find((c) => c.name === 'pages');
   if (!pagesContent) throw new Error('No se encontró la definición de "pages" en el esquema.');
 
   const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const filename = `${slug}.md`;
-  const relPath = `docs/public/pages/${filename}`;
+  const relPath = `pages/${filename}`;
   const fileToken = encodePath(relPath);
 
   const frontmatter = { title };
@@ -337,5 +418,17 @@ export async function uploadMedia(file, relPath) {
   }
   return fileToken;
 }
+
+// Autosave: watch for changes and trigger autosave
+watch(
+  () => state.draft,
+  (newDraft) => {
+    if (newDraft) {
+      // Schedule autosave when draft changes
+      scheduleAutosave();
+    }
+  },
+  { deep: true }
+);
 
 export { decodeToken };

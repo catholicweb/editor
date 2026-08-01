@@ -1,88 +1,48 @@
 <script setup>
-import { computed, ref } from 'vue';
-import { state, openEntry, isDirty, createPage } from '../lib/store.js';
-import { confirmDirty } from '../lib/guard.js';
+import { computed } from 'vue';
+import { state, openEntry } from '../lib/store.js';
 import { onNavigate } from '../lib/ui.js';
+import PeIcon from './PeIcon.vue';
 
 const groups = computed(() => {
   const map = new Map();
   for (const entry of state.fileIndex) {
     if (!map.has(entry.contentName)) {
-      map.set(entry.contentName, { label: entry.groupLabel, entries: [] });
+      map.set(entry.contentName, { label: entry.groupLabel, entry: null });
     }
-    map.get(entry.contentName).entries.push(entry);
+    map.get(entry.contentName).entry = entry;
   }
   return [...map.values()];
 });
 
-function isCurrent(entry) {
-  return state.currentEntry && state.currentEntry.relPath === entry.relPath;
+function isCurrentGroup(group) {
+  return state.currentEntry && group.entry && state.currentEntry.relPath === group.entry.relPath;
 }
 
-async function select(entry) {
-  if (isCurrent(entry)) return;
-  if (isDirty.value) {
-    const choice = await confirmDirty({
-      title: 'Cambiar de fichero',
-      message: 'Hay cambios sin guardar en el fichero actual. ¿Qué quieres hacer?',
-      saveLabel: 'Guardar y cambiar',
-      discardLabel: 'Cambiar sin guardar',
-      stayLabel: 'Quedarme en este fichero',
-    });
-    if (choice === 'stay') return;
-    // 'save' => already persisted; 'discard' => drop and switch
-  }
-  await openEntry(entry);
+async function selectGroup(group) {
+  if (!group.entry) return;
+  if (isCurrentGroup(group)) return;
+  // With autosave, we don't need to prompt before switching files
+  await openEntry(group.entry);
   onNavigate();
-}
-
-const newPageTitle = ref('');
-const creating = ref(false);
-async function onCreatePage() {
-  if (!newPageTitle.value.trim()) return;
-  creating.value = true;
-  try {
-    await createPage(newPageTitle.value.trim());
-    newPageTitle.value = '';
-  } catch {
-    // error already surfaced in state.error
-  } finally {
-    creating.value = false;
-  }
 }
 </script>
 
 <template>
   <nav class="file-browser">
-    <div v-for="group in groups" :key="group.label" class="group">
-      <div class="group-label">{{ group.label }}</div>
-      <button
-        v-for="entry in group.entries"
-        :key="entry.relPath"
-        class="file-item"
-        :class="{ active: isCurrent(entry) }"
-        @click="select(entry)"
-      >
-        <span class="name">{{ entry.displayName }}</span>
-        <span v-if="!entry.fileToken" class="badge">nuevo</span>
-      </button>
-      <div v-if="group.label === 'Paginas'" class="add-page-row">
-        <input
-          v-model="newPageTitle"
-          class="add-page-input"
-          placeholder="Nueva página…"
-          :disabled="creating"
-          @keyup.enter="onCreatePage"
-        />
-        <button
-          class="add-page-btn"
-          :disabled="!newPageTitle.trim() || creating"
-          @click="onCreatePage"
-        >
-          {{ creating ? '…' : '+' }}
-        </button>
-      </div>
-    </div>
+    <button
+      v-for="group in groups"
+      :key="group.label"
+      class="group-item"
+      :class="{ active: isCurrentGroup(group) }"
+      :disabled="!group.entry"
+      @click="selectGroup(group)"
+    >
+      <span v-if="group.entry && group.entry.icon" class="icon">
+        <PeIcon :name="group.entry.icon" :size="20" />
+      </span>
+      <span class="name">{{ group.label }}</span>
+    </button>
     <p v-if="!state.fileIndex.length" class="empty">
       No hay ficheros gestionados por el esquema todavía.
     </p>
@@ -93,24 +53,72 @@ async function onCreatePage() {
 .file-browser {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 4px;
   padding: 12px 10px;
   overflow-y: auto;
   height: 100%;
   flex: 1;
 }
-.group-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--pe-muted);
-  padding: 0 10px 4px;
-  font-weight: 600;
-}
-.file-item {
+
+/* Icon styles - desktop: icon on the left */
+.icon {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.icon-img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+/* Mobile: horizontal layout for bottom toolbar */
+@media (max-width: 768px) {
+  .file-browser {
+    flex-direction: row;
+    gap: 4px;
+    padding: 8px 12px;
+    overflow-x: auto;
+    overflow-y: visible;
+    justify-content: space-around;
+  }
+
+  .group-item {
+    flex-direction: column;
+    width: auto;
+    padding: 6px 12px;
+    gap: 4px;
+    font-size: 11px;
+    justify-content: center;
+  }
+
+  .group-item::before {
+    display: none;
+  }
+
+  .name {
+    font-size: 11px;
+    text-align: center;
+  }
+
+  .icon {
+    justify-content: center;
+  }
+
+  .icon-img {
+    width: 20px;
+    height: 20px;
+  }
+
+  .empty {
+    display: none;
+  }
+}
+.group-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
   gap: 8px;
   width: 100%;
   text-align: left;
@@ -125,7 +133,7 @@ async function onCreatePage() {
   position: relative;
   transition: background var(--pe-transition), color var(--pe-transition);
 }
-.file-item::before {
+.group-item::before {
   content: '';
   position: absolute;
   left: 4px;
@@ -137,16 +145,20 @@ async function onCreatePage() {
   background: var(--pe-accent);
   transition: transform var(--pe-transition);
 }
-.file-item:hover {
+.group-item:hover:not(:disabled) {
   background: var(--pe-hover);
 }
-.file-item.active {
+.group-item.active {
   background: var(--pe-accent-soft);
   color: var(--pe-accent);
   font-weight: 600;
 }
-.file-item.active::before {
+.group-item.active::before {
   transform: translateY(-50%) scaleY(1);
+}
+.group-item:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 .name {
   overflow: hidden;
@@ -168,48 +180,5 @@ async function onCreatePage() {
   padding: 0 10px;
   font-size: 13px;
   color: var(--pe-muted);
-}
-.add-page-row {
-  display: flex;
-  gap: 4px;
-  padding: 4px 10px 8px 12px;
-}
-.add-page-input {
-  flex: 1;
-  min-width: 0;
-  font: inherit;
-  font-size: 12px;
-  padding: 5px 8px;
-  border-radius: var(--pe-radius-sm);
-  border: 1px solid var(--pe-border);
-  background: var(--pe-input-bg);
-  color: var(--pe-text);
-}
-.add-page-input:focus {
-  outline: none;
-  border-color: var(--pe-accent);
-  box-shadow: var(--pe-ring);
-}
-.add-page-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--pe-radius-sm);
-  border: 1px dashed var(--pe-accent);
-  background: var(--pe-accent-soft);
-  color: var(--pe-accent);
-  font-weight: 700;
-  font-size: 16px;
-  cursor: pointer;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  transition: background var(--pe-transition), border-color var(--pe-transition);
-}
-.add-page-btn:hover:not(:disabled) {
-  background: var(--pe-accent-soft-hover);
-}
-.add-page-btn:disabled {
-  opacity: 0.4;
-  cursor: default;
 }
 </style>

@@ -10,6 +10,7 @@ const emit = defineEmits(['update:modelValue']);
 const options = props.field.options || {};
 const multiple = !!options.multiple;
 const creatable = !!options.creatable;
+const maxChips = options.max || 0; // 0 = unlimited
 
 // Prevent empty strings from being stored in the model value.
 watch(
@@ -33,19 +34,49 @@ function labelFor(val) {
   return found ? found.label : val;
 }
 
-const selectedList = computed(() =>
-  multiple ? (Array.isArray(props.modelValue) ? props.modelValue.filter((v) => v !== '') : []) : []
-);
+const selectedList = computed(() => {
+  if (multiple) {
+    return Array.isArray(props.modelValue) ? props.modelValue.filter((v) => v !== '') : [];
+  }
+  // Single: return array with one item (for chip rendering)
+  // Check for empty array/string to avoid showing "[]" as a tag
+  if (!props.modelValue || (Array.isArray(props.modelValue) && props.modelValue.length === 0)) return [];
+  return [props.modelValue];
+});
+
+// Whether adding is blocked (for multiple with max, or single which is always max 1)
+const atMax = computed(() => {
+  if (multiple && maxChips) {
+    const len = Array.isArray(props.modelValue) ? props.modelValue.length : 0;
+    return len >= maxChips;
+  }
+  // Single field: at max when a value is selected
+  if (!multiple) return !!props.modelValue;
+  return false;
+});
 
 function toggleValue(val) {
   if (val === '') return;
+  if (!multiple) {
+    // Single: toggle the value
+    emit('update:modelValue', props.modelValue === val ? '' : val);
+    return;
+  }
   const current = selectedList.value.slice();
   const idx = current.indexOf(val);
-  if (idx === -1) current.push(val);
-  else current.splice(idx, 1);
+  if (idx === -1) {
+    if (atMax.value) return;
+    current.push(val);
+  } else {
+    current.splice(idx, 1);
+  }
   emit('update:modelValue', current);
 }
 function removeValue(val) {
+  if (!multiple) {
+    emit('update:modelValue', '');
+    return;
+  }
   emit('update:modelValue', selectedList.value.filter((v) => v !== val));
 }
 
@@ -96,6 +127,7 @@ const filtered = computed(() => {
 const canCreate = computed(
   () =>
     creatable &&
+    !atMax.value &&
     search.value.trim() !== '' &&
     !normalizedOptions.value.some(
       (o) => String(o.value).toLowerCase() === search.value.trim().toLowerCase()
@@ -132,6 +164,7 @@ function onKeydown(e) {
 function addCustom() {
   const v = search.value.trim();
   if (!v) return;
+  if (atMax.value) return;
   if (!selectedList.value.includes(v)) emit('update:modelValue', [...selectedList.value, v]);
   search.value = '';
   nextTick(() => inputEl.value?.focus());
@@ -154,31 +187,8 @@ function onSingleChange(e) {
 
 <template>
   <div class="select-field">
-    <!-- single, not creatable: plain native select -->
-    <select
-      v-if="!multiple && !creatable"
-      :value="modelValue ?? ''"
-      @change="onSingleChange"
-    >
-      <option value="">— sin seleccionar —</option>
-      <option v-for="o in normalizedOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-    </select>
-
-    <!-- single, creatable: datalist + free text -->
-    <div v-else-if="!multiple && creatable" class="creatable-single">
-      <input
-        list="dl"
-        :value="modelValue ?? ''"
-        @input="$emit('update:modelValue', $event.target.value)"
-        placeholder="Elige o escribe un valor"
-      />
-      <datalist :id="'dl'">
-        <option v-for="o in normalizedOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-      </datalist>
-    </div>
-
-    <!-- multiple: tag input + dropdown -->
-    <div v-else class="tags" :class="{ open }">
+    <!-- always: tag input + dropdown (works for both single & multiple) -->
+    <div class="tags" :class="{ open }">
       <div class="tags-box" @click="inputEl?.focus()">
         <span v-for="v in selectedList" :key="v" class="chip">
           {{ labelFor(v) }}
@@ -194,6 +204,7 @@ function onSingleChange(e) {
           @keydown="onKeydown"
         />
       </div>
+      <p v-if="atMax && multiple" class="max-hint">Máximo {{ maxChips }} valor{{ maxChips > 1 ? 'es' : '' }}</p>
 
       <Teleport to="body">
         <div v-if="open" class="dropdown-teleported" ref="dropdownEl">
@@ -312,6 +323,12 @@ input:focus-visible {
 }
 .chip-x:hover {
   background: var(--pe-accent-soft-hover);
+}
+.max-hint {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--pe-muted);
+  font-style: italic;
 }
 
 /* ---- single creatable ---- */

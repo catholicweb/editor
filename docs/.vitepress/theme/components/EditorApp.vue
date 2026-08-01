@@ -4,8 +4,7 @@ import LoginView from './LoginView.vue';
 import FileBrowser from './FileBrowser.vue';
 import FieldsGroup from './FieldsGroup.vue';
 import DirtyGuardModal from './DirtyGuardModal.vue';
-import { state, isLoggedIn, isDirty, saveCurrent, logout, login, loadSavedSession, deleteCurrent } from '../lib/store.js';
-import { confirmDirty } from '../lib/guard.js';
+import { state, isLoggedIn, saveCurrent, logout, login, loadSavedSession, deleteCurrent } from '../lib/store.js';
 import { ui, initUi, toggleSidebar } from '../lib/ui.js';
 
 const booting = ref(false);
@@ -30,16 +29,7 @@ onMounted(async () => {
 
 async function onDelete() {
   if (!confirm('¿Eliminar esta página? Esta acción no se puede deshacer.')) return;
-  if (isDirty.value) {
-    const choice = await confirmDirty({
-      title: 'Eliminar página',
-      message: 'Hay cambios sin guardar. Se perderán si continúas.',
-      saveLabel: 'Guardar y eliminar',
-      discardLabel: 'Eliminar sin guardar',
-      stayLabel: 'Cancelar',
-    });
-    if (choice === 'stay') return;
-  }
+  // With autosave, changes are automatically saved, so we can delete directly
   await deleteCurrent();
 }
 
@@ -65,17 +55,7 @@ async function onSave() {
 }
 
 async function onLogout() {
-  if (isDirty.value) {
-    const choice = await confirmDirty({
-      title: 'Salir del editor',
-      message: 'Hay cambios sin guardar en este fichero. ¿Qué quieres hacer?',
-      saveLabel: 'Guardar y salir',
-      discardLabel: 'Salir sin guardar',
-      stayLabel: 'Quedarme aquí',
-    });
-    if (choice === 'stay') return;
-    // 'save' => already persisted; 'discard' => drop and leave
-  }
+  // With autosave, changes are automatically saved, so we can logout directly
   logout();
 }
 </script>
@@ -109,9 +89,6 @@ async function onLogout() {
             <span class="slug">{{ state.slug }}</span>
           </div>
         </div>
-        <button class="icon-btn collapse-btn" @click="toggleSidebar" :title="sidebarOpen ? 'Contraer panel' : 'Expandir panel'" :aria-label="sidebarOpen ? 'Contraer panel' : 'Expandir panel'">
-          <span class="chevron" :class="{ left: !sidebarOpen }">‹</span>
-        </button>
       </div>
       <FileBrowser />
       <div class="sidebar-footer">
@@ -128,36 +105,23 @@ async function onLogout() {
     </aside>
 
     <main class="main-panel">
-      <header class="main-header">
-        <button
-          class="icon-btn menu-btn"
-          :class="{ hidden: !isMobile && sidebarOpen }"
-          @click="toggleSidebar"
-          :title="sidebarOpen ? 'Contraer panel' : 'Mostrar panel'"
-          aria-label="Mostrar u ocultar panel lateral"
-        >
-          <span class="menu-bars" />
-        </button>
-        <h1 v-if="state.currentEntry" class="title">{{ currentTitle }}</h1>
-        <h1 v-else class="title muted">Elige un fichero del panel lateral</h1>
-        <button
-          v-if="state.currentEntry"
-          class="save-btn"
-          :class="{ dirty: isDirty }"
-          :disabled="!isDirty || state.loading"
-          @click="onSave"
-        >
-          <span class="save-dot" />
-          {{ state.loading ? 'Guardando…' : (isDirty ? 'Guardar cambios' : 'Guardado') }}
-        </button>
-      </header>
-
-      <transition name="fade">
-        <p v-if="state.status" class="status banner">{{ state.status }}</p>
-      </transition>
       <transition name="fade">
         <p v-if="state.error" class="error banner">{{ state.error }}</p>
       </transition>
+
+      <!-- Floating save button -->
+      <button
+        v-if="state.currentEntry"
+        class="floating-save-btn"
+        :class="{ dirty: isDirty }"
+        :disabled="!isDirty || state.loading"
+        @click="onSave"
+        :title="state.loading ? 'Guardando…' : (isDirty ? 'Guardar cambios' : 'Guardado')"
+        aria-label="Guardar cambios"
+      >
+        <span v-if="state.loading" class="save-spinner"></span>
+        <span v-else class="save-icon">💾</span>
+      </button>
 
       <div
         v-if="state.currentEntry && state.draft"
@@ -315,110 +279,81 @@ async function onLogout() {
   transform: rotate(180deg);
 }
 
-/* Hamburger button (mobile + collapsed-desktop) */
-.menu-btn {
-  width: 38px;
-  height: 38px;
-  border-radius: var(--pe-radius-sm);
-}
-.menu-btn.hidden {
-  visibility: hidden;
-  pointer-events: none;
-}
-.menu-bars,
-.menu-bars::before,
-.menu-bars::after {
-  display: block;
-  width: 16px;
-  height: 2px;
-  border-radius: 2px;
-  background: currentColor;
-  position: relative;
-}
-.menu-bars::before,
-.menu-bars::after {
-  content: '';
-  position: absolute;
-}
-.menu-bars::before { top: -5px; }
-.menu-bars::after { top: 5px; }
+/* Menu button removed - sidebar toggled via bottom toolbar on mobile */
 
 /* ---------- Main panel ---------- */
 .main-panel {
   flex: 1;
   overflow-y: auto;
-  padding: 0 36px 96px;
+  padding: 36px 36px 96px;
   min-width: 0;
-}
-.main-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin: 0 -36px 18px;
-  padding: 0 36px;
-  min-height: 56px;
-  box-sizing: border-box;
-  background: var(--pe-panel);
-  border-bottom: 1px solid var(--pe-border);
-}
-.main-header .title {
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.main-header .title.muted {
-  color: var(--pe-muted);
-  font-weight: 500;
+  position: relative;
 }
 
-.save-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 16px;
-  border-radius: var(--pe-radius);
-  border: 1px solid var(--pe-border);
+/* ---------- Floating save button ---------- */
+.floating-save-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
   background: var(--pe-panel);
   color: var(--pe-muted);
-  font-weight: 600;
-  font-size: 13px;
   cursor: pointer;
-  flex-shrink: 0;
-  transition: background var(--pe-transition), border-color var(--pe-transition), color var(--pe-transition), box-shadow var(--pe-transition), transform var(--pe-transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow: var(--pe-shadow-lg);
+  transition: background var(--pe-transition), transform var(--pe-transition), box-shadow var(--pe-transition);
+  z-index: 100;
 }
-.save-btn:hover:not(:disabled) {
-  border-color: var(--pe-border-strong);
+
+.floating-save-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
-.save-btn .save-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--pe-border-strong);
-  transition: background var(--pe-transition);
-}
-.save-btn.dirty {
+
+.floating-save-btn.dirty {
   background: var(--pe-accent);
-  border-color: var(--pe-accent);
   color: white;
-  box-shadow: var(--pe-shadow-sm);
+  animation: pulse 2s infinite;
 }
-.save-btn.dirty .save-dot {
-  background: #fff;
-}
-.save-btn.dirty:hover:not(:disabled) {
-  background: var(--pe-accent-hover);
-}
-.save-btn:disabled {
+
+.floating-save-btn:disabled {
   cursor: default;
-  opacity: 0.85;
+  opacity: 0.5;
+}
+
+.save-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.save-spinner {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--pe-border);
+  border-top-color: var(--pe-accent);
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(var(--pe-accent-rgb), 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(var(--pe-accent-rgb), 0);
+  }
 }
 
 /* ---------- Banners ---------- */
@@ -526,22 +461,63 @@ async function onLogout() {
   transform: translateX(0);
 }
 
+/* ---------- Mobile bottom toolbar (replaces drawer at 768px and below) ---------- */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    border-top: 1px solid var(--pe-border);
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    height: auto;
+    z-index: 20;
+    background: var(--pe-panel);
+  }
+
+  .sidebar-header,
+  .sidebar-footer {
+    display: none;
+  }
+
+  .sidebar.mobile {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    transform: translateY(0);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  .main-panel {
+    padding-bottom: 80px; /* Space for bottom toolbar */
+  }
+
+  .backdrop {
+    display: none;
+  }
+
+  .menu-btn {
+    display: none;
+  }
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 860px) {
   .main-panel {
-    padding: 0 18px 96px;
+    padding: 18px 18px 96px;
   }
-  .main-header {
-    margin: 0 -18px 16px;
-    padding: 0 18px;
-    min-height: 52px;
-  }
-  .main-header .title {
-    font-size: 16px;
-  }
-  .save-btn {
-    padding: 8px 12px;
-    font-size: 12px;
+  .floating-save-btn {
+    bottom: 80px; /* Above bottom toolbar */
+    right: 18px;
+    width: 48px;
+    height: 48px;
   }
   .sidebar-footer {
     padding: 10px;

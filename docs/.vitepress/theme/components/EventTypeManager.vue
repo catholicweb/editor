@@ -1,9 +1,10 @@
 <script setup>
 import { ref, computed } from 'vue';
 import FieldRenderer from './FieldRenderer.vue';
+import PeIcon from './PeIcon.vue';
 import { state } from '../lib/store.js';
 import { resolveFieldDef } from '../lib/schema.js';
-import { ICON_GLYPHS, generateId, EVENT_FIELDS } from '../lib/calendar.js';
+import { generateId, getEventFields } from '../lib/calendar.js';
 
 const props = defineProps({
   eventTypes: { type: Array, required: true },
@@ -11,7 +12,12 @@ const props = defineProps({
 });
 
 const editingIndex = ref(null);
-const iconKeys = Object.keys(ICON_GLYPHS);
+// Available Heroicon names for event type icons
+const heroiconNames = [
+  'user', 'clock', 'calendar', 'church', 'home', 'building-office', 'academic-cap',
+  'heart', 'star', 'check-circle', 'x-circle', 'plus-circle', 'bell', 'book-open',
+  'gift', 'key', 'lock-closed', 'shield-check', 'sparkles', 'sun', 'moon',
+];
 const components = computed(() => state.schema?.components || {});
 
 // Build a concrete, resolved field def for an event field — same logic as
@@ -41,7 +47,10 @@ function fieldDefFor(f) {
 }
 
 // All event fields, resolved — rendered as editors bound to t.fields.
-const typeFieldDefs = computed(() => EVENT_FIELDS.map(fieldDefFor));
+const typeFieldDefs = computed(() => {
+  const eventFields = state.schema?.eventFields || getEventFields();
+  return eventFields.map(fieldDefFor);
+});
 
 function addType() {
   props.eventTypes.push({
@@ -72,10 +81,6 @@ function removeType(i) {
   if (editingIndex.value === i) editingIndex.value = null;
 }
 
-function getIconEmoji(iconKey) {
-  return ICON_GLYPHS[iconKey] || iconKey || '📅';
-}
-
 // Compute effective duration for display (from fields.duration or legacy top-level)
 function typeDuration(t) {
   if (t.fields && t.fields.duration != null) return t.fields.duration;
@@ -85,10 +90,6 @@ function typeDuration(t) {
 
 <template>
   <div class="type-manager">
-    <div class="header-row">
-      <button class="add" @click="addType">+ Añadir tipo</button>
-    </div>
-
     <div v-if="!eventTypes.length" class="empty">
       No hay tipos de eventos personalizados. Se usarán los tipos por defecto.
     </div>
@@ -97,7 +98,9 @@ function typeDuration(t) {
       <div v-for="(t, i) in eventTypes" :key="t.name" class="card" :class="{ expanded: editingIndex === i }">
         <!-- Compact row -->
         <div class="card-header" @click="editType(i)">
-          <span class="type-icon">{{ getIconEmoji(t.icon) }}</span>
+          <span class="type-icon">
+            <PeIcon :name="t.icon" :size="18" />
+          </span>
           <span class="type-label">{{ t.label }}</span>
           <span class="type-duration"></span>
           <button class="del" @click.stop="removeType(i)" title="Eliminar">✕</button>
@@ -113,21 +116,14 @@ function typeDuration(t) {
             <label class="lbl">Icono</label>
             <div class="icon-grid">
               <button
-                v-for="key in iconKeys"
-                :key="key"
+                v-for="iconName in heroiconNames"
+                :key="iconName"
                 type="button"
                 class="icon-opt"
-                :class="{ active: t.icon === key }"
-                :title="key"
-                @click="t.icon = key"
-              >{{ ICON_GLYPHS[key] }}</button>
-              <button
-                type="button"
-                class="icon-opt custom"
-                :class="{ active: !iconKeys.includes(t.icon) }"
-                title="Emoji personalizado"
-                @click="t.icon = prompt('Emoji:', t.icon) || t.icon"
-              >😀</button>
+                :class="{ active: t.icon === iconName }"
+                :title="iconName"
+                @click="t.icon = iconName"
+              ><PeIcon :name="iconName" :size="18" /></button>
             </div>
           </div>
 
@@ -147,6 +143,8 @@ function typeDuration(t) {
         </div>
       </div>
     </div>
+
+    <button class="add" @click="addType">+ Añadir tipo</button>
   </div>
 </template>
 
@@ -211,14 +209,14 @@ function typeDuration(t) {
 }
 .card-header:hover { background: var(--pe-hover); }
 .type-icon {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 28px;
   height: 28px;
   border-radius: 6px;
   background: var(--pe-accent-soft);
   color: var(--pe-accent);
-  font-size: 14px;
   flex-shrink: 0;
 }
 .type-label {

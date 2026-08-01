@@ -2,10 +2,9 @@
 import { computed, ref, nextTick } from 'vue';
 import WeekGrid from './WeekGrid.vue';
 import EventEditorModal from './EventEditorModal.vue';
-import CelebrantsManager from './CelebrantsManager.vue';
 import EventTypeManager from './EventTypeManager.vue';
-import { newEvent, generateId, defaultParroco, startOfWeek, ensureEventTypes, DEFAULT_EVENT_TYPES } from '../lib/calendar.js';
-import { saveCurrent } from '../lib/store.js';
+import { newEvent, generateId, defaultParroco, startOfWeek, ensureEventTypes, DEFAULT_EVENT_TYPES, getEventFields } from '../lib/calendar.js';
+import { saveCurrent, state } from '../lib/store.js';
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -54,6 +53,11 @@ ensureShape();
 
 const value = computed(() => props.container[props.keyName]);
 
+// Get event fields from schema
+const eventFields = computed(() => {
+  return state.schema?.eventFields || getEventFields();
+});
+
 const urlsField = {
   name: 'urls',
   label: 'Calendarios externos (.ics)',
@@ -61,18 +65,15 @@ const urlsField = {
   list: { collapsible: { collapsed: true } },
 };
 
-// Tabs ------------------------------------------------------------------
-const tabs = [
-  { id: 'week', label: 'Semana' },
-  { id: 'celebrants', label: 'Celebrantes' },
-  { id: 'eventTypes', label: 'Tipos de eventos' },
-];
-const activeTab = ref('week');
-
 // The week currently shown in the grid. Lifted here (not inside WeekGrid)
 // so the event-editor modal can expand "the next 25 occurrences" anchored at
 // the visible week for its exception picker.
 const weekStart = ref(startOfWeek(new Date()));
+
+// EventTypeManager modal
+const showEventTypeManager = ref(false);
+function openEventTypeManager() { showEventTypeManager.value = true; }
+function closeEventTypeManager() { showEventTypeManager.value = false; }
 
 // Event modal ----------------------------------------------------------
 const editingIndex = ref(null); // index into value.events
@@ -91,7 +92,7 @@ function editOccurrence(o) {
   editingIndex.value = o.eventIndex;
 }
 function addEvent(preset = {}) {
-  const evt = newEvent(preset.type);
+  const evt = newEvent(preset.type, eventFields.value);
   if (preset.date) evt.date = preset.date;
   if (preset.time) evt.times = preset.time ? [preset.time] : [];
   // New events default to the first celebrant (the párroco / moderador) so
@@ -146,42 +147,17 @@ function closeModal() {
 
 <template>
   <div class="calendar-editor">
-    <nav class="tabs">
-      <button
-        v-for="t in tabs"
-        :key="t.id"
-        class="tab"
-        :class="{ active: activeTab === t.id }"
-        @click="activeTab = t.id"
-      >{{ t.label }}</button>
-    </nav>
-
-    <div class="tab-panel">
-      <WeekGrid
-        v-if="activeTab === 'week'"
-        :events="value.events"
-        :celebrants="value.celebrants"
-        :defaults="value.defaults"
-        :event-types="value.eventTypes"
-        :week-start="weekStart"
-        @update:week-start="weekStart = $event"
-        @edit-event="editEvent"
-        @edit-occurrence="editOccurrence"
-        @add-event="addEvent"
-      />
-
-      <CelebrantsManager
-        v-else-if="activeTab === 'celebrants'"
-        :celebrants="value.celebrants"
-        :events="value.events"
-      />
-
-      <EventTypeManager
-        v-else-if="activeTab === 'eventTypes'"
-        :event-types="value.eventTypes"
-        :celebrants="value.celebrants"
-      />
-    </div>
+    <WeekGrid
+      :events="value.events"
+      :celebrants="value.celebrants"
+      :defaults="value.defaults"
+      :event-types="value.eventTypes"
+      :week-start="weekStart"
+      @update:week-start="weekStart = $event"
+      @edit-event="editEvent"
+      @edit-occurrence="editOccurrence"
+      @add-event="addEvent"
+    />
 
     <EventEditorModal
       v-if="modalOpen && editingEvent"
@@ -196,7 +172,24 @@ function closeModal() {
       @remove="removeEvent"
       @duplicate="duplicateEvent"
       @save="saveEvent"
+      @open-event-type-manager="openEventTypeManager"
     />
+
+    <!-- EventTypeManager modal -->
+    <div v-if="showEventTypeManager" class="overlay" @click.self="closeEventTypeManager">
+      <div class="modal">
+        <header class="modal-header">
+          <h2>Tipos de eventos</h2>
+          <button class="close" @click="closeEventTypeManager">✕</button>
+        </header>
+        <div class="modal-body">
+          <EventTypeManager
+            :event-types="value.eventTypes"
+            :celebrants="value.celebrants"
+          />
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -207,33 +200,6 @@ function closeModal() {
   gap: 14px;
   width: 100%;
 }
-.tabs {
-  display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--pe-border);
-  flex-wrap: wrap;
-}
-.tab {
-  border: none;
-  background: transparent;
-  color: var(--pe-muted);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 9px 14px;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  border-radius: var(--pe-radius-sm) var(--pe-radius-sm) 0 0;
-  transition: color var(--pe-transition), border-color var(--pe-transition);
-}
-.tab:hover { color: var(--pe-text); }
-.tab.active {
-  color: var(--pe-accent);
-  border-bottom-color: var(--pe-accent);
-}
-.tab-panel {
-  min-height: 320px;
-}
 .urls-panel {
   max-width: 720px;
 }
@@ -241,5 +207,56 @@ function closeModal() {
   margin: 0 0 14px;
   font-size: 13px;
   color: var(--pe-muted);
+}
+
+/* Modal overlay for EventTypeManager */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 17, 21, 0.5);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+.modal {
+  background: var(--pe-panel);
+  border-radius: var(--pe-radius);
+  width: 90%;
+  max-width: 720px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--pe-border);
+}
+.modal-header h2 {
+  font-size: 16px;
+  margin: 0;
+  font-weight: 700;
+}
+.close {
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--pe-muted);
+  width: 30px;
+  height: 30px;
+  border-radius: var(--pe-radius-sm);
+}
+.close:hover { background: var(--pe-hover); color: var(--pe-text); }
+.modal-body {
+  overflow-y: auto;
+  padding: 18px;
 }
 </style>

@@ -4,9 +4,9 @@ import {
   expandAllEvents,
   startOfWeek,
   addDaysReal,
-  ICON_GLYPHS,
   formatWeekRange,
 } from '../lib/calendar.js';
+import PeIcon from './PeIcon.vue';
 
 const props = defineProps({
   events: { type: Array, required: true },
@@ -35,21 +35,35 @@ const occurrences = computed(() =>
 
 const WEEKDAY_LABELS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
-// Only show hour rows that actually have an event (full hours; :30 events
-// share the row of their hour). Keeps the grid as small as possible.
-const hourRows = computed(() => {
+// Show 15-minute interval rows that have events (:00, :15, :30, :45).
+// Empty rows are hidden to keep the grid compact.
+const timeRows = computed(() => {
   const set = new Set();
   for (const o of occurrences.value) {
     if (o.time == null) continue;
-    const h = Number(String(o.time).slice(0, 2));
-    if (!Number.isNaN(h)) set.add(h);
+    const timeStr = String(o.time);
+    const h = Number(timeStr.slice(0, 2));
+    const m = Number(timeStr.slice(3, 5));
+    if (!Number.isNaN(h) && !Number.isNaN(m)) {
+      // Round down to nearest 15 minutes
+      const roundedM = Math.floor(m / 15) * 15;
+      set.add(`${h}:${String(roundedM).padStart(2, '0')}`);
+    }
   }
-  return [...set].sort((a, b) => a - b);
+  return [...set].sort();
 });
 
-function cellFor(dayIndex, hour) {
+function cellFor(dayIndex, time) {
   return occurrences.value
-    .filter((o) => o.dayIndex === dayIndex && o.time != null && Number(String(o.time).slice(0, 2)) === hour)
+    .filter((o) => {
+      if (o.dayIndex !== dayIndex || o.time == null) return false;
+      const timeStr = String(o.time);
+      const h = Number(timeStr.slice(0, 2));
+      const m = Number(timeStr.slice(3, 5));
+      if (Number.isNaN(h) || Number.isNaN(m)) return false;
+      const roundedM = Math.floor(m / 15) * 15;
+      return `${h}:${String(roundedM).padStart(2, '0')}` === time;
+    })
     .sort((a, b) => String(a.time).localeCompare(String(b.time)));
 }
 
@@ -97,6 +111,26 @@ const hasWarnings = computed(() => occurrences.value.some((o) => o.warn));
 const hasRedWarnings = computed(() => occurrences.value.some((o) => o.warn === 'red'));
 const hasOrangeWarnings = computed(() => occurrences.value.some((o) => o.warn === 'orange'));
 const hasPurpleWarnings = computed(() => occurrences.value.some((o) => o.warn === 'purple'));
+
+// Group occurrences by day for the event list below the grid
+const WEEKDAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const occurrencesByDay = computed(() => {
+  const byDay = Array.from({ length: 7 }, () => []);
+  for (const o of occurrences.value) {
+    if (o.dayIndex >= 0 && o.dayIndex < 7) {
+      byDay[o.dayIndex].push(o);
+    }
+  }
+  // Sort each day's occurrences by time
+  for (const day of byDay) {
+    day.sort((a, b) => {
+      const ta = a.time ? String(a.time) : '99:99';
+      const tb = b.time ? String(b.time) : '99:99';
+      return ta.localeCompare(tb);
+    });
+  }
+  return byDay;
+});
 function onAlldayClick(dayIndex, occs) {
   if (occs.length) emit('edit-event', occs[0].eventIndex);
   else {
@@ -150,21 +184,21 @@ function onAlldayClick(dayIndex, occs) {
             :title="chipTitle(o)"
             @click.stop="emit('edit-occurrence', o)"
           >
-            <span class="ev-icon">{{ ICON_GLYPHS[o.style.icon] }}</span>
+            <PeIcon v-if="o.style.icon" :name="o.style.icon" :size="14" />
           </span>
         </div>
 
-        <!-- hour rows (only hours with events) -->
-        <template v-for="h in hourRows" :key="h">
-          <div class="cell hour-label" :data-hour="h">{{ h }}</div>
+        <!-- time rows (15-min intervals with events) -->
+        <template v-for="t in timeRows" :key="t">
+          <div class="cell hour-label" :data-hour="t">{{ t }}</div>
           <div
             v-for="dayIdx in 7"
-            :key="`${h}-${dayIdx}`"
+            :key="`${t}-${dayIdx}`"
             class="cell hour-cell"
-            @click="onHourClick(dayIdx - 1, h, cellFor(dayIdx - 1, h))"
+            @click="onHourClick(dayIdx - 1, t, cellFor(dayIdx - 1, t))"
           >
             <span
-              v-for="(o, idx) in cellFor(dayIdx - 1, h).slice(0, MAX_PER_CELL)"
+              v-for="(o, idx) in cellFor(dayIdx - 1, t).slice(0, MAX_PER_CELL)"
               :key="`${o.eventIndex}-${idx}`"
               class="ev"
               :class="[o.warn ? `warn-${o.warn}` : null, { dimmed: o.recurring }]"
@@ -172,12 +206,12 @@ function onAlldayClick(dayIndex, occs) {
               :title="chipTitle(o)"
               @click.stop="emit('edit-occurrence', o)"
             >
-              <span class="ev-icon">{{ ICON_GLYPHS[o.style.icon] }}</span>
+              <PeIcon v-if="o.style.icon" :name="o.style.icon" :size="14" />
             </span>
             <span
-              v-if="cellFor(dayIdx - 1, h).length > MAX_PER_CELL"
+              v-if="cellFor(dayIdx - 1, t).length > MAX_PER_CELL"
               class="more"
-            >+{{ cellFor(dayIdx - 1, h).length - MAX_PER_CELL }}</span>
+            >+{{ cellFor(dayIdx - 1, t).length - MAX_PER_CELL }}</span>
           </div>
         </template>
       </div>
@@ -191,6 +225,25 @@ function onAlldayClick(dayIndex, occs) {
       <span v-if="hasPurpleWarnings" class="legend-item"><span class="swatch warn-purple"></span> No hay celebrante asignado</span>
       <span v-if="hasRedWarnings" class="legend-item"><span class="swatch warn-red"></span> Bilocación requerida (mismo celebrante solapado en lugares distintos)</span>
       <span v-if="hasOrangeWarnings" class="legend-item"><span class="swatch warn-orange"></span> Poco tiempo (0–15 min) entre eventos del mismo celebrante en lugares distintos</span>
+    </div>
+
+    <!-- Event list below the grid -->
+    <div v-if="occurrences.length" class="event-list">
+      <div v-for="(dayOccs, dayIdx) in occurrencesByDay" :key="dayIdx" class="event-day">
+        <h4 v-if="dayOccs.length" class="day-header">
+          {{ WEEKDAY_NAMES[dayIdx] }} {{ weekDays[dayIdx]?.getDate() }}
+        </h4>
+        <div v-for="(o, oi) in dayOccs" :key="`${o.eventIndex}-${oi}`" class="event-row" :class="{ dimmed: o.recurring }" @click="emit('edit-occurrence', o)">
+          <span class="event-time" v-if="o.time">{{ o.time }}</span>
+          <span class="event-time" v-else>—</span>
+          <span class="event-icon" v-if="o.style.icon" :style="{ color: o.style.color || '#9aa0a6' }">
+            <PeIcon :name="o.style.icon" :size="16" />
+          </span>
+          <span class="event-type">{{ o.title || 'Sin título' }}</span>
+          <span class="event-location" v-if="o.location?.length">{{ o.location.join(', ') }}</span>
+          <span v-if="o.warn" class="event-warn" :class="`warn-${o.warn}`">⚠</span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -250,7 +303,7 @@ function onAlldayClick(dayIndex, occs) {
 .grid {
   display: grid;
   grid-template-columns: 26px repeat(7, minmax(0, 1fr));
-  grid-auto-rows: 30px;
+  grid-auto-rows: auto;
   min-width: 0;
 }
 .cell {
@@ -296,6 +349,7 @@ function onAlldayClick(dayIndex, occs) {
   gap: 2px;
   padding: 2px;
   transition: background var(--pe-transition);
+  overflow: visible;
 }
 .hour-cell:hover { background: var(--pe-hover); }
 .allday-cell {
@@ -323,6 +377,9 @@ function onAlldayClick(dayIndex, occs) {
   line-height: 1;
   cursor: pointer;
   flex-shrink: 0;
+}
+.ev img {
+  filter: brightness(0) invert(1); /* Make black SVG white */
 }
 .ev-icon { pointer-events: none; }
 .ev-dot {
@@ -400,10 +457,81 @@ function onAlldayClick(dayIndex, occs) {
 }
 .empty-week strong { color: var(--pe-accent); }
 
+/* ---- event list below grid ---- */
+.event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--pe-border);
+}
+.event-day {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.day-header {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--pe-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.event-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: var(--pe-radius-sm);
+  font-size: 12px;
+  transition: background var(--pe-transition);
+}
+.event-row:hover {
+  background: var(--pe-hover);
+  cursor: pointer;
+}
+.event-row.dimmed {
+  opacity: 0.5;
+  filter: saturate(0.6);
+}
+.event-time {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  color: var(--pe-muted);
+  min-width: 45px;
+  flex-shrink: 0;
+}
+.event-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--pe-accent);
+}
+.event-type {
+  font-weight: 600;
+  color: var(--pe-text);
+}
+.event-location {
+  color: var(--pe-muted);
+  font-size: 11px;
+}
+.event-warn {
+  margin-left: auto;
+  font-size: 14px;
+}
+.event-warn.warn-purple { color: #9b59b6; }
+.event-warn.warn-red { color: var(--pe-danger); }
+.event-warn.warn-orange { color: #e8a838; }
+
 @media (min-width: 640px) {
   .grid {
     grid-template-columns: 40px repeat(7, minmax(0, 1fr));
-    grid-auto-rows: 34px;
+    grid-auto-rows: auto;
   }
   .ev { width: 26px; height: 26px; font-size: 14px; }
   .wd-date { font-size: 10px; }

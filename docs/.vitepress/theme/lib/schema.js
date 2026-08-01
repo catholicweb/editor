@@ -51,18 +51,50 @@ export function resolveFieldDef(raw, components) {
   return out;
 }
 
-export function normalizeSchema(raw) {
+export async function normalizeSchema(raw) {
   const components = raw.components || {};
+
+  // Load external options for components that specify options.source
+  await loadExternalOptions(components);
+
   const content = (raw.content || []).map((c) => ({
     ...c,
     fields: (c.fields || []).map((f) => resolveFieldDef(f, components)),
   }));
+
+  // Extract event fields from components if defined
+  const eventFields = components.event ? (components.event.fields || []) : [];
+
   return {
     settings: raw.settings || {},
     components,
     media: raw.media || null,
     content,
+    eventFields,
   };
+}
+
+// Load options from external JSON files for components that specify options.source
+async function loadExternalOptions(components) {
+  for (const [name, comp] of Object.entries(components)) {
+    if (comp.options && comp.options.source) {
+      try {
+        const response = await fetch(comp.options.source);
+        if (response.ok) {
+          const data = await response.json();
+          // Extract options from the JSON structure
+          // Expected format: { "list": [{ "name": "..." }, ...] }
+          const values = (data.list || []).map((item) => ({
+            value: item.name,
+            label: item.name,
+          }));
+          comp.options = { ...comp.options, values };
+        }
+      } catch (err) {
+        console.error(`Failed to load options for component ${name}:`, err);
+      }
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -193,4 +225,15 @@ export function getCollapsibleConfig(field) {
     return field.list.collapsible;
   }
   return null;
+}
+
+// Get list configuration for a repeatable field.
+// Returns { sort, modal } or null if not repeatable.
+export function getListConfig(field) {
+  if (!field.list) return null;
+  const listConfig = field.list === true ? {} : field.list;
+  return {
+    sort: listConfig.sort || 'manual', // manual, alphabetical, raw
+    modal: listConfig.modal || false, // true for modal editing
+  };
 }

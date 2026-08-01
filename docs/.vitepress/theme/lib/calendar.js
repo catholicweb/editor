@@ -8,25 +8,42 @@
 // type -> { icon, duration }. The icon is what the week-grid chip shows;
 // the chip is colored by the celebrant (priest), not the type. `duration` is
 // the default length in minutes, used for overlap / too-tight conflict checks.
+// Icons now use Heroicon names (see PeIcon.vue component)
 export const TYPE_CONFIG = {
-  funeral: { icon: 'dove', duration: 45 },
-  mass: { icon: 'chalice', duration: 30 },
-  confession: { icon: 'pray', duration: 60 },
-  wayofthecross: { icon: 'latin', duration: 45 },
+  funeral: { icon: 'heart', duration: 45 },
+  mass: { icon: 'church', duration: 30 },
+  confession: { icon: 'chat-bubble-bottom-center-text', duration: 60 },
+  wayofthecross: { icon: 'map-pin', duration: 45 },
   feast: { icon: 'star', duration: 60 },
-  group: { icon: 'flame', duration: 45 },
+  group: { icon: 'users', duration: 45 },
   custom: { icon: 'calendar', duration: 60 },
 };
 
+// Predefined color array for celebrants who don't have a color defined.
+// Colors are visually distinguishable and assigned in order to celebrants.
+export const CELEBRANT_COLORS = [
+  '#3498db', // Blue
+  '#e74c3c', // Red
+  '#2ecc71', // Green
+  '#f39c12', // Orange
+  '#9b59b6', // Purple
+  '#1abc9c', // Teal
+  '#e67e22', // Dark Orange
+  '#00bcd4', // Cyan
+  '#ff5722', // Deep Orange
+  '#607d8b', // Blue Grey
+];
+
 // Default event-types array (used as fallback when a document has no
 // custom eventTypes). Simple structure: just label, icon, duration.
+// Icons now use Heroicon names (see PeIcon.vue component)
 export const DEFAULT_EVENT_TYPES = [
-  { name: 'funeral',      label: 'Funeral',           icon: 'dove',    duration: 45 },
-  { name: 'mass',         label: 'Eucaristía',        icon: 'chalice',  duration: 30 },
-  { name: 'confession',   label: 'Confesiones',        icon: 'pray',    duration: 60 },
-  { name: 'wayofthecross',label: 'Viacrucis',         icon: 'latin',   duration: 45 },
+  { name: 'funeral',      label: 'Funeral',           icon: 'heart',    duration:45 },
+  { name: 'mass',         label: 'Eucaristía',        icon: 'church',  duration: 30 },
+  { name: 'confession',   label: 'Confesiones',        icon: 'chat-bubble-bottom-center-text',    duration: 60 },
+  { name: 'wayofthecross',label: 'Viacrucis',         icon: 'map-pin',   duration: 45 },
   { name: 'feast',        label: 'Festividad',         icon: 'star',    duration: 60 },
-  { name: 'group',        label: 'Grupo / Catequesis', icon: 'flame',   duration: 45 },
+  { name: 'group',        label: 'Grupo / Catequesis', icon: 'users',   duration: 45 },
   { name: 'custom',       label: 'Otro',               icon: 'calendar',duration: 60 },
 ];
 
@@ -46,7 +63,8 @@ export function getEventTypeOptions(eventTypes) {
 
 export function allowedFields(type, eventTypes) {
   // All fields are now available for all event types
-  return EVENT_FIELDS.map((f) => f.name);
+  // Return all field names from eventFields if provided, otherwise return common field names
+  return ['title', 'image', 'description', 'location', 'date', 'times', 'rrule', 'duration', 'celebrants', 'except'];
 }
 
 export function getTypeConfig(type, eventTypes) {
@@ -63,17 +81,21 @@ export function getTypeFieldDefaults(type, eventTypes) {
   return et?.fields || {};
 }
 
-// Build the "effective" event by filling any empty EVENT_FIELDS with the
+// Build the "effective" event by filling any empty event fields with the
 // type's default values. The event stores only its own (non-inherited)
 // values; everything else is inherited from the type and merged in here, at
 // display/expansion time — so changing a type's defaults updates all events
 // of that type without rewriting them. A non-empty event value always wins
 // over the type default.
+// Fields with nodefault: true in the schema will not inherit type defaults.
 export function mergeTypeDefaults(event, eventTypes) {
   const tf = getTypeFieldDefaults(event?.type, eventTypes);
   if (!tf || !Object.keys(tf).length) return { ...event };
   const eff = { ...event };
-  for (const f of EVENT_FIELDS) {
+  const eventFields = getEventFields();
+  for (const f of eventFields) {
+    // Skip fields with nodefault: true
+    if (f.nodefault) continue;
     if (isEmpty(eff[f.name]) && tf[f.name] !== undefined) eff[f.name] = tf[f.name];
   }
   return eff;
@@ -88,37 +110,33 @@ export function ensureEventTypes(calendario) {
 
 export const DEFAULT_DURATION = 45;
 
-export const ICON_GLYPHS = {
-  cross: '✚',
-  latin: '✝',
-  star: '★',
-  dove: '🕊',
-  flame: '🔥',
-  fish: '🐟',
-  heart: '♥',
-  calendar: '📅',
-  pray: '🙏',
-  church: '⛪',
-  chalice: '🍷',
-};
-
 // (Celebrants no longer carry an icon — only a name and a color. The chip
 // glyph on the grid is the event TYPE's icon.)
 
 // The ordered event-field set, used to render the event editor. `component`
 // references a reusable component name in pages.yml (resolved at render time
 // against state.schema.components).
-export const EVENT_FIELDS = [
-  { name: 'title', label: 'Título/Nombre del evento', type: 'string' },
-  { name: 'image', label: 'Imagen', type: 'image' },
-  { name: 'description', label: 'Descripción', type: 'text' },
-  { name: 'location', label: 'Lugar', component: 'location' },
-  { name: 'date', label: 'Fecha', type: 'date' },
-  { name: 'times', label: 'Hora', component: 'times' },
-  { name: 'rrule', label: 'Se repite', component: 'rrule' },
-  { name: 'duration', label: 'Duración (min)', type: 'number', default: 45 },
-  { name: 'celebrants', label: 'Celebrantes', type: 'celebrants' },
-];
+// EVENT_FIELDS removed - now defined in pages.yml schema
+// Use getEventFields() to get the event field definitions from schema
+
+export function getEventFields(eventFields) {
+  // Return event fields from schema, or fallback to default fields
+  if (eventFields && eventFields.length > 0) {
+    return eventFields;
+  }
+  // Fallback default fields (for backward compatibility)
+  return [
+    { name: 'title', label: 'Título/Nombre del evento', type: 'string' },
+    { name: 'image', label: 'Imagen', type: 'image' },
+    { name: 'description', label: 'Descripción', type: 'text' },
+    { name: 'location', label: 'Lugar', component: 'location' },
+    { name: 'date', label: 'Fecha', type: 'date' },
+    { name: 'times', label: 'Hora', component: 'times' },
+    { name: 'rrule', label: 'Se repite', component: 'rrule' },
+    { name: 'duration', label: 'Duración (min)', type: 'number', default: 45 },
+    { name: 'celebrants', label: 'Celebrantes', type: 'celebrants' },
+  ];
+}
 
 // A concrete occurrence is identified by (date, time, place). Exceptions
 // target one such occurrence (picked from an expanded list of the next 25),
@@ -440,15 +458,29 @@ export function celebrantById(celebrants, id) {
 // (the priest colors the chip; the type only supplies the glyph). If there
 // is no celebrant, color is null (the grid falls back to a neutral grey and
 // raises a red "no celebrant" warning).
+// If the celebrant doesn't have a color defined, use a predefined color array
+// (CELEBRANT_COLORS) in order - first celebrant gets first color, etc.
 // Duration: use event.duration if set, then fall back to type config.
 export function resolveEventStyle(event, celebrants, eventTypes = null) {
   const cfg = getTypeConfig(event.type, eventTypes);
   const celebs = toArray(event.celebrants)
     .map((id) => celebrantById(celebrants, id))
     .filter(Boolean);
+
+  // Assign colors from the predefined array if not set on the celebrant
+  const usedColors = new Set();
+  celebs.forEach((c, i) => {
+    if (!c.color) {
+      // Find the first unused color from the array
+      const availableColor = CELEBRANT_COLORS.find((clr) => !usedColors.has(clr));
+      c.color = availableColor || CELEBRANT_COLORS[i % CELEBRANT_COLORS.length];
+    }
+    usedColors.add(c.color);
+  });
+
   return {
     icon: cfg.icon,
-    color: celebs[0]?.color || null,
+    color: celebs[0]?.color || CELEBRANT_COLORS[0],
     celebrantName: celebs[0]?.name || null,
     celebrants: celebs,
     duration: event.duration ?? cfg.duration ?? DEFAULT_DURATION,
@@ -598,20 +630,49 @@ export function computeWarnings(occurrences) {
 }
 
 // Create a new empty event with defaults.
-export function newEvent(type = 'funeral') {
-  return {
+// eventFields: array of field definitions from schema
+export function newEvent(type = 'funeral', eventFields = null) {
+  const event = {
     id: generateId('evt'),
     type,
-    title: '',
-    image: '',
-    description: '',
-    location: [],
-    date: '',
-    times: [],
-    rrule: [],
-    except: [],
-    celebrants: [],
   };
+
+  // If eventFields provided, use them to set defaults
+  if (eventFields && eventFields.length) {
+    for (const f of eventFields) {
+      if (f.name === 'type') continue; // already set
+      event[f.name] = f.default !== undefined ? f.default : getDefaultForType(f.type);
+    }
+  } else {
+    // Fallback defaults
+    event.title = '';
+    event.image = '';
+    event.description = '';
+    event.location = [];
+    event.date = '';
+    event.times = [];
+    event.rrule = [];
+    event.except = [];
+    event.celebrants = [];
+  }
+
+  return event;
+}
+
+// Get default value for a field type
+function getDefaultForType(type) {
+  switch (type) {
+    case 'boolean': return false;
+    case 'number': return null;
+    case 'select':
+    case 'string':
+    case 'text':
+    case 'date':
+    case 'image':
+      return '';
+    default:
+      return []; // arrays, objects, etc.
+  }
 }
 
 export function newCelebrant() {

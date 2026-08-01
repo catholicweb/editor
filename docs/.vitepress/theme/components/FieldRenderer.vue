@@ -10,6 +10,7 @@ import {
   defaultBlockItem,
   renderSummary,
   getCollapsibleConfig,
+  getListConfig,
 } from '../lib/schema.js';
 
 const props = defineProps({
@@ -37,6 +38,23 @@ const isObjectList = computed(() => isObject.value && isRepeatable(props.field))
 const isScalarList = computed(() => !isObject.value && !isBlock.value && isRepeatable(props.field));
 
 const collapsible = computed(() => getCollapsibleConfig(props.field));
+const listConfig = computed(() => getListConfig(props.field));
+
+// Sorted items based on listConfig.sort option
+const sortedItems = computed(() => {
+  if (!isObjectList.value && !isScalarList.value) return scalarValue.value;
+  const items = [...scalarValue.value];
+  if (listConfig.value?.sort === 'alphabetical') {
+    return items.sort((a, b) => {
+      const labelA = collapsible.value?.summary ? renderSummary(collapsible.value.summary, a) : '';
+      const labelB = collapsible.value?.summary ? renderSummary(collapsible.value.summary, b) : '';
+      return labelA.localeCompare(labelB);
+    });
+  }
+  // 'manual' or 'raw': return as-is (preserve order)
+  return items;
+});
+
 
 // ---- object list / scalar list -------------------------------------------
 const openState = ref({}); // index -> bool, only used when collapsible
@@ -78,6 +96,20 @@ function addBlock(blockDef) {
   scalarValue.value.push(defaultBlockItem(blockDef));
   showBlockPicker.value = false;
 }
+
+// ---- modal editing for object lists -------------------------------------------
+const editingIndex = ref(null);
+const editingItem = computed(() =>
+  editingIndex.value !== null ? scalarValue.value[editingIndex.value] : null
+);
+
+function editInModal(item, index) {
+  editingIndex.value = index;
+}
+
+function closeModal() {
+  editingIndex.value = null;
+}
 </script>
 
 <template>
@@ -115,17 +147,24 @@ function addBlock(blockDef) {
   <div v-else-if="isObjectList" class="field object-list-field">
     <label class="field-label">{{ field.label || field.name }}</label>
     <div class="object-list">
-      <div v-for="(item, i) in scalarValue" :key="i" class="object-item">
-        <details :open="isOpen(i)" @toggle="toggleOpen(i)">
+      <div v-for="(item, i) in sortedItems" :key="i" class="object-item" @click="listConfig?.modal ? editInModal(item, i) : null">
+        <details v-if="!listConfig?.modal" :open="isOpen(i)" @toggle="toggleOpen(i)">
           <summary>
             <span class="summary-text">{{ collapsible?.summary ? renderSummary(collapsible.summary, item) : `Elemento ${i + 1}` }}</span>
             <span class="spacer" />
-            <button type="button" class="move" @click.stop.prevent="moveUp(i)">↑</button>
-            <button type="button" class="move" @click.stop.prevent="moveDown(i)">↓</button>
+            <button v-if="listConfig?.sort === 'manual'" type="button" class="move" @click.stop.prevent="moveUp(i)">↑</button>
+            <button v-if="listConfig?.sort === 'manual'" type="button" class="move" @click.stop.prevent="moveDown(i)">↓</button>
             <button type="button" class="del" @click.stop.prevent="removeAt(i)">✕</button>
           </summary>
           <FieldsGroup :fields="field.fields" :container="item" />
         </details>
+        <div v-else class="object-item-modal-preview">
+          <span class="summary-text">{{ collapsible?.summary ? renderSummary(collapsible.summary, item) : `Elemento ${i + 1}` }}</span>
+          <span class="spacer" />
+          <button v-if="listConfig?.sort === 'manual'" type="button" class="move" @click.stop.prevent="moveUp(i)">↑</button>
+          <button v-if="listConfig?.sort === 'manual'" type="button" class="move" @click.stop.prevent="moveDown(i)">↓</button>
+          <button type="button" class="del" @click.stop.prevent="removeAt(i)">✕</button>
+        </div>
       </div>
     </div>
     <button type="button" class="add" @click="addObjectItem">+ Añadir</button>
@@ -161,6 +200,19 @@ function addBlock(blockDef) {
   <div v-else class="field leaf-field">
     <label class="field-label">{{ field.label || field.name }}</label>
     <ScalarInput :field="field" v-model="scalarValue" />
+  </div>
+
+  <!-- MODAL OVERLAY FOR OBJECT LIST EDITING -->
+  <div v-if="editingIndex !== null" class="modal-overlay" @click="closeModal">
+    <div class="modal-content fullscreen" @click.stop>
+      <div class="modal-header">
+        <h3>{{ collapsible?.summary ? renderSummary(collapsible.summary, scalarValue[editingIndex]) : 'Editar elemento' }}</h3>
+        <button type="button" class="modal-close-btn" @click="closeModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <FieldsGroup v-if="editingItem" :fields="field.fields" :container="scalarValue[editingIndex]" />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -341,5 +393,105 @@ fieldset.object-field legend {
 .hint {
   font-size: 12px;
   color: var(--pe-muted);
+}
+</style>
+
+<style scoped>
+/* Modal overlay for object list editing */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--pe-panel, #fff);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content.fullscreen {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+  padding: 20px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--pe-border, #e0e0e0);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 5px;
+  color: var(--pe-muted);
+}
+
+.modal-close-btn:hover {
+  color: var(--pe-text);
+}
+
+.modal-body {
+  padding: 10px 0;
+  height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+
+/* Object item modal preview (when modal editing is enabled) */
+.object-item-modal-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px 9px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background var(--pe-transition);
+}
+
+.object-item-modal-preview:hover {
+  background: var(--pe-hover);
+}
+
+.object-item-modal-preview .summary-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--pe-text);
+}
+
+/* Hide move buttons when sort is not manual */
+.move-btn {
+  display: inline-block;
+}
+
+.move-btn.hidden {
+  display: none;
 }
 </style>

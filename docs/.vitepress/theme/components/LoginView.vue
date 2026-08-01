@@ -43,7 +43,7 @@ async function submit() {
         />
       </label>
 
-      <details class="advanced">
+      <!--<details class="advanced">
         <summary>Opciones avanzadas de conexión</summary>
         <label>
           API (worker) base URL
@@ -57,7 +57,7 @@ async function submit() {
           URL del esquema (pages.yml)
           <input v-model="form.schemaUrl" type="text" placeholder="https://.../_pages.yml" />
         </label>
-      </details>
+      </details>-->
 
       <button type="submit" :disabled="state.loading">
         {{ state.loading ? 'Conectando…' : 'Entrar' }}

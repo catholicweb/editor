@@ -50,6 +50,7 @@ export function buildFileIndex(schema, rawTokens) {
         format,
         displayName: relPath.split('/').pop(),
         groupLabel: c.label || c.name,
+        icon: c.icon || null,
       });
     } else if (c.type === 'collection') {
       const prefix = stripLocalRoot(c.path).replace(/\/?$/, '/');
@@ -77,6 +78,7 @@ export function buildFileIndex(schema, rawTokens) {
           format: guessFormat(it.relPath),
           displayName: it.relPath.slice(prefix.length),
           groupLabel: c.label || c.name,
+          icon: c.icon || null,
         });
       }
     }

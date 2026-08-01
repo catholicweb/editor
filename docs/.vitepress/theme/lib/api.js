@@ -1,3 +1,14 @@
+/**
+ * ⚠️⚠️⚠️ CRITICAL INTER-DEPENDENCY WARNING ⚠️⚠️⚠️
+ *
+ * This file's API calls MUST match the endpoints defined in:
+ *   - config-api/src/index.js (endpoint definitions)
+ *   - web-template/docs/.vitepress/migrate.js (also uses these endpoints)
+ *
+ * BEFORE changing API calls, update ALL dependent files!
+ * See ../../../../CLAUDE.md for full dependency documentation.
+ */
+
 // Thin client for two hosts:
 //   - the parroquia-config-api worker (whoami, list, PUT writes — needs the
 //     editor bearer token)

@@ -27,9 +27,13 @@ export function initUi() {
   if (ui.ready) return;
   ui.ready = true;
   applyBreakpoint();
-  const stored = localStorage.getItem(LS_KEY);
-  if (stored !== null) ui.sidebarOpen = stored === '1';
-  if (ui.mobile) ui.sidebarOpen = false;
+  // On large screens, always start with sidebar open (collapse was removed)
+  // On mobile, start with sidebar closed
+  if (ui.mobile) {
+    ui.sidebarOpen = false;
+  } else {
+    ui.sidebarOpen = true;
+  }
   window.addEventListener('resize', onResize);
 }
 
