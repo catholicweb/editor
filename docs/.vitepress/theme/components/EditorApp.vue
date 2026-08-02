@@ -4,7 +4,7 @@ import LoginView from './LoginView.vue';
 import FieldBrowser from './FieldBrowser.vue';
 import FieldsGroup from './FieldsGroup.vue';
 import DirtyGuardModal from './DirtyGuardModal.vue';
-import { state, isLoggedIn, isDirty, saveCurrent, logout, login, loadSavedSession, deleteCurrent } from '../lib/store.js';
+import { state, isLoggedIn, isDirty, saveCurrent, logout, login, loadSavedSession } from '../lib/store.js';
 import { ui, initUi, toggleSidebar } from '../lib/ui.js';
 
 const booting = ref(false);
@@ -42,12 +42,6 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown);
 });
-
-async function onDelete() {
-  if (!confirm('¿Eliminar esta página? Esta acción no se puede deshacer.')) return;
-  // With autosave, changes are automatically saved, so we can delete directly
-  await deleteCurrent();
-}
 
 const sidebarOpen = computed(() => ui.sidebarOpen);
 const isMobile = computed(() => ui.mobile);
@@ -131,15 +125,6 @@ async function onLogout() {
         :class="{ 'document-wide': isCalendarDoc }"
       >
         <FieldsGroup :fields="state.currentEntry.fields" :container="state.draft" />
-        <div v-if="state.currentEntry?.kind === 'collection-item'" class="document-footer">
-          <button
-            class="delete-page-btn"
-            :disabled="state.loading"
-            @click="onDelete"
-          >
-            Eliminar esta página
-          </button>
-        </div>
       </div>
       <div v-else class="empty-state">
         <div class="empty-icon">📄</div>

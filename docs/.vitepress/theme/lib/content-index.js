@@ -37,12 +37,13 @@ export function buildFileIndex(schema, rawTokens) {
   const entries = [];
 
   for (const c of schema.content || []) {
-    if (c.type === 'superfield') {
-      // superfield entries reference a field within the config.json file
+    if (c.type === 'tab') {
+      // Tab entries reference a field within the config.json file
+      // Each tab corresponds to a top-level field in config.json
       const configRelPath = 'pages/config.json'; // Single config file
       const configToken = byRelPath.get(configRelPath) || null;
       entries.push({
-        kind: 'superfield',
+        kind: 'tab',
         contentName: c.name,
         contentLabel: c.label || c.name,
         fields: c.fields,
@@ -52,7 +53,7 @@ export function buildFileIndex(schema, rawTokens) {
         displayName: c.label || c.name,
         groupLabel: c.label || c.name,
         icon: c.icon || null,
-        superfieldPath: c.path, // The field path within config.json (e.g., 'events', 'pages')
+        tabPath: c.path, // The field path within config.json (e.g., 'events', 'pages')
       });
     } else if (c.type === 'file') {
       const relPath = stripLocalRoot(c.path);

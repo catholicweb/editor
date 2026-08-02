@@ -327,8 +327,8 @@ export async function openEntry(entry) {
     let text = null;
     let configData = null;
 
-    // For superfield entries, use cached config.json data if available
-    if (entry.kind === 'superfield' && entry.fileToken) {
+    // For tab entries, use cached config.json data if available
+    if (entry.kind === 'tab' && entry.fileToken) {
       // Check if we have cached data for this token
       if (configCache && configCacheToken === entry.fileToken) {
         configData = configCache;
@@ -345,10 +345,10 @@ export async function openEntry(entry) {
       text = await api.getFileText(state.dataBase, state.slug, entry.fileToken);
     }
 
-    // For superfield entries, extract the relevant field from config.json
+    // For tab entries, extract the relevant field from config.json
     let data;
-    if (entry.kind === 'superfield' && entry.superfieldPath) {
-      data = configData ? (configData[entry.superfieldPath] || {}) : {};
+    if (entry.kind === 'tab' && entry.tabPath) {
+      data = configData ? (configData[entry.tabPath] || {}) : {};
     } else {
       data = parseContent(text, entry.format);
     }
@@ -358,9 +358,9 @@ export async function openEntry(entry) {
     // same defaults during render, so the draft round-trips identically.
     applyDefaults(entry.fields, data);
 
-    // For superfield entries, we need to serialize just the field value for dirty checking
+    // For tab entries, we need to serialize just the field value for dirty checking
     let baselineText;
-    if (entry.kind === 'superfield') {
+    if (entry.kind === 'tab') {
       baselineText = JSON.stringify(data, null, 2);
     } else {
       const baselineBody = extractBody(text, entry.format);
@@ -386,8 +386,8 @@ export async function saveCurrent() {
   try {
     const entry = state.currentEntry;
 
-    // For superfield entries, we need to update the config.json file
-    if (entry.kind === 'superfield') {
+    // For tab entries, we need to update the config.json file
+    if (entry.kind === 'tab') {
       // Use cached config data or load from server
       let configData;
       if (configCache && configCacheToken === entry.fileToken) {
@@ -401,7 +401,7 @@ export async function saveCurrent() {
       }
 
       // Update the specific field
-      configData[entry.superfieldPath] = { ...state.draft };
+      configData[entry.tabPath] = { ...state.draft };
 
       // Update the cache
       configCache = configData;
@@ -477,91 +477,6 @@ export function scheduleAutosave() {
       // Error already handled in saveCurrent
     }
   }, AUTOSAVE_DELAY);
-}
-
-export async function createPage(title) {
-  const pagesContent = (state.schema?.content || []).find((c) => c.name === 'pages');
-  if (!pagesContent) throw new Error('No se encontró la definición de "pages" en el esquema.');
-
-  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  const filename = `${slug}.md`;
-  const relPath = `pages/${filename}`;
-  const fileToken = encodePath(relPath);
-
-  const frontmatter = { title };
-  applyDefaults(pagesContent.fields, frontmatter);
-  const text = stringifyFrontmatter(frontmatter, '');
-
-  state.loading = true;
-  state.error = '';
-  try {
-    await api.putFile(state.apiBase, state.slug, state.editorToken, fileToken, text, 'text/markdown; charset=utf-8');
-
-    if (!state.rawTokens.includes(fileToken)) {
-      state.rawTokens.push(fileToken);
-    }
-    state.fileIndex = buildFileIndex(state.schema, state.rawTokens);
-    state.refIndex = buildCollectionRefIndex(state.schema, state.rawTokens);
-
-    const newEntry = state.fileIndex.find((e) => e.relPath === relPath);
-    if (newEntry) await openEntry(newEntry);
-
-    state.status = `Página "${title}" creada.`;
-  } catch (err) {
-    state.error = err.message || String(err);
-    throw err;
-  } finally {
-    state.loading = false;
-  }
-}
-
-export async function deleteCurrent() {
-  if (!state.currentEntry || !state.currentEntry.fileToken) return;
-  state.loading = true;
-  state.error = '';
-  try {
-    // For superfield entries, remove the field from config.json
-    if (state.currentEntry.kind === 'superfield') {
-      // Load the full config.json
-      const configText = await api.getFileText(state.dataBase, state.slug, state.currentEntry.fileToken);
-      const configData = configText ? JSON.parse(configText) : {};
-
-      // Remove the field
-      delete configData[state.currentEntry.superfieldPath];
-
-      // Save the updated config
-      const text = JSON.stringify(configData, null, 2) + '\n';
-      await api.putFile(
-        state.apiBase,
-        state.slug,
-        state.editorToken,
-        state.currentEntry.fileToken,
-        text,
-        'application/json; charset=utf-8'
-      );
-    } else {
-      // Regular file entry - delete the file
-      await api.deleteFile(state.apiBase, state.slug, state.editorToken, state.currentEntry.fileToken);
-
-      const idx = state.rawTokens.indexOf(state.currentEntry.fileToken);
-      if (idx !== -1) state.rawTokens.splice(idx, 1);
-    }
-
-    state.fileIndex = buildFileIndex(state.schema, state.rawTokens);
-    state.refIndex = buildCollectionRefIndex(state.schema, state.rawTokens);
-
-    state.currentEntry = null;
-    state.draft = null;
-    state.currentBody = '';
-    state.baselineText = '';
-
-    state.status = 'Página eliminada.';
-  } catch (err) {
-    state.error = err.message || String(err);
-    throw err;
-  } finally {
-    state.loading = false;
-  }
 }
 
 // ---------------------------------------------------------------------------

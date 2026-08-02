@@ -180,22 +180,20 @@ media:
 content:
   - name: events
     icon: calendar
-    type: superfield
+    type: tab
     label: Eventos
     path: events
     fields:
-      # `calendario` is a custom field type rendered by CalendarEditor.vue
+      # `list` is a custom field type rendered by CalendarEditor.vue
       # (see FieldRenderer's `field.type === 'calendario'` branch). Its value
-      # owns the whole events document: { groups, defaults, urls, celebrants }.
-      # `groups` is a unified list of event-groups (each with shared defaults +
-      # a list of `actos` that override). calendar.js (build) reads this shape
-      # and emits the flat calendar.json the public site consumes.
-      - { name: calendario, type: calendario, label: Calendario de eventos }
+      # owns the whole events document: { list, defaults, urls, celebrants }.
+      # The field name is `list` so data is stored at events.list (not events.calendario).
+      - { name: list, type: calendario, label: Calendario de eventos }
 
   - name: pages
     icon: document
     label: Páginas
-    type: superfield
+    type: tab
     subfolders: false
     path: pages
     fields:
@@ -345,7 +343,7 @@ content:
       - { name: pageperlocatoin, label: Crear una página nueva automaticamente para cada templo, type: boolean, default: true }
   - name: places
     icon: building-library
-    type: superfield
+    type: tab
     label: Templos
     path: places
     fields:
@@ -364,7 +362,7 @@ content:
 
   - name: site
     icon: cog-6-tooth
-    type: superfield
+    type: tab
     label: Configuración
     path: site
     fields:

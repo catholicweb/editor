@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, nextTick, watch, onUnmounted } from 'vue';
+import { configData } from '../lib/store.js';
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -12,6 +13,34 @@ const multiple = !!options.multiple;
 const creatable = !!options.creatable;
 const maxChips = options.max || 0; // 0 = unlimited
 
+// Reactively compute options from configData if source is "config>"
+const normalizedOptions = computed(() => {
+  // Check if options should come from configData
+  if (options.source && options.source.startsWith('config>')) {
+    const fieldPath = options.source.slice(7); // Remove "config>"
+    const pathParts = fieldPath.split('>');
+    let data = configData; // Start from configData
+
+    // Navigate the path (e.g., "site>collaborators" -> configData.site.collaborators)
+    for (const part of pathParts) {
+      data = data?.[part];
+    }
+
+    if (Array.isArray(data)) {
+      return data.map((item) => ({
+        value: item.name || item.id || item,
+        label: item.name || item.id || item,
+      }));
+    }
+    return [];
+  }
+
+  // Fallback to static values
+  return (options.values || []).map((v) =>
+    typeof v === 'object' && v !== null ? v : { value: v, label: v }
+  );
+});
+
 // Prevent empty strings from being stored in the model value.
 watch(
   () => props.modelValue,
@@ -21,12 +50,6 @@ watch(
     }
   },
   { immediate: true }
-);
-
-const normalizedOptions = computed(() =>
-  (options.values || []).map((v) =>
-    typeof v === 'object' && v !== null ? v : { value: v, label: v }
-  )
 );
 
 function labelFor(val) {

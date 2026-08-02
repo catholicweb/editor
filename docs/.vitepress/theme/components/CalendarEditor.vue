@@ -12,19 +12,18 @@ const props = defineProps({
   keyName: { type: [String, Number], required: true },
 });
 
-// Ensure configData.site.events.list exists
+// Ensure the events object exists in the container (which is configData.events)
 function ensureEventsShape() {
-  if (!configData.site) configData.site = {};
-  if (!configData.site.events) configData.site.events = {};
-  if (!Array.isArray(configData.site.events.list)) configData.site.events.list = [];
-  if (!configData.site.events.celebrants) configData.site.events.celebrants = [];
-  if (!configData.site.events.eventTypes) configData.site.events.eventTypes = [];
+  if (!Array.isArray(props.container.list)) props.container.list = [];
+  if (!props.container.celebrants) props.container.celebrants = [];
+  if (!props.container.eventTypes) props.container.eventTypes = [];
   // A parish always has at least one celebrant (the párroco / moderador)
-  if (!configData.site.events.celebrants.length) configData.site.events.celebrants.push(defaultParroco());
+  if (!props.container.celebrants.length) props.container.celebrants.push(defaultParroco());
 }
 ensureEventsShape();
 
-const value = computed(() => configData.site);
+// The value is the container itself (the events document)
+const value = computed(() => props.container);
 
 // Get event fields from schema
 const eventFields = computed(() => {
@@ -49,10 +48,10 @@ function openEventTypeManager() { showEventTypeManager.value = true; }
 function closeEventTypeManager() { showEventTypeManager.value = false; }
 
 // Event modal ----------------------------------------------------------
-const editingIndex = ref(null); // index into value.events.list
+const editingIndex = ref(null); // index into value.list
 const modalOpen = computed(() => editingIndex.value !== null);
 const editingEvent = computed(() =>
-  editingIndex.value === null ? null : value.events?.list?.[editingIndex.value]
+  editingIndex.value === null ? null : value.list?.[editingIndex.value]
 );
 const presetOccurrence = ref(null); // occurrence clicked on the grid, used as default for exceptions
 
@@ -70,18 +69,19 @@ function addEvent(preset = {}) {
   if (preset.time) evt.times = preset.time ? [preset.time] : [];
   // New events default to the first celebrant (the párroco / moderador) so
   // they're never left without one.
-  const first = value.events?.celebrants?.[0];
+  const first = value.celebrants?.[0];
   if (first) evt.celebrants = [first.id];
-  if (!value.events?.list) value.events.list = [];
-  value.events.list.push(evt);
-  editingIndex.value = value.events.list.length - 1;
+  // Ensure value.list exists before pushing
+  if (!Array.isArray(value.list)) value.list = [];
+  value.list.push(evt);
+  editingIndex.value = value.list.length - 1;
 }
 function removeEvent() {
   const i = editingIndex.value;
   if (i === null) return;
   if (!confirm('¿Eliminar este evento?')) return;
-  if (value.events?.list) {
-    value.events.list.splice(i, 1);
+  if (value.list) {
+    value.list.splice(i, 1);
   }
   editingIndex.value = null;
 }
@@ -98,9 +98,10 @@ async function duplicateEvent() {
   // Copy all fields except id (generate a new one) and except (start empty).
   const { id, except, ...rest } = src;
   const evt = { ...rest, id: generateId('evt'), except: [] };
-  if (!value.events?.list) value.events.list = [];
-  value.events.list.push(evt);
-  const newIndex = value.events.list.length - 1;
+  // Ensure value.list exists before pushing
+  if (!Array.isArray(value.list)) value.list = [];
+  value.list.push(evt);
+  const newIndex = value.list.length - 1;
   closeModal();
   // Open the new event after the modal resets.
   nextTick(() => {
@@ -125,10 +126,10 @@ function closeModal() {
 <template>
   <div class="calendar-editor">
     <WeekGrid
-      :events="value.events?.list || []"
-      :celebrants="value.events?.celebrants || []"
-      :defaults="value.events?.defaults || {}"
-      :event-types="value.events?.eventTypes || []"
+      :events="value.list || []"
+      :celebrants="value.celebrants || []"
+      :defaults="value.defaults || {}"
+      :event-types="value.eventTypes || []"
       :week-start="weekStart"
       @update:week-start="weekStart = $event"
       @edit-event="editEvent"
@@ -140,9 +141,9 @@ function closeModal() {
       v-if="modalOpen && editingEvent"
       :event="editingEvent"
       :event-index="editingIndex"
-      :celebrants="value.events?.celebrants || []"
-      :defaults="value.events?.defaults || {}"
-      :event-types="value.events?.eventTypes || []"
+      :celebrants="value.celebrants || []"
+      :defaults="value.defaults || {}"
+      :event-types="value.eventTypes || []"
       :week-start="weekStart"
       :preset-occurrence="presetOccurrence"
       @close="closeModal"
@@ -161,8 +162,8 @@ function closeModal() {
         </header>
         <div class="modal-body">
           <EventTypeManager
-            :event-types="value.events?.eventTypes || []"
-            :celebrants="value.events?.celebrants || []"
+            :event-types="value.eventTypes || []"
+            :celebrants="value.celebrants || []"
           />
         </div>
       </div>

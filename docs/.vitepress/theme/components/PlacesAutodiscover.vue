@@ -220,16 +220,15 @@ async function selectPlace(place) {
     try {
       const events = await importEventsForPlace(place);
       if (events.length > 0) {
-        // Add imported events to configData.site.events.list
+        // Add imported events to configData.events.list
         const mappedEvents = events.map(e => mapEvent(e, place));
 
-        // Ensure configData.site.events.list exists
-        if (!configData.site) configData.site = {};
-        if (!configData.site.events) configData.site.events = {};
-        if (!configData.site.events.list) configData.site.events.list = [];
+        // Ensure configData.events.list exists
+        if (!configData.events) configData.events = {};
+        if (!Array.isArray(configData.events.list)) configData.events.list = [];
 
         // Add events to the list
-        configData.site.events.list.push(...mappedEvents);
+        configData.events.list.push(...mappedEvents);
         console.log('Imported events for', place.name, ':', mappedEvents);
       }
     } catch (err) {

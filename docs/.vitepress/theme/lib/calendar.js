@@ -5,20 +5,6 @@
 // pages.yml's `rrule` component (weekday tokens, yearly/monthly/biweekly,
 // week1..week5, and 'never').
 
-// type -> { icon, duration }. The icon is what the week-grid chip shows;
-// the chip is colored by the celebrant (priest), not the type. `duration` is
-// the default length in minutes, used for overlap / too-tight conflict checks.
-// Icons now use Heroicon names (see PeIcon.vue component)
-export const TYPE_CONFIG = {
-  funeral: { icon: 'heart', duration: 45 },
-  mass: { icon: 'church', duration: 30 },
-  confession: { icon: 'chat-bubble-bottom-center-text', duration: 60 },
-  wayofthecross: { icon: 'map-pin', duration: 45 },
-  feast: { icon: 'star', duration: 60 },
-  group: { icon: 'users', duration: 45 },
-  custom: { icon: 'calendar', duration: 60 },
-};
-
 // Predefined color array for celebrants who don't have a color defined.
 // Colors are visually distinguishable and assigned in order to celebrants.
 export const CELEBRANT_COLORS = [
@@ -73,7 +59,9 @@ export function getTypeConfig(type, eventTypes) {
     const duration = (et.fields && et.fields.duration != null) ? et.fields.duration : (et.duration || DEFAULT_DURATION);
     return { icon: et.icon, duration };
   }
-  return TYPE_CONFIG[type] || TYPE_CONFIG.custom;
+  // Fallback: use 'custom' type defaults
+  const customType = DEFAULT_EVENT_TYPES.find(t => t.name === 'custom');
+  return { icon: customType?.icon || 'calendar', duration: customType?.duration || DEFAULT_DURATION };
 }
 
 export function getTypeFieldDefaults(type, eventTypes) {
