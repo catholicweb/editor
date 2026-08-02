@@ -20,31 +20,16 @@ export const CELEBRANT_COLORS = [
   '#607d8b', // Blue Grey
 ];
 
-// Default event-types array (used as fallback when a document has no
-// custom eventTypes). Simple structure: just label, icon, duration.
-// Icons now use Heroicon names (see PeIcon.vue component)
-export const DEFAULT_EVENT_TYPES = [
-  { name: 'funeral',      label: 'Funeral',           icon: 'heart',    duration:45 },
-  { name: 'mass',         label: 'Eucaristía',        icon: 'church',  duration: 30 },
-  { name: 'confession',   label: 'Confesiones',        icon: 'chat-bubble-bottom-center-text',    duration: 60 },
-  { name: 'wayofthecross',label: 'Viacrucis',         icon: 'map-pin',   duration: 45 },
-  { name: 'feast',        label: 'Festividad',         icon: 'star',    duration: 60 },
-  { name: 'group',        label: 'Grupo / Catequesis', icon: 'users',   duration: 45 },
-  { name: 'custom',       label: 'Otro',               icon: 'calendar',duration: 60 },
-];
+
 
 // ---- Dynamic event-type helpers -------------------------------------------
-// All accept an optional `eventTypes` array (user-defined). When omitted or
-// empty they fall back to DEFAULT_EVENT_TYPES, so existing code keeps working.
 
 export function getEventType(typeName, eventTypes) {
-  const types = eventTypes?.length ? eventTypes : DEFAULT_EVENT_TYPES;
-  return types.find((t) => t.name === typeName) || null;
+  return eventTypes?.find((t) => t.name === typeName) || null;
 }
 
 export function getEventTypeOptions(eventTypes) {
-  const types = eventTypes?.length ? eventTypes : DEFAULT_EVENT_TYPES;
-  return types.map((t) => ({ value: t.name, label: t.label }));
+  return eventTypes?.map((t) => ({ value: t.name, label: t.label }));
 }
 
 export function allowedFields(type, eventTypes) {
@@ -60,7 +45,7 @@ export function getTypeConfig(type, eventTypes) {
     return { icon: et.icon, duration };
   }
   // Fallback: use 'custom' type defaults
-  const customType = DEFAULT_EVENT_TYPES.find(t => t.name === 'custom');
+  const customType = eventTypes?.find(t => t.name === 'custom');
   return { icon: customType?.icon || 'calendar', duration: customType?.duration || DEFAULT_DURATION };
 }
 
@@ -89,17 +74,7 @@ export function mergeTypeDefaults(event, eventTypes) {
   return eff;
 }
 
-export function ensureEventTypes(calendario) {
-  if (!calendario) return;
-  if (!Array.isArray(calendario.eventTypes) || !calendario.eventTypes.length) {
-    calendario.eventTypes = DEFAULT_EVENT_TYPES.map((t) => ({ ...t }));
-  }
-}
-
 export const DEFAULT_DURATION = 45;
-
-// (Celebrants no longer carry an icon — only a name and a color. The chip
-// glyph on the grid is the event TYPE's icon.)
 
 // The ordered event-field set, used to render the event editor. `component`
 // references a reusable component name in pages.yml (resolved at render time

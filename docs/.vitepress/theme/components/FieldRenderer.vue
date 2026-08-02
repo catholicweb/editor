@@ -45,13 +45,14 @@ const listConfig = computed(() => getListConfig(props.field));
 const sortedItems = computed(() => {
   if (!isObjectList.value && !isScalarList.value) return scalarValue.value;
   const items = [...scalarValue.value];
+  /* disabled coz this causes issues with the item idexes (you staring typing a name, it shows somewhere else)
   if (listConfig.value?.sort === 'alphabetical') {
     return items.sort((a, b) => {
       const labelA = collapsible.value?.summary ? renderSummary(collapsible.value.summary, a) : '';
       const labelB = collapsible.value?.summary ? renderSummary(collapsible.value.summary, b) : '';
       return labelA.localeCompare(labelB);
     });
-  }
+  }*/
   // 'manual' or 'raw': return as-is (preserve order)
   return items;
 });
@@ -193,17 +194,18 @@ function closeModal() {
   <CalendarEditor
     v-else-if="field.type === 'calendario'"
     :field="field"
-    :container="container"
+    :container="scalarValue"
     :key-name="keyName"
   />
 
   <!-- CUSTOM COMPONENTS -->
-  <PlacesAutodiscover
-    v-else-if="field.type === 'places-autodiscover'"
-    :field="field"
-    :container="container"
-    :key-name="keyName"
-  />
+  <ClientOnly v-else-if="field.type === 'places-autodiscover'">
+    <PlacesAutodiscover
+      :field="field"
+      :container="container"
+      :key-name="keyName"
+    />
+  </ClientOnly>
 
   <!-- LEAF -->
   <div v-else class="field leaf-field">

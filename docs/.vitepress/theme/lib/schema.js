@@ -64,8 +64,12 @@ export async function normalizeSchema(raw, configLoader) {
     fields: (c.fields || []).map((f) => resolveFieldDef(f, components)),
   }));
 
-  // Extract event fields from components if defined
-  const eventFields = components.event ? (components.event.fields || []) : [];
+  // Extract event fields from components if defined, normalizing them like
+  // every other content type so `component:`-inherited fields (location/times/rrule)
+  // get a real `type` instead of `undefined`.
+  const eventFields = components.event
+    ? (components.event.fields || []).map((f) => resolveFieldDef(f, components))
+    : [];
 
   return {
     settings: raw.settings || {},
@@ -105,6 +109,19 @@ export function scalarDefault(field) {
   }
 }
 
+// Default event-types array (used as fallback when a document has no
+// custom eventTypes). Simple structure: just label, icon, duration.
+// Icons now use Heroicon names (see PeIcon.vue component)
+const DEFAULT_EVENT_TYPES = [
+  { name: 'funeral',      label: 'Funeral',           icon: 'heart',    duration:45, rrule: 'nunca' },
+  { name: 'mass',         label: 'Eucaristía',        icon: 'church',  duration: 30 },
+  { name: 'confession',   label: 'Confesiones',        icon: 'chat-bubble-bottom-center-text',    duration: 60 },
+  { name: 'wayofthecross',label: 'Viacrucis',         icon: 'map-pin',   duration: 45 },
+  { name: 'feast',        label: 'Festividad',         icon: 'star',    duration: 60 },
+  { name: 'group',        label: 'Grupo / Catequesis', icon: 'users',   duration: 45 },
+  { name: 'custom',       label: 'Otro',               icon: 'calendar',duration: 60 },
+];
+
 export function defaultForField(field) {
   if (isRepeatable(field)) return [];
   // The `calendario` field owns a whole events document object; give it a
@@ -112,7 +129,7 @@ export function defaultForField(field) {
   // treated as an `object`/`block` by applyDefaults (no `fields`), so the
   // generic recursion leaves its nested structure to the calendar editor.
   if (field.type === 'calendario') {
-    return { events: [], defaults: {}, urls: [], celebrants: [], eventTypes: [] };
+    return { list: [], urls: [], celebrants: [], eventTypes: DEFAULT_EVENT_TYPES };
   }
   if (field.type === 'object') {
     const obj = {};

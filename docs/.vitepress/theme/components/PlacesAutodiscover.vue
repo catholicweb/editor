@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { state, saveCurrent } from '../lib/store.js';
+import { state } from '../lib/store.js';
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -13,7 +13,7 @@ const isLoading = ref(false);
 const error = ref('');
 const discoveredPlaces = ref([]);
 const userLocation = ref(null);
-const importEvents = ref(false); // Checkbox for importing events
+const importEvents = ref(true); // Checkbox for importing events
 const isImportingEvents = ref(false);
 
 // Get user's current location
@@ -44,7 +44,7 @@ async function getUserLocation() {
 async function discoverPlaces(lat, lon) {
   // Overpass API query to find places of worship AND church buildings within 15km
   const query = `
-    [out:json][timeout:25];
+    [out:json][timeout:5];
     (
       node["amenity"="place_of_worship"](around:15000,${lat},${lon});
       way["amenity"="place_of_worship"](around:15000,${lat},${lon});
@@ -340,13 +340,13 @@ async function startAutodiscover() {
 
 async function selectPlace(place) {
   // Add the place to places.list
-  if (!props.container.list) {
-    props.container.list = [];
-  }
+  if (!state.config.places) state.config.places = {};
+  if (!Array.isArray(state.config.places.list)) state.config.places.list = [];
 
-  props.container.list.push({
+  state.config.places.list.push({
     name: place.name,
     geo: place.geo,
+    image: place.image,
   });
 
   // Remove from discovered list
@@ -359,29 +359,17 @@ async function selectPlace(place) {
   if (importEvents.value) {
     isImportingEvents.value = true;
     try {
-      const events = await importEventsForPlace(place);
+      const events = place.events
       if (events.length > 0) {
-        // Add imported events to state.config.calendar.list
-        // (CalendarEditor stores events at container.list, and its container is
-        // the calendar tab slice = state.config.calendar)
-        const mappedEvents = events.map(e => mapEvent(e, place));
-
         // Ensure state.config.calendar.list exists
-        if (!state.config) state.config = {};
         if (!state.config.calendar) state.config.calendar = {};
-        if (!Array.isArray(state.config.calendar.list)) state.config.calendar.list = [];
+        if (!state.config.calendar.events) state.config.calendar.events = {};
+        if (!Array.isArray(state.config.calendar.events.list)) state.config.calendar.events.list = [];
 
         // Add events to the list
-        state.config.calendar.list.push(...mappedEvents);
+        const mappedEvents = events.map(e => mapEvent(e, place));
+        state.config.calendar.events.list.push(...mappedEvents);
         console.log('Imported events for', place.name, ':', mappedEvents);
-
-        // Persist: this runs in the places tab, outside the autosave watch on
-        // state.draft, so save the whole config explicitly.
-        try {
-          await saveCurrent();
-        } catch (err) {
-          console.error('Failed to save imported events:', err);
-        }
       }
     } catch (err) {
       console.error('Failed to import events:', err);
@@ -434,7 +422,7 @@ function closeModal() {
             <div class="import-events-option">
               <label>
                 <input type="checkbox" v-model="importEvents" />
-                Importar eventos también
+                Importar también eventos 
               </label>
             </div>
 

@@ -36,7 +36,7 @@ export function buildFileIndex(schema) {
         displayName: c.label || c.name,
         groupLabel: c.label || c.name,
         icon: c.icon || null,
-        tabPath: c.path, // The field path within config.json (e.g., 'events', 'pages')
+        tabPath: c.name, // The field path within config.json (e.g., 'events', 'pages')
       });
     }
     // Note: 'file' and 'collection' types are no longer supported

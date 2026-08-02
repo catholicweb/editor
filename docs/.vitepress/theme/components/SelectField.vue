@@ -18,7 +18,7 @@ const normalizedOptions = computed(() => {
   // Check if options should come from config
   if (options.source && options.source.startsWith('config>')) {
     const fieldPath = options.source.slice(7); // Remove "config>"
-    const pathParts = fieldPath.split('>');
+    const pathParts = fieldPath.split('.');
     let data = state.config; // Start from state.config
 
     // Navigate the path (e.g., "site>collaborators" -> state.config.site.collaborators)

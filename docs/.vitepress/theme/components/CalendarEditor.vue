@@ -3,8 +3,8 @@ import { computed, ref, nextTick, reactive } from 'vue';
 import WeekGrid from './WeekGrid.vue';
 import EventEditorModal from './EventEditorModal.vue';
 import EventTypeManager from './EventTypeManager.vue';
-import { newEvent, generateId, defaultParroco, startOfWeek, ensureEventTypes, DEFAULT_EVENT_TYPES, getEventFields } from '../lib/calendar.js';
-import { saveCurrent, state } from '../lib/store.js';
+import { newEvent, generateId, defaultParroco, startOfWeek, getEventFields } from '../lib/calendar.js';
+import { state } from '../lib/store.js';
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -22,8 +22,8 @@ function ensureEventsShape() {
 }
 ensureEventsShape();
 
-// The value is the container itself (the events document)
-const value = computed(() => props.container);
+// The value is the live events document (a reactive proxy passed in by FieldRenderer).
+const value = props.container;
 
 // Get event fields from schema
 const eventFields = computed(() => {
@@ -88,13 +88,6 @@ function removeEvent() {
 async function duplicateEvent() {
   const src = editingEvent.value;
   if (!src) return;
-  // Save first so the current event is persisted before duplicating.
-  try {
-    await saveCurrent();
-  } catch {
-    // error already surfaced in store state.error
-    return;
-  }
   // Copy all fields except id (generate a new one) and except (start empty).
   const { id, except, ...rest } = src;
   const evt = { ...rest, id: generateId('evt'), except: [] };
@@ -109,12 +102,6 @@ async function duplicateEvent() {
   });
 }
 async function saveEvent() {
-  try {
-    await saveCurrent();
-  } catch {
-    // error already surfaced in store state.error
-    return;
-  }
   closeModal();
 }
 function closeModal() {

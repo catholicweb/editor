@@ -3,26 +3,13 @@ import { computed, ref, onMounted, onUnmounted } from 'vue';
 import LoginView from './LoginView.vue';
 import FieldBrowser from './FieldBrowser.vue';
 import FieldsGroup from './FieldsGroup.vue';
-import DirtyGuardModal from './DirtyGuardModal.vue';
 import { state, isLoggedIn, isDirty, saveCurrent, logout, login, loadSavedSession, initBeforeUnloadHandler } from '../lib/store.js';
 import { ui, initUi, toggleSidebar } from '../lib/ui.js';
 
 const booting = ref(false);
 
-// Keyboard shortcuts
-function handleKeyDown(e) {
-  // Ctrl+S or Cmd+S to save
-  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-    e.preventDefault();
-    if (isDirty.value && !state.loading) {
-      onSave();
-    }
-  }
-}
-
 onMounted(async () => {
   initUi();
-  window.addEventListener('keydown', handleKeyDown);
   initBeforeUnloadHandler(); // Warn user about unsaved changes when leaving
   // Auto-login when a session with a token is already saved locally. The
   // user can still log out later. On failure we fall through to the login
@@ -40,10 +27,6 @@ onMounted(async () => {
   }
 });
 
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeyDown);
-});
-
 const sidebarOpen = computed(() => ui.sidebarOpen);
 const isMobile = computed(() => ui.mobile);
 
@@ -57,16 +40,8 @@ const isCalendarDoc = computed(() =>
   (state.currentEntry?.fields || []).some((f) => f.type === 'calendario')
 );
 
-async function onSave() {
-  try {
-    await saveCurrent();
-  } catch {
-    // error already surfaced in state.error
-  }
-}
 
 async function onLogout() {
-  // With autosave, changes are automatically saved, so we can logout directly
   logout();
 }
 </script>
@@ -126,6 +101,7 @@ async function onLogout() {
         :class="{ 'document-wide': isCalendarDoc }"
       >
         <FieldsGroup :fields="state.currentEntry.fields" :container="state.draft" />
+        <span  style="white-space: pre-wrap; font-size: small;">{{ JSON.stringify(state.config, null, 2) }}</span>
       </div>
       <div v-else class="empty-state">
         <div class="empty-icon">📄</div>
@@ -134,7 +110,6 @@ async function onLogout() {
       </div>
     </main>
 
-    <DirtyGuardModal />
   </div>
 </template>
 

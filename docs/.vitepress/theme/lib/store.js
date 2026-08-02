@@ -303,6 +303,7 @@ export async function refreshFileList() {
 }
 
 export function logout() {
+  saveCurrent();
   // Forget the saved session so an explicit logout is honored on the next
   // load (no auto-login). The user can log back in by re-entering the token.
   clearSavedSession();
@@ -379,7 +380,7 @@ export async function openEntry(entry) {
     state.currentEntry = entry;
     state.draft = reactive(data);
     state.currentBody = '';
-    state.baselineText = JSON.stringify(data, null, 2);
+    state.baselineText = JSON.stringify(data, null, 2) + '\n';
     state.status = '';
   } catch (err) {
     state.error = err.message || String(err);
@@ -413,7 +414,7 @@ export async function saveCurrent() {
     await api.putFile(state.apiBase, state.slug, state.editorToken, fileToken, text, contentType);
 
     // Update baseline to the saved field value
-    state.baselineText = JSON.stringify(state.draft, null, 2);
+    state.baselineText = JSON.stringify(state.draft, null, 2) + '\n';
     state.status = 'Guardado.';
 
   } catch (err) {
@@ -484,19 +485,17 @@ watch(
 
 // Beforeunload handler: warn user if there are unsaved changes
 export function initBeforeUnloadHandler() {
-  window.addEventListener('beforeunload', (e) => {
-    if (isDirty.value) {
-      // Cancel any pending autosave
+  document.addEventListener('visibilitychange', () => {
+    // Triggers when the tab goes hidden or the user navigates away/closes
+    if (document.visibilityState === 'hidden' && isDirty.value) {
+      // 1. Clear any pending auto-save timers
       if (autosaveTimer) {
         clearTimeout(autosaveTimer);
         autosaveTimer = null;
       }
-      // Try to save immediately (fire and forget)
+
+      // 2. Fire the background save request (no await needed)
       saveCurrent().catch(err => console.error('Failed to save before unload:', err));
-      // Show warning to user
-      e.preventDefault();
-      e.returnValue = 'Tienes cambios sin guardar. ¿Seguro que quieres salir?';
-      return e.returnValue;
     }
   });
 }
