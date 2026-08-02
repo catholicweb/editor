@@ -78,13 +78,13 @@ components:
     label: Lugares
     type: select
     options:
-      source: "places"
+      source: "config>places.list"
   celebrants:
     label: Celebrantes
     type: select
     options:
       multiple: true
-      source: "config>site>collaborators"
+      source: "config>site.collaborators"
   tags:
     label: Options
     type: select
@@ -138,6 +138,20 @@ components:
         fields:
           - { name: title, label: Título, type: string }
           - { name: link, label: Accion, type: string }
+  events:
+    label: Eventos
+    type: object
+    fields:
+      - name: list
+        label: Lista de eventos
+        type: object
+        list: { collapsible: { collapsed: true, summary: "{fields.title}" } }
+        fields:
+          - { name: title, type: string, label: Título }
+          - { name: date, type: date, label: Fecha }
+          - { name: times, type: string, label: Hora }
+          - { name: location, type: string, label: Lugar }
+          - { name: description, type: text, label: Descripción }
   gallery:
     label: Galleria imagenes
     type: object
@@ -178,24 +192,37 @@ media:
   output: /media
   categories: ["image", "document"]
 content:
-  - name: events
+  - name: calendar
     icon: calendar
     type: tab
     label: Eventos
-    path: events
     fields:
-      # `list` is a custom field type rendered by CalendarEditor.vue
-      # (see FieldRenderer's `field.type === 'calendario'` branch). Its value
-      # owns the whole events document: { list, defaults, urls, celebrants }.
-      # The field name is `list` so data is stored at events.list (not events.calendario).
-      - { name: list, type: calendario, label: Calendario de eventos }
+      # `calendario` is a custom field type rendered by CalendarEditor.vue
+      # (see FieldRenderer's `field.type === 'calendario'` branch)
+      - { name: events, type: calendario, label: Calendario de eventos }
+
+  - name: places
+    icon: building-library
+    type: tab
+    label: Templos
+    fields:
+      - name: list
+        label: Lista de templos
+        type: object
+        list: { collapsible: { collapsed: true, summary: "{fields.name}" }, sort: "alphabetical", modal: false }
+        fields:
+          - { name: name, type: string, label: Nombre }
+          - { name: image, type: image, label: Imagen, options: { multiple: true } }
+          - { name: geo, type: string, label: "Coordenadas (ej: 42.801941, -1.645660)" }
+      - name: autodiscover
+        label: Encontrar templos
+        type: places-autodiscover
 
   - name: pages
     icon: document
     label: Páginas
     type: tab
     subfolders: false
-    path: pages
     fields:
       - name: nav
         label: Menu de navegación
@@ -341,30 +368,14 @@ content:
                     options: { collection: pages, multiple: true, label: "{title}" }
                   - { name: tags, label: Opciones avanzadas de estilo, component: tags }
       - { name: pageperlocatoin, label: Crear una página nueva automaticamente para cada templo, type: boolean, default: true }
-  - name: places
-    icon: building-library
-    type: tab
-    label: Templos
-    path: places
-    fields:
-      - name: list
-        label: Lista de templos
-        type: object
-        list: { collapsible: { collapsed: true, summary: "{fields.name}" }, sort: "alphabetical", modal: false }
-        fields:
-          - { name: name, type: string, label: Nombre }
-          - { name: image, type: image, label: Imagen, options: { multiple: true } }
-          - { name: geo, type: string, label: "Coordenadas (ej: 42.801941, -1.645660)" }
-      - name: autodiscover
-        label: Encontrar templos
-        type: places-autodiscover
+
+
 
 
   - name: site
     icon: cog-6-tooth
     type: tab
     label: Configuración
-    path: site
     fields:
       - { name: title, label: Titulo sitio, type: string }
       - { name: description, label: Description del sitio, type: text }
@@ -407,17 +418,3 @@ content:
               - { name: selector, label: "Elemento", component: selector }
               - { name: cssClass, label: "Efecto a aplicar", component: effect }
               - { name: scroll, label: "Aplicar al hacer scroll", type: boolean, default: false }
-      - name: events
-        label: Eventos
-        type: object
-        fields:
-          - name: list
-            label: Lista de eventos
-            type: object
-            list: { collapsible: { collapsed: true, summary: "{fields.title}" } }
-            fields:
-              - { name: title, type: string, label: Título }
-              - { name: date, type: date, label: Fecha }
-              - { name: times, type: string, label: Hora }
-              - { name: location, type: string, label: Lugar }
-              - { name: description, type: text, label: Descripción }

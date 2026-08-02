@@ -194,21 +194,23 @@ function closeModal() {
   background: rgba(15, 17, 21, 0.5);
   backdrop-filter: blur(2px);
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: stretch;
   z-index: 1000;
-  padding: 20px;
+  padding: 0;
 }
 .modal {
   background: var(--pe-panel);
-  border-radius: var(--pe-radius);
-  width: 90%;
-  max-width: 720px;
-  max-height: 85vh;
+  border-radius: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: none;
+  box-shadow: none;
 }
 .modal-header {
   display: flex;

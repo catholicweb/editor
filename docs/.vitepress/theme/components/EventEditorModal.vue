@@ -230,10 +230,10 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
           <span class="event-idx">#{{ eventIndex + 1 }}</span>
         </div>
         <div class="header-actions">
+          <button class="close" @click="emit('close')" title="Cerrar">✕</button>
           <button class="manage-types-btn" @click="emit('openEventTypeManager')" title="Gestionar tipos de eventos">
             <PeIcon name="adjustments-vertical" :size="16" />
           </button>
-          <!--<button class="close" @click="emit('close')">✕</button>-->
         </div>
       </header>
       <div class="modal-body">
@@ -296,9 +296,6 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
         <div class="modal-footer">
           <button class="delete-event-btn" @click="emit('remove')">Borrar</button>
           <button class="duplicate-event-btn" @click="emit('duplicate')">Duplicar</button>
-          <button class="save-event-btn" :disabled="state.loading" @click="emit('save')">
-            {{ state.loading ? 'Guardando…' : 'Guardar' }}
-          </button>
         </div>
       </div>
     </div>
@@ -600,24 +597,6 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-}
-.save-event-btn {
-  padding: 10px 20px;
-  border-radius: var(--pe-radius);
-  border: 1px solid var(--pe-accent);
-  background: var(--pe-accent);
-  color: #fff;
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background var(--pe-transition), opacity var(--pe-transition);
-}
-.save-event-btn:hover:not(:disabled) {
-  background: var(--pe-accent-hover);
-}
-.save-event-btn:disabled {
-  cursor: default;
-  opacity: 0.6;
 }
 .duplicate-event-btn {
   padding: 10px 20px;

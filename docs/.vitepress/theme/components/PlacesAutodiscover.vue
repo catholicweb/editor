@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { state } from '../lib/store.js';
+import { state, saveCurrent } from '../lib/store.js';
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -361,17 +361,27 @@ async function selectPlace(place) {
     try {
       const events = await importEventsForPlace(place);
       if (events.length > 0) {
-        // Add imported events to state.config.events.list
+        // Add imported events to state.config.calendar.list
+        // (CalendarEditor stores events at container.list, and its container is
+        // the calendar tab slice = state.config.calendar)
         const mappedEvents = events.map(e => mapEvent(e, place));
 
-        // Ensure state.config.events.list exists
+        // Ensure state.config.calendar.list exists
         if (!state.config) state.config = {};
-        if (!state.config.events) state.config.events = {};
-        if (!Array.isArray(state.config.events.list)) state.config.events.list = [];
+        if (!state.config.calendar) state.config.calendar = {};
+        if (!Array.isArray(state.config.calendar.list)) state.config.calendar.list = [];
 
         // Add events to the list
-        state.config.events.list.push(...mappedEvents);
+        state.config.calendar.list.push(...mappedEvents);
         console.log('Imported events for', place.name, ':', mappedEvents);
+
+        // Persist: this runs in the places tab, outside the autosave watch on
+        // state.draft, so save the whole config explicitly.
+        try {
+          await saveCurrent();
+        } catch (err) {
+          console.error('Failed to save imported events:', err);
+        }
       }
     } catch (err) {
       console.error('Failed to import events:', err);
@@ -492,20 +502,23 @@ function closeModal() {
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: stretch;
   z-index: 1000;
+  padding: 0;
 }
 
 .modal-content {
   background: var(--pe-panel, #fff);
-  border-radius: 8px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 80vh;
+  border-radius: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
   overflow-y: auto;
   padding: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: none;
+  border: none;
 }
 
 .modal-header {
