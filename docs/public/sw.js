@@ -1,30 +1,41 @@
-// Simple service worker for PWA
-// Cache strategy: network-first for HTML, cache-first for assets
+// Service Worker for PWA - Cache strategy: stale-while-revalidate
+const CACHE_NAME = 'editor-parroquia-v2';
+const ASSETS_TO_CACHE = [
+  '/',
+  '/index.html',
+];
 
-const CACHE_NAME = 'editor-parroquia-v1';
-
-// Install event - cache essential files
+// Install event - precache essential files
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll([
-        '/',
-        '/index.html',
-      ]);
+      return cache.addAll(ASSETS_TO_CACHE);
     })
   );
+  self.skipWaiting();
 });
 
-// Fetch event - network first, then cache
+// Fetch event - stale-while-revalidate strategy
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    fetch(event.request).catch(() => {
-      return caches.match(event.request);
+    caches.match(event.request).then((cachedResponse) => {
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        // Update cache with new response
+        if (networkResponse.ok) {
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, networkResponse.clone());
+          });
+        }
+        return networkResponse;
+      });
+
+      // Return cached response immediately, or wait for network
+      return cachedResponse || fetchPromise;
     })
   );
 });
 
-// Activate event - clean old caches
+// Activate event - clean old caches and take control
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -35,6 +46,8 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
+    }).then(() => {
+      return self.clients.claim();
     })
   );
 });

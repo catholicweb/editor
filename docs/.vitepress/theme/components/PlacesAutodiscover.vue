@@ -1,6 +1,5 @@
 <script setup>
 import { ref, computed } from 'vue';
-import FieldRenderer from './FieldRenderer.vue';
 import { state } from '../lib/store.js';
 
 const props = defineProps({
@@ -20,7 +19,8 @@ const isImportingEvents = ref(false);
 // Get user's current location
 async function getUserLocation() {
   return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
+    // Check if we're in a browser environment (not SSR)
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
       reject(new Error('Tu navegador no soporta geolocalización'));
       return;
     }
@@ -42,12 +42,14 @@ async function getUserLocation() {
 
 // Call overpass-api.de to find nearby places of worship
 async function discoverPlaces(lat, lon) {
-  // Overpass API query to find places of worship within 15km
+  // Overpass API query to find places of worship AND church buildings within 15km
   const query = `
     [out:json][timeout:25];
     (
       node["amenity"="place_of_worship"](around:15000,${lat},${lon});
       way["amenity"="place_of_worship"](around:15000,${lat},${lon});
+      node["building"="church"](around:15000,${lat},${lon});
+      way["building"="church"](around:15000,${lat},${lon});
     );
     out body;
     >;
@@ -102,6 +104,42 @@ function formatDistance(distance) {
   return `${distance.toFixed(1)} km`;
 }
 
+// Format event for display
+function formatEvent(event) {
+  const date = event.date ? new Date(event.date).toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }) : '';
+  const time = event.time || event.times || '';
+  const type = event.type || 'Misa';
+  const rrule = event.rrule || '';
+  return `${rrule} - ${time}`;
+}
+
+// Check if a place is likely Catholic (or unknown religion)
+function isCatholicPlace(tags) {
+  // Exclude places where religion is explicitly not catholic
+  const religion = tags.religion?.toLowerCase();
+  const denomination = tags.denomination?.toLowerCase();
+
+  // If religion is explicitly set to a non-Christian value, exclude
+  if (religion && !['christian', 'catholic'].includes(religion)) {
+    return false;
+  }
+
+  // If denomination is explicitly set to a non-Catholic Christian denomination, exclude
+  if (denomination && !['catholic', 'roman_catholic', 'catholicism'].includes(denomination)) {
+    // Allow if it's a generic Christian place without specific denomination
+    if (['protestant', 'orthodox', 'anglican', 'baptist', 'lutheran', 'methodist', 'evangelical'].includes(denomination)) {
+      return false;
+    }
+  }
+
+  // Include by default (religion not set, or is catholic/christian)
+  return true;
+}
+
 // Format discovered places with distance
 function formatPlaces(elements) {
   const places = [];
@@ -120,6 +158,11 @@ function formatPlaces(elements) {
       continue;
     }
 
+    // Filter out non-Catholic places
+    if (!isCatholicPlace(el.tags)) {
+      continue;
+    }
+
     const distance = (userLat && userLon) ? calculateDistance(userLat, userLon, lat, lon) : null;
 
     places.push({
@@ -129,6 +172,7 @@ function formatPlaces(elements) {
       lon: lon,
       type: el.tags.religion || el.tags.denomination || 'unknown',
       distance: distance,
+      events: [], // Initialize with empty events array
     });
   }
 
@@ -136,6 +180,86 @@ function formatPlaces(elements) {
   places.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
 
   return places;
+}
+
+// Search misas.org API for nearby parishes (called during discovery)
+async function searchMisasAPI(lat, lon) {
+  try {
+    const url = `https://5ejmibz3st5c2bwdloszdeck3u0qauwt.lambda-url.eu-west-1.on.aws/quick-find?lat=${lat}&lon=${lon}&radius=15000`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('No se pudo conectar con misas.org API');
+    }
+
+    const data = await response.json();
+
+    // Extract parishes from response (under morg.data path)
+    const parishes = data?.morg?.data || [];
+
+    // Format places with events
+    const places = parishes.map(parish => {
+      const placeLat = parish.location?.coordinates?.[1] || parish.lat;
+      const placeLon = parish.location?.coordinates?.[0] || parish.lon;
+
+      return {
+        name: parish.name || 'Sin nombre',
+        geo: `${placeLat}, ${placeLon}`,
+        lat: placeLat,
+        lon: placeLon,
+        type: 'catholic', // misas.org only has Catholic parishes
+        distance: userLocation.value ? calculateDistance(userLocation.value.lat, userLocation.value.lon, placeLat, placeLon) : null,
+        events: parish.mass || parish.events || [], // Events from misas.org
+        source: 'misas.org', // Mark source for merging
+      };
+    });
+
+    return places;
+  } catch (err) {
+    console.error('Failed to search misas.org API:', err);
+    return []; // Return empty array on error, don't fail the whole discovery
+  }
+}
+
+// Merge OSM places with misas.org places (50m proximity threshold)
+function mergePlaces(osmPlaces, misasPlaces) {
+  const merged = [...osmPlaces];
+  const PROXIMITY_THRESHOLD = 0.05; // 50 meters in km
+
+  for (const misasPlace of misasPlaces) {
+    // Find OSM places within 50m of this misas.org place
+    let matchFound = false;
+
+    for (const osmPlace of merged) {
+      const distance = calculateDistance(
+        misasPlace.lat, misasPlace.lon,
+        osmPlace.lat, osmPlace.lon
+      );
+
+      if (distance !== null && distance <= PROXIMITY_THRESHOLD) {
+        // Merge: update OSM place with misas.org data
+        if (misasPlace.name && misasPlace.name !== 'Sin nombre') {
+          osmPlace.name = misasPlace.name; // Prefer misas.org name
+        }
+        if (misasPlace.events && misasPlace.events.length > 0) {
+          osmPlace.events = misasPlace.events;
+        }
+        osmPlace.source = 'merged';
+        matchFound = true;
+        break;
+      }
+    }
+
+    // If no match found, add misas.org place to the list
+    if (!matchFound) {
+      merged.push(misasPlace);
+    }
+  }
+
+  // Sort by distance again after merging
+  merged.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
+
+  return merged;
 }
 
 // Import events from the parish API
@@ -187,9 +311,26 @@ async function startAutodiscover() {
     // Get user location
     userLocation.value = await getUserLocation();
 
-    // Discover places
-    const elements = await discoverPlaces(userLocation.value.lat, userLocation.value.lon);
-    discoveredPlaces.value = formatPlaces(elements);
+    const lat = userLocation.value.lat;
+    const lon = userLocation.value.lon;
+
+    // Call both APIs in parallel
+    const [osmElements, misasPlaces] = await Promise.all([
+      discoverPlaces(lat, lon).catch(err => {
+        console.error('Overpass API error:', err);
+        return []; // Return empty on error
+      }),
+      searchMisasAPI(lat, lon).catch(err => {
+        console.error('misas.org API error:', err);
+        return []; // Return empty on error
+      }),
+    ]);
+
+    // Format OSM places
+    const osmPlaces = formatPlaces(osmElements);
+
+    // Merge results from both APIs
+    discoveredPlaces.value = mergePlaces(osmPlaces, misasPlaces);
   } catch (err) {
     error.value = err.message || String(err);
   } finally {
@@ -259,16 +400,8 @@ function closeModal() {
     <div v-if="showAutodiscover" class="modal-overlay" @click="closeModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
-          <h3>Encontrar parroquias cercanas</h3>
+          <h3>Selecciona tus parroquias, ermitas...</h3>
           <button type="button" class="modal-close-btn" @click="closeModal">✕</button>
-        </div>
-
-        <!-- Import events checkbox -->
-        <div class="import-events-option">
-          <label>
-            <input type="checkbox" v-model="importEvents" />
-            Importar eventos también
-          </label>
         </div>
 
         <div class="modal-body">
@@ -287,12 +420,29 @@ function closeModal() {
           </div>
 
           <div v-else class="places-list">
-            <p class="info">Selecciona los templos que gestionas:</p>
+            <!-- Import events checkbox -->
+            <div class="import-events-option">
+              <label>
+                <input type="checkbox" v-model="importEvents" />
+                Importar eventos también
+              </label>
+            </div>
+
             <div v-for="(place, idx) in discoveredPlaces" :key="idx" class="place-item">
               <div class="place-info">
-                <strong>{{ place.name }}</strong>
-                <span class="place-type">{{ place.type }}</span>
-                <span class="place-distance">{{ formatDistance(place.distance) }}</span>
+                <strong>{{ place.name }} - <span class="place-distance">{{ formatDistance(place.distance) }}</span></strong>
+                <!-- Show events if available -->
+                <div v-if="place.events && place.events.length > 0" class="place-events">
+                  <small class="events-title">Eventos conocidos:</small>
+                  <ul>
+                    <li v-for="(event, i) in place.events.slice(0, 3)" :key="i">
+                      {{ event.time }} - {{ mapMassDays(event.days).join(', ')}}
+                    </li>
+                  </ul>
+                  <small v-if="place.events.length > 3" class="events-more">
+                    +{{ place.events.length - 3 }} eventos más...
+                  </small>
+                </div>
               </div>
               <button type="button" class="select-btn" @click="selectPlace(place)">
                 Añadir
@@ -362,9 +512,8 @@ function closeModal() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   padding-bottom: 10px;
-  border-bottom: 1px solid var(--pe-border, #e0e0e0);
 }
 
 .modal-header h3 {
@@ -437,7 +586,6 @@ function closeModal() {
 .place-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
 }
 
 .place-info strong {
@@ -466,7 +614,6 @@ function closeModal() {
 
 .import-events-option {
   padding: 10px 20px;
-  border-bottom: 1px solid var(--pe-border);
   background: var(--pe-panel);
 }
 
@@ -483,5 +630,35 @@ function closeModal() {
   width: 16px;
   height: 16px;
   cursor: pointer;
+}
+
+.place-events {
+  font-size: 11px;
+  color: var(--pe-muted);
+}
+
+.events-title {
+  font-weight: 600;
+  color: var(--pe-text);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.place-events ul {
+  margin: 2px 0 0 0;
+  padding-left: 16px;
+  list-style-type: disc;
+}
+
+.place-events li {
+  line-height: 1.4;
+  margin-bottom: 1px;
+}
+
+.events-more {
+  color: var(--pe-accent);
+  font-style: italic;
+  display: block;
+  margin-top: 2px;
 }
 </style>

@@ -168,6 +168,9 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken }) {
     // Apply accent color from config
     applyAccentColorFromConfig();
 
+    // Apply fonts from config
+    applyFontsFromConfig();
+
     // Auto-open the first file if no file is currently open
     if (!state.currentEntry && state.fileIndex.length > 0) {
       await openEntry(state.fileIndex[0]);
@@ -198,6 +201,22 @@ watch(() => state.config?.site?.theme?.accentColor, (newColor) => {
   }
 });
 
+// Watch for body font changes in config
+watch(() => state.config?.site?.theme?.bodyFont, (newFont) => {
+  if (newFont) {
+    loadGoogleFont(newFont);
+    document.documentElement.style.setProperty('--pe-body-font', `"${newFont}", system-ui, -apple-system, sans-serif`);
+  }
+});
+
+// Watch for heading font changes in config
+watch(() => state.config?.site?.theme?.headingFont, (newFont) => {
+  if (newFont) {
+    loadGoogleFont(newFont);
+    document.documentElement.style.setProperty('--pe-heading-font', `"${newFont}", system-ui, -apple-system, sans-serif`);
+  }
+});
+
 // Apply accent color to CSS variables
 function applyAccentColor(color) {
   console.log(color)
@@ -222,6 +241,45 @@ function adjustColor(color, amount) {
     return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1);
   }
   return color;
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic Font Loading
+// ---------------------------------------------------------------------------
+
+// Keep track of loaded fonts to avoid duplicate loading
+const loadedFonts = new Set();
+
+// Load Google Font dynamically
+function loadGoogleFont(fontName) {
+  if (!fontName || loadedFonts.has(fontName)) return;
+
+  // Sanitize font name for URL (replace spaces with +)
+  const fontFamily = fontName.replace(/ /g, '+');
+
+  // Create link element for Google Fonts
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${fontFamily}:wght@400;500;600;700&display=swap`;
+
+  document.head.appendChild(link);
+  loadedFonts.add(fontName);
+}
+
+// Apply body and heading fonts from config
+function applyFontsFromConfig() {
+  const bodyFont = state.config?.site?.theme?.bodyFont;
+  const headingFont = state.config?.site?.theme?.headingFont;
+
+  if (bodyFont) {
+    loadGoogleFont(bodyFont);
+    document.documentElement.style.setProperty('--pe-body-font', `"${bodyFont}", system-ui, -apple-system, sans-serif`);
+  }
+
+  if (headingFont) {
+    loadGoogleFont(headingFont);
+    document.documentElement.style.setProperty('--pe-heading-font', `"${headingFont}", system-ui, -apple-system, sans-serif`);
+  }
 }
 
 async function fetchSchemaText(schemaUrl) {
@@ -358,8 +416,6 @@ export async function saveCurrent() {
     state.baselineText = JSON.stringify(state.draft, null, 2);
     state.status = 'Guardado.';
 
-    // Apply accent color if site config changed
-    applyAccentColorFromConfig();
   } catch (err) {
     state.error = err.message || String(err);
     throw err;

@@ -15,6 +15,10 @@
   --pe-danger-soft: rgba(209, 69, 58, 0.1);
   --pe-success: #1f9d6b;
 
+  /* Font variables - will be dynamically updated */
+  --pe-body-font: system-ui, -apple-system, sans-serif;
+  --pe-heading-font: system-ui, -apple-system, sans-serif;
+
   --pe-radius-sm: 6px;
   --pe-radius: 10px;
   --pe-radius-lg: 14px;
@@ -51,9 +55,14 @@
 
 body {
   margin: 0;
+  font-family: var(--pe-body-font);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--pe-heading-font);
 }
 
 /* Thin, theme-aware scrollbars */
