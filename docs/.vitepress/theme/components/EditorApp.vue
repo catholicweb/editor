@@ -101,7 +101,6 @@ async function onLogout() {
         :class="{ 'document-wide': isCalendarDoc }"
       >
         <FieldsGroup :fields="state.currentEntry.fields" :container="state.draft" />
-        <span  style="white-space: pre-wrap; font-size: small;">{{ JSON.stringify(state.config, null, 2) }}</span>
       </div>
       <div v-else class="empty-state">
         <div class="empty-icon">📄</div>

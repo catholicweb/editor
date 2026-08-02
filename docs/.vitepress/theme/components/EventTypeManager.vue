@@ -42,7 +42,7 @@ function fieldDefFor(f) {
     };
   }
   const def = { ...f };
-  if (def.name === 'duration') delete def.default;
+  //if (def.name === 'duration') delete def.default;
   return def;
 }
 
@@ -57,7 +57,6 @@ function addType() {
     name: `custom-${generateId('type')}`,
     label: 'Nuevo tipo',
     icon: 'calendar',
-    duration: 60,
     fields: {},
   });
   editingIndex.value = props.eventTypes.length - 1;

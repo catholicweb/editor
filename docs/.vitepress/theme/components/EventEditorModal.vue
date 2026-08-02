@@ -8,7 +8,6 @@ import {
   newException,
   occurrenceLabel,
   expandUpcomingOccurrences,
-  allowedFields,
   hasRepetition,
   isoToDate,
   getEventTypeOptions,
@@ -71,18 +70,17 @@ const typeDefaultFieldNames = computed(() => {
 });
 
 const eventFieldDefs = computed(() => {
-  const allowed = allowedFields(props.event.type, props.eventTypes);
   const showCeleb = showCelebrants.value;
   const hidden = typeDefaultFieldNames.value;
   const eventFields = state.schema?.eventFields || getEventFields();
-  return [
+  const r = [
     { name: 'type', label: 'Tipo de evento', type: 'select', options: { values: getEventTypeOptions(props.eventTypes) } },
     ...eventFields
-      .filter((f) => allowed.includes(f.name))
       .filter((f) => !hidden.has(f.name))
       .filter((f) => f.name !== 'celebrants' || showCeleb)
       .map(fieldDefFor),
   ];
+  return r
 });
 
 // The celebrants field only makes sense when there's more than one possible
@@ -223,6 +221,7 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
     <div class="modal">
       <header class="modal-header">
         <div class="title-wrap">
+          {{ props.eventTypes }}
           <span class="type-dot" :style="{ background: headerColor }">
             <PeIcon :name="headerIcon" :size="18" color="#fff" />
           </span>

@@ -32,12 +32,6 @@ export function getEventTypeOptions(eventTypes) {
   return eventTypes?.map((t) => ({ value: t.name, label: t.label }));
 }
 
-export function allowedFields(type, eventTypes) {
-  // All fields are now available for all event types
-  // Return all field names from eventFields if provided, otherwise return common field names
-  return ['title', 'image', 'description', 'location', 'date', 'times', 'rrule', 'duration', 'celebrants', 'except'];
-}
-
 export function getTypeConfig(type, eventTypes) {
   const et = getEventType(type, eventTypes);
   if (et) {
