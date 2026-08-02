@@ -4,7 +4,7 @@ import LoginView from './LoginView.vue';
 import FieldBrowser from './FieldBrowser.vue';
 import FieldsGroup from './FieldsGroup.vue';
 import DirtyGuardModal from './DirtyGuardModal.vue';
-import { state, isLoggedIn, isDirty, saveCurrent, logout, login, loadSavedSession } from '../lib/store.js';
+import { state, isLoggedIn, isDirty, saveCurrent, logout, login, loadSavedSession, initBeforeUnloadHandler } from '../lib/store.js';
 import { ui, initUi, toggleSidebar } from '../lib/ui.js';
 
 const booting = ref(false);
@@ -23,6 +23,7 @@ function handleKeyDown(e) {
 onMounted(async () => {
   initUi();
   window.addEventListener('keydown', handleKeyDown);
+  initBeforeUnloadHandler(); // Warn user about unsaved changes when leaving
   // Auto-login when a session with a token is already saved locally. The
   // user can still log out later. On failure we fall through to the login
   // form, prefilled with the saved values and showing the error.

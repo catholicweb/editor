@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, nextTick, watch, onUnmounted } from 'vue';
-import { configData } from '../lib/store.js';
+import { state } from '../lib/store.js';
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -13,15 +13,15 @@ const multiple = !!options.multiple;
 const creatable = !!options.creatable;
 const maxChips = options.max || 0; // 0 = unlimited
 
-// Reactively compute options from configData if source is "config>"
+// Reactively compute options from state.config if source is "config>"
 const normalizedOptions = computed(() => {
-  // Check if options should come from configData
+  // Check if options should come from config
   if (options.source && options.source.startsWith('config>')) {
     const fieldPath = options.source.slice(7); // Remove "config>"
     const pathParts = fieldPath.split('>');
-    let data = configData; // Start from configData
+    let data = state.config; // Start from state.config
 
-    // Navigate the path (e.g., "site>collaborators" -> configData.site.collaborators)
+    // Navigate the path (e.g., "site>collaborators" -> state.config.site.collaborators)
     for (const part of pathParts) {
       data = data?.[part];
     }

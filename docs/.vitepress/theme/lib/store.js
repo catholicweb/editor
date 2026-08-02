@@ -4,7 +4,7 @@ import * as api from './api.js';
 import { encodePath, decodeToken } from './codec.js';
 import { parseFrontmatter, stringifyFrontmatter } from './frontmatter.js';
 import { normalizeSchema, applyDefaults } from './schema.js';
-import { buildFileIndex, buildCollectionRefIndex, listMediaFiles } from './content-index.js';
+import { buildFileIndex, listMediaFiles } from './content-index.js';
 
 // Autosave: debounce timer per file
 let autosaveTimer = null;
@@ -12,14 +12,7 @@ const AUTOSAVE_DELAY = 10000; // 10 seconds
 
 const LS_PREFIX = 'parroquiaEditor';
 
-// Cache for config.json data to avoid re-reading from server
-let configCache = null;
-let configCacheToken = null;
-
-// Reactive config data for PWA and accent color
-export const configData = reactive({
-  site: null,
-});
+// No module-level cache needed - config is stored in state.config
 
 function lsKey(...parts) {
   return [LS_PREFIX, ...parts].join(':');
@@ -35,7 +28,9 @@ export const state = reactive({
   // resolved after login
   slug: '',
   schema: null,
-  rawTokens: [],
+  configToken: null,    // Token for config.json
+  mediaTokens: [],      // Tokens for media files
+  config: null,         // Config data (reactive, single source of truth)
 
   // ui
   status: '',
@@ -44,7 +39,6 @@ export const state = reactive({
 
   // file browser
   fileIndex: [], // ordered editable entries (see content-index.js)
-  refIndex: {}, // collection name -> [{id,label}]
   mediaFiles: [], // for the image picker
 
   // currently open document
@@ -120,39 +114,40 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken }) {
 
     const rawSchema = yaml.load(schemaText);
 
-    // Get file list and build fileIndex first
+    // Get file list
     const { files } = await api.listFiles(apiBase, slug);
+
+    // Separate config token from media tokens
+    const configToken = files?.find(f => {
+      try { return decodeToken(f) === 'pages/config.json'; } catch { return false; }
+    }) || null;
 
     state.slug = slug;
     state.schema = null;
-    state.rawTokens = files || [];
-    const tempFileIndex = buildFileIndex({ content: rawSchema.content || [] }, state.rawTokens);
+    state.configToken = configToken;
+    state.mediaTokens = files?.filter(f => f !== configToken) || [];
 
-    // Fetch config.json during login and cache it
+    // Fetch config.json during login
     let config = null;
-    const configEntry = tempFileIndex.find(e => e.contentName === 'config');
-    if (configEntry && configEntry.fileToken) {
+    if (configToken) {
       try {
-        const text = await api.getFileText(state.dataBase, state.slug, configEntry.fileToken);
+        const text = await api.getFileText(state.dataBase, state.slug, configToken);
         if (text) {
           config = JSON.parse(text);
-          // Cache the config
-          configCache = config;
-          configCacheToken = configEntry.fileToken;
         }
       } catch (err) {
         console.error('Failed to fetch config during login:', err);
       }
     }
 
-    // Create a configLoader callback that uses the cache
+    // Create a configLoader callback that uses state.config
     const configLoader = async (fieldPath) => {
       try {
-        if (!configCache) return null;
+        if (!state.config) return null;
 
         // Navigate the field path (e.g., "site>collaborators" -> config.site.collaborators)
         const pathParts = fieldPath.split('>');
-        let data = configCache;
+        let data = state.config;
         for (const part of pathParts) {
           data = data?.[part];
         }
@@ -166,12 +161,12 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken }) {
     const schema = await normalizeSchema(rawSchema || {}, configLoader);
 
     state.schema = schema;
-    state.fileIndex = buildFileIndex(schema, state.rawTokens);
-    state.refIndex = buildCollectionRefIndex(schema, state.rawTokens);
-    state.mediaFiles = listMediaFiles(schema, state.rawTokens);
+    state.config = config; // Store config in reactive state
+    state.fileIndex = buildFileIndex(schema); // No longer needs rawTokens
+    state.mediaFiles = listMediaFiles(schema, state.mediaTokens); // Use mediaTokens
 
-    // Process config reactively (accepts config as parameter)
-    loadConfigReactive(config);
+    // Apply accent color from config
+    applyAccentColorFromConfig();
 
     // Auto-open the first file if no file is currently open
     if (!state.currentEntry && state.fileIndex.length > 0) {
@@ -188,32 +183,16 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken }) {
   }
 }
 
-// Process config.json reactively for accent color
-// Accepts config as parameter (config is already fetched during login)
-function loadConfigReactive(config) {
-  try {
-    // Store config reactively
-    if (config && config.site) {
-      configData.site = config.site;
-    }
-
-    // Apply accent color initially
-    applyAccentColorFromConfig();
-  } catch (err) {
-    console.error('Failed to process config reactively:', err);
-  }
-}
-
-// Apply accent color from reactive config data
+// Apply accent color from config
 function applyAccentColorFromConfig() {
-  const color = configData.site?.theme?.accentColor;
+  const color = state.config?.site?.theme?.accentColor;
   if (color) {
     applyAccentColor(color);
   }
 }
 
-// Watch for accent color changes
-watch(() => configData.site?.theme?.accentColor, (newColor) => {
+// Watch for accent color changes in config
+watch(() => state.config?.site?.theme?.accentColor, (newColor) => {
   if (newColor) {
     applyAccentColor(newColor);
   }
@@ -254,10 +233,15 @@ async function fetchSchemaText(schemaUrl) {
 export async function refreshFileList() {
   if (!state.slug) return;
   const { files } = await api.listFiles(state.apiBase, state.slug);
-  state.rawTokens = files || [];
-  state.fileIndex = buildFileIndex(state.schema, state.rawTokens);
-  state.refIndex = buildCollectionRefIndex(state.schema, state.rawTokens);
-  state.mediaFiles = listMediaFiles(state.schema, state.rawTokens);
+
+  // Update media tokens (config token stays the same)
+  const configToken = files?.find(f => {
+    try { return decodeToken(f) === 'pages/config.json'; } catch { return false; }
+  }) || null;
+
+  state.configToken = configToken;
+  state.mediaTokens = files?.filter(f => f !== configToken) || [];
+  state.mediaFiles = listMediaFiles(state.schema, state.mediaTokens);
 }
 
 export function logout() {
@@ -266,9 +250,10 @@ export function logout() {
   clearSavedSession();
   state.slug = '';
   state.schema = null;
-  state.rawTokens = [];
+  state.configToken = null;
+  state.mediaTokens = [];
+  state.config = null;
   state.fileIndex = [];
-  state.refIndex = {};
   state.mediaFiles = [];
   state.currentEntry = null;
   state.draft = null;
@@ -276,10 +261,6 @@ export function logout() {
   state.baselineText = '';
   state.status = '';
   state.error = '';
-
-  // Clear config cache
-  configCache = null;
-  configCacheToken = null;
 }
 
 // ---------------------------------------------------------------------------
@@ -316,61 +297,31 @@ export async function openEntry(entry) {
   state.loading = true;
 
   // Cancel any pending autosave timer when switching entries
-  // The autosave will fire naturally if there are changes, or the
-  // beforeunload handler will warn the user if they try to leave
   if (autosaveTimer) {
     clearTimeout(autosaveTimer);
     autosaveTimer = null;
   }
 
   try {
-    let text = null;
-    let configData = null;
-
-    // For tab entries, use cached config.json data if available
-    if (entry.kind === 'tab' && entry.fileToken) {
-      // Check if we have cached data for this token
-      if (configCache && configCacheToken === entry.fileToken) {
-        configData = configCache;
-      } else {
-        // Load from server and cache
-        text = await api.getFileText(state.dataBase, state.slug, entry.fileToken);
-        if (text) {
-          configData = JSON.parse(text);
-          configCache = configData;
-          configCacheToken = entry.fileToken;
-        }
+    // Load config from state or server if needed
+    if (!state.config && entry.fileToken) {
+      const text = await api.getFileText(state.dataBase, state.slug, entry.fileToken);
+      if (text) {
+        state.config = JSON.parse(text);
       }
-    } else if (entry.fileToken) {
-      text = await api.getFileText(state.dataBase, state.slug, entry.fileToken);
     }
 
-    // For tab entries, extract the relevant field from config.json
-    let data;
-    if (entry.kind === 'tab' && entry.tabPath) {
-      data = configData ? (configData[entry.tabPath] || {}) : {};
-    } else {
-      data = parseContent(text, entry.format);
-    }
+    // Extract the relevant field from config.json
+    const data = state.config ? (state.config[entry.tabPath] || {}) : {};
 
-    // Baseline = remote content (or empty) with schema defaults applied, so
-    // that opening a file does not mark it dirty: FieldRenderer fills the
-    // same defaults during render, so the draft round-trips identically.
+    // Apply defaults from schema
     applyDefaults(entry.fields, data);
 
-    // For tab entries, we need to serialize just the field value for dirty checking
-    let baselineText;
-    if (entry.kind === 'tab') {
-      baselineText = JSON.stringify(data, null, 2);
-    } else {
-      const baselineBody = extractBody(text, entry.format);
-      baselineText = serializeContent(data, entry.format, baselineBody);
-    }
-
+    // Set baseline to field value for dirty checking
     state.currentEntry = entry;
     state.draft = reactive(data);
     state.currentBody = '';
-    state.baselineText = baselineText;
+    state.baselineText = JSON.stringify(data, null, 2);
     state.status = '';
   } catch (err) {
     state.error = err.message || String(err);
@@ -386,66 +337,29 @@ export async function saveCurrent() {
   try {
     const entry = state.currentEntry;
 
-    // For tab entries, we need to update the config.json file
-    if (entry.kind === 'tab') {
-      // Use cached config data or load from server
-      let configData;
-      if (configCache && configCacheToken === entry.fileToken) {
-        configData = configCache;
-      } else {
-        let configText = '';
-        if (entry.fileToken) {
-          configText = await api.getFileText(state.dataBase, state.slug, entry.fileToken);
-        }
-        configData = configText ? JSON.parse(configText) : {};
-      }
+    // Update the config object
+    state.config = state.config || {};
+    state.config[entry.tabPath] = { ...state.draft };
 
-      // Update the specific field
-      configData[entry.tabPath] = { ...state.draft };
+    // Serialize and save the entire config
+    const text = JSON.stringify(state.config, null, 2) + '\n';
+    const contentType = 'application/json; charset=utf-8';
 
-      // Update the cache
-      configCache = configData;
-      configCacheToken = entry.fileToken;
-
-      // Serialize and save the entire config
-      const text = JSON.stringify(configData, null, 2) + '\n';
-      const contentType = 'application/json; charset=utf-8';
-
-      let fileToken = entry.fileToken;
-      if (!fileToken) {
-        fileToken = encodePath(entry.relPath);
-        entry.fileToken = fileToken;
-      }
-
-      await api.putFile(state.apiBase, state.slug, state.editorToken, fileToken, text, contentType);
-
-      // Update baseline to the saved field value
-      state.baselineText = JSON.stringify(state.draft, null, 2);
-      state.status = 'Guardado.';
-    } else {
-      // Regular file entry - save as before
-      const text = serializeCurrent();
-      const contentType = entry.format === 'md'
-        ? 'text/markdown; charset=utf-8'
-        : 'application/json; charset=utf-8';
-
-      let fileToken = entry.fileToken;
-      if (!fileToken) {
-        fileToken = encodePath(entry.relPath);
-        entry.fileToken = fileToken;
-      }
-
-      await api.putFile(state.apiBase, state.slug, state.editorToken, fileToken, text, contentType);
-
-      state.baselineText = text;
-      state.status = 'Guardado.';
-
-      if (!state.rawTokens.includes(fileToken)) {
-        state.rawTokens.push(fileToken);
-        state.fileIndex = buildFileIndex(state.schema, state.rawTokens);
-        state.refIndex = buildCollectionRefIndex(state.schema, state.rawTokens);
-      }
+    let fileToken = entry.fileToken || state.configToken;
+    if (!fileToken) {
+      fileToken = encodePath(entry.relPath);
+      entry.fileToken = fileToken;
+      state.configToken = fileToken;
     }
+
+    await api.putFile(state.apiBase, state.slug, state.editorToken, fileToken, text, contentType);
+
+    // Update baseline to the saved field value
+    state.baselineText = JSON.stringify(state.draft, null, 2);
+    state.status = 'Guardado.';
+
+    // Apply accent color if site config changed
+    applyAccentColorFromConfig();
   } catch (err) {
     state.error = err.message || String(err);
     throw err;
@@ -493,9 +407,9 @@ export async function uploadMedia(file, relPath) {
     file,
     file.type || 'application/octet-stream'
   );
-  if (!state.rawTokens.includes(fileToken)) {
-    state.rawTokens.push(fileToken);
-    state.mediaFiles = listMediaFiles(state.schema, state.rawTokens);
+  if (!state.mediaTokens.includes(fileToken)) {
+    state.mediaTokens.push(fileToken);
+    state.mediaFiles = listMediaFiles(state.schema, state.mediaTokens);
   }
   return fileToken;
 }
@@ -511,5 +425,24 @@ watch(
   },
   { deep: true }
 );
+
+// Beforeunload handler: warn user if there are unsaved changes
+export function initBeforeUnloadHandler() {
+  window.addEventListener('beforeunload', (e) => {
+    if (isDirty.value) {
+      // Cancel any pending autosave
+      if (autosaveTimer) {
+        clearTimeout(autosaveTimer);
+        autosaveTimer = null;
+      }
+      // Try to save immediately (fire and forget)
+      saveCurrent().catch(err => console.error('Failed to save before unload:', err));
+      // Show warning to user
+      e.preventDefault();
+      e.returnValue = 'Tienes cambios sin guardar. ¿Seguro que quieres salir?';
+      return e.returnValue;
+    }
+  });
+}
 
 export { decodeToken };

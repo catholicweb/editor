@@ -4,7 +4,7 @@ import WeekGrid from './WeekGrid.vue';
 import EventEditorModal from './EventEditorModal.vue';
 import EventTypeManager from './EventTypeManager.vue';
 import { newEvent, generateId, defaultParroco, startOfWeek, ensureEventTypes, DEFAULT_EVENT_TYPES, getEventFields } from '../lib/calendar.js';
-import { saveCurrent, state, configData } from '../lib/store.js';
+import { saveCurrent, state } from '../lib/store.js';
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -12,7 +12,7 @@ const props = defineProps({
   keyName: { type: [String, Number], required: true },
 });
 
-// Ensure the events object exists in the container (which is configData.events)
+// Ensure the events object exists in the container
 function ensureEventsShape() {
   if (!Array.isArray(props.container.list)) props.container.list = [];
   if (!props.container.celebrants) props.container.celebrants = [];

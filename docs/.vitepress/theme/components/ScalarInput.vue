@@ -94,8 +94,25 @@ function imagePreviewUrl(publicPath) {
 
 // ---- reference ----------------------------------------------------------
 const refOptions = computed(() => {
-  const collection = props.field.options?.collection;
-  return (state.refIndex[collection] || []);
+  const collectionPath = props.field.options?.collection;
+  if (!collectionPath || !state.config) return [];
+
+  // Navigate state.config using the collection path (e.g., "events.list" -> config.events.list)
+  const pathParts = collectionPath.split('.');
+  let data = state.config;
+  for (const part of pathParts) {
+    data = data?.[part];
+  }
+
+  // If data is an array, map to { id, label } format
+  if (Array.isArray(data)) {
+    return data.map((item, index) => ({
+      id: item.id || item.name || String(index),
+      label: item.name || item.title || item.id || String(index),
+    }));
+  }
+
+  return [];
 });
 const refMultiple = computed(() => !!props.field.options?.multiple);
 function toggleRef(id) {

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import FieldRenderer from './FieldRenderer.vue';
-import { configData } from '../lib/store.js';
+import { state } from '../lib/store.js';
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -220,15 +220,16 @@ async function selectPlace(place) {
     try {
       const events = await importEventsForPlace(place);
       if (events.length > 0) {
-        // Add imported events to configData.events.list
+        // Add imported events to state.config.events.list
         const mappedEvents = events.map(e => mapEvent(e, place));
 
-        // Ensure configData.events.list exists
-        if (!configData.events) configData.events = {};
-        if (!Array.isArray(configData.events.list)) configData.events.list = [];
+        // Ensure state.config.events.list exists
+        if (!state.config) state.config = {};
+        if (!state.config.events) state.config.events = {};
+        if (!Array.isArray(state.config.events.list)) state.config.events.list = [];
 
         // Add events to the list
-        configData.events.list.push(...mappedEvents);
+        state.config.events.list.push(...mappedEvents);
         console.log('Imported events for', place.name, ':', mappedEvents);
       }
     } catch (err) {
