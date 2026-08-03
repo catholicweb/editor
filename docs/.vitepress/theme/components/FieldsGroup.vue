@@ -8,7 +8,6 @@ const props = defineProps({
 });
 
 const visible = computed(() => props.fields.filter((f) => !f.hidden));
-const hidden = computed(() => props.fields.filter((f) => f.hidden));
 </script>
 
 <template>
@@ -20,16 +19,6 @@ const hidden = computed(() => props.fields.filter((f) => f.hidden));
       :container="container"
       :key-name="f.name"
     />
-    <details v-if="hidden.length" class="advanced">
-      <summary>Campos avanzados ({{ hidden.length }})</summary>
-      <FieldRenderer
-        v-for="f in hidden"
-        :key="f.name"
-        :field="f"
-        :container="container"
-        :key-name="f.name"
-      />
-    </details>
   </div>
 </template>
 

@@ -35,7 +35,7 @@ const iconList = [
 
   // Religious Symbols - Objects
   { name: 'Biblia', icon: 'heroicons-solid:book-open' },
-  { name: 'Cáliz', icon: 'mdi:cup' },
+  { name: 'Cáliz', icon: 'game-icons:jeweled-chalice' },
   { name: 'Hostia', icon: 'mdi:bread-slice' },
   { name: 'Vela', icon: 'heroicons-solid:fire' },
   { name: 'Incienso', icon: 'mdi:incense' },

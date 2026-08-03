@@ -217,13 +217,12 @@ function closeModal() {
   />
 
   <!-- CUSTOM COMPONENTS -->
-  <ClientOnly v-else-if="field.type === 'places-autodiscover'">
-    <PlacesAutodiscover
-      :field="field"
-      :container="container"
-      :key-name="keyName"
-    />
-  </ClientOnly>
+  <PlacesAutodiscover
+    v-else-if="field.type === 'places-autodiscover'"
+    :field="field"
+    :container="container"
+    :key-name="keyName"
+  />
 
   <!-- LEAF -->
   <div v-else class="field leaf-field" :data-field-name="field.name">

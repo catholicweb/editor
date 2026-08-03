@@ -9,7 +9,7 @@ export default {
   },
   setup() {
     // Register service worker for PWA
-    if ('serviceWorker' in navigator) {
+    if (!import.meta.env.SSR && 'serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').catch((err) => {
           console.log('Service Worker registration failed:', err);

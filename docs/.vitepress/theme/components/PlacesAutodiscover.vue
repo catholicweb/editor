@@ -20,7 +20,7 @@ const isImportingEvents = ref(false);
 async function getUserLocation() {
   return new Promise((resolve, reject) => {
     // Check if we're in a browser environment (not SSR)
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+    if (!navigator?.geolocation) {
       reject(new Error('Tu navegador no soporta geolocalización'));
       return;
     }

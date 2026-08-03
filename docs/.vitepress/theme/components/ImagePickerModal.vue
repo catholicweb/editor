@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { state, uploadMedia, refreshFileList } from '../lib/store.js';
 import { publicFileUrl } from '../lib/api.js';
 import { relPathForNewMedia, mediaPublicPath } from '../lib/content-index.js';
+import { compressToWebP } from '../lib/image-compression.js';
 
 const emit = defineEmits(['select', 'close']);
 
@@ -29,8 +30,16 @@ async function onFileChosen(e) {
   uploading.value = true;
   uploadError.value = '';
   try {
-    const relPath = relPathForNewMedia(state.schema, file.name);
-    await uploadMedia(file, relPath);
+    // Compress image to WebP before upload
+    const compressedFile = await compressToWebP(file, {
+      maxWidth: 1920,
+      maxHeight: 1080,
+      targetSizeKB: 250,
+      minQuality: 0.6
+    });
+
+    const relPath = relPathForNewMedia(state.schema, compressedFile.name);
+    await uploadMedia(compressedFile, relPath);
     await refreshFileList();
     emit('select', mediaPublicPath(state.schema, relPath));
   } catch (err) {

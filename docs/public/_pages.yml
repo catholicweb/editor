@@ -384,6 +384,24 @@ content:
 
 
 
+  - name: theme
+    label: Tema visual
+    icon: fluent-mdl2:color-solid
+    type: object
+    fields:
+      - { name: bodyFont, label: Tipo de letra del cuerpo (cualquiera de https://fonts.google.com/), component: font }
+      - { name: headingFont, label: Tipo de letra de los titulos (cualquiera de https://fonts.google.com/), component: font }
+      - { name: accentColor, label: "Color elementos acentuados", type: color }
+      - { name: accentPrimary, label: "Color secundario", type: color }
+      - { name: navStyle, label: Estilo de la barrra de navegación, type: string }
+      - name: styles
+        label: Estilos y efectos individuales
+        type: object
+        list: { collapsible: { collapsed: true, summary: "{fields.selector}" } }
+        fields:
+          - { name: selector, label: "Elemento", component: selector }
+          - { name: cssClass, label: "Efecto a aplicar", component: effect }
+          - { name: scroll, label: "Aplicar al hacer scroll", type: boolean, default: false }
 
   - name: site
     icon: cog-6-tooth
@@ -414,20 +432,4 @@ content:
         fields:
           - { name: title, label: "Nombre (ej: BIZUM/BBVA/...)", type: string }
           - { name: account, label: Número de cuenta/bizum, type: string }
-      - name: theme
-        label: Tema visual
-        type: object
-        fields:
-          - { name: bodyFont, label: Tipo de letra del cuerpo (cualquiera de https://fonts.google.com/), component: font }
-          - { name: headingFont, label: Tipo de letra de los titulos (cualquiera de https://fonts.google.com/), component: font }
-          - { name: accentColor, label: "Color elementos acentuados", type: color }
-          - { name: accentPrimary, label: "Color secundario", type: color }
-          - { name: navStyle, label: Estilo de la barrra de navegación, type: string }
-          - name: styles
-            label: Estilos y efectos individuales
-            type: object
-            list: { collapsible: { collapsed: true, summary: "{fields.selector}" } }
-            fields:
-              - { name: selector, label: "Elemento", component: selector }
-              - { name: cssClass, label: "Efecto a aplicar", component: effect }
-              - { name: scroll, label: "Aplicar al hacer scroll", type: boolean, default: false }
+      
