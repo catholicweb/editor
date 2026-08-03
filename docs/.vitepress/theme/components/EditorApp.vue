@@ -3,8 +3,9 @@ import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import LoginView from './LoginView.vue';
 import FieldBrowser from './FieldBrowser.vue';
 import FieldsGroup from './FieldsGroup.vue';
-import { state, isLoggedIn, logout, login, loadSavedSession, initBeforeUnloadHandler, openEntry } from '../lib/store.js';
+import { state, isLoggedIn, isDirty, logout, login, loadSavedSession, initBeforeUnloadHandler, openEntry } from '../lib/store.js';
 import { ui, initUi, toggleSidebar } from '../lib/ui.js';
+import PeIcon from './PeIcon.vue';
 
 // Parse deep link from URL parameter (e.g., ?edit=site.collaborators)
 async function parseDeepLink(retryCount = 0) {
@@ -118,6 +119,23 @@ function handlePopState() {
 const sidebarOpen = computed(() => ui.sidebarOpen);
 const isMobile = computed(() => ui.mobile);
 
+// Header title: '{site.title} - Editor', falling back to the site slug.
+const headerTitle = computed(() =>
+  (state.config?.site?.title || state.slug) + ' - Editor'
+);
+
+// Save-status indicator: shows whether the open data has reached the server.
+const saveState = computed(() => {
+  if (state.saving) return 'saving';
+  return isDirty.value ? 'dirty' : 'saved';
+});
+const saveIcon = computed(() =>
+  saveState.value === 'saving' ? 'arrow-path' : 'arrow-down-tray'
+);
+const saveTitle = computed(() =>
+  ({ saved: 'Guardado.', dirty: 'Sin guardar', saving: 'Guardando…' }[saveState.value])
+);
+
 // Calendar documents use a full-width editor instead of the 760px form.
 const isCalendarDoc = computed(() =>
   (state.currentEntry?.fields || []).some((f) => f.type === 'calendario')
@@ -141,6 +159,29 @@ async function onLogout() {
   <LoginView v-else-if="!isLoggedIn" />
 
   <div v-else class="editor-shell" :class="{ 'sidebar-collapsed': !sidebarOpen && !isMobile }">
+    <header class="editor-header">
+      <span class="header-brand-title">{{ headerTitle }}</span>
+      <div class="header-actions">
+        <button
+          class="header-icon-btn save-indicator-btn"
+          :class="saveState"
+          :title="saveTitle"
+          :aria-label="saveTitle"
+        >
+          <PeIcon :name="saveIcon" :size="20" />
+        </button>
+        <button
+          class="header-icon-btn header-logout-btn"
+          @click="onLogout"
+          title="Cerrar sesión"
+          aria-label="Cerrar sesión"
+        >
+          <PeIcon name="arrow-right-on-rectangle" :size="20" type="solid" />
+        </button>
+      </div>
+    </header>
+
+    <div class="editor-body">
     <!-- Mobile backdrop -->
     <transition name="fade">
       <div v-if="isMobile && sidebarOpen" class="backdrop" @click="toggleSidebar" />
@@ -192,17 +233,85 @@ async function onLogout() {
       </div>
     </main>
 
+    </div><!-- /editor-body -->
   </div>
 </template>
 
 <style scoped>
 .editor-shell {
   display: flex;
+  flex-direction: column;
   position: relative;
   height: 100vh;
   background: var(--pe-bg);
   color: var(--pe-text);
   overflow: hidden;
+}
+
+/* ---------- Header ---------- */
+.editor-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 56px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  background: var(--pe-panel);
+  border-bottom: 1px solid var(--pe-border);
+  position: relative;
+  z-index: 30; /* stay above the mobile backdrop so buttons remain clickable */
+}
+.header-brand-title {
+  font-weight: 700;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.header-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--pe-radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--pe-muted);
+  cursor: pointer;
+  transition: background var(--pe-transition), color var(--pe-transition);
+}
+.header-icon-btn:hover {
+  background: var(--pe-hover);
+  color: var(--pe-text);
+}
+/* Save indicator: two colours (saved/sin guardar) plus a transient saving state */
+.save-indicator-btn.saved {
+  color: var(--pe-success);
+}
+.save-indicator-btn.dirty {
+  color: var(--pe-danger);
+}
+.save-indicator-btn.saving {
+  color: var(--pe-accent);
+}
+.header-logout-btn:hover {
+  background: var(--pe-danger-soft);
+  color: var(--pe-danger);
+}
+
+.editor-body {
+  flex: 1;
+  min-height: 0; /* lets the main panel scroll instead of pushing a page scrollbar */
+  display: flex;
+  overflow: hidden;
+  position: relative;
 }
 
 /* ---------- Sidebar ---------- */

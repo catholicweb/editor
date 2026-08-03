@@ -36,6 +36,7 @@ export const state = reactive({
   status: '',
   error: '',
   loading: false,
+  saving: false, // true while a save request is in flight (drives the header disk indicator)
 
   // file browser
   fileIndex: [], // ordered editable entries (see content-index.js)
@@ -407,6 +408,7 @@ export async function openEntry(entry) {
 export async function saveCurrent() {
   if (!state.currentEntry || state.draft == null) return;
   state.loading = true;
+  state.saving = true;
   state.error = '';
   try {
     const entry = state.currentEntry;
@@ -437,6 +439,7 @@ export async function saveCurrent() {
     throw err;
   } finally {
     state.loading = false;
+    state.saving = false;
   }
 }
 
