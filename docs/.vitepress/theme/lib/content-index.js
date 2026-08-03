@@ -46,13 +46,6 @@ export function buildFileIndex(schema) {
   return entries;
 }
 
-export function guessFormat(relPath) {
-  if (!relPath) return 'json';
-  if (relPath.endsWith('.md')) return 'md';
-  if (relPath.endsWith('.json')) return 'json';
-  return 'json';
-}
-
 // Media helpers -------------------------------------------------------------
 
 export function mediaPrefix(schema) {

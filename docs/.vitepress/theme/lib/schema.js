@@ -8,7 +8,7 @@
 // item needs to remember which variant it is. If your static-site generator
 // expects a different discriminator key, change it here — it's the only
 // place this convention is encoded.
-export const BLOCK_TYPE_KEY = 'type';
+const BLOCK_TYPE_KEY = 'type';
 
 const LOCAL_ROOT_PREFIXES = ['docs/public/', 'docs/public']; // strip to get relPath
 
@@ -97,7 +97,7 @@ export function isRepeatable(field) {
   return field.list === true || (field.list && typeof field.list === 'object');
 }
 
-export function scalarDefault(field) {
+function scalarDefault(field) {
   if (field.default !== undefined) return field.default;
   switch (field.type) {
     case 'boolean':
@@ -142,11 +142,7 @@ export function defaultForField(field) {
   if (field.type === 'calendario') {
     return { list: [], urls: [], celebrants: [], eventTypes: DEFAULT_EVENT_TYPES };
   }
-  if (field.type === 'object') {
-    const obj = {};
-    for (const f of field.fields || []) obj[f.name] = defaultForField(f);
-    return obj;
-  }
+  if (field.type === 'object') return defaultObject(field);
   if (field.type === 'block') return [];
   if (isMultiSelect(field) || isMultiImage(field) || isMultiRef(field)) return [];
   return scalarDefault(field);
@@ -197,12 +193,15 @@ export function applyDefaults(fields, container) {
 
 // Default value for a brand-new item inside a repeatable object/scalar list.
 export function defaultListItem(field) {
-  if (field.type === 'object') {
-    const obj = {};
-    for (const f of field.fields || []) obj[f.name] = defaultForField(f);
-    return obj;
-  }
+  if (field.type === 'object') return defaultObject(field);
   return scalarDefault(field);
+}
+
+// Build a fresh default object from an object field's sub-fields.
+function defaultObject(field) {
+  const obj = {};
+  for (const f of field.fields || []) obj[f.name] = defaultForField(f);
+  return obj;
 }
 
 // Default value for a brand-new block-list item once a block variant (name)

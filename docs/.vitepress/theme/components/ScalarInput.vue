@@ -20,6 +20,7 @@ function set(v) {
 
 // ---- long plain text (textarea that grows to show every newline) -----------
 const textEl = ref(null);
+const textObserver = ref(null);
 function autoSizeText() {
   const el = textEl.value;
   if (!el) return;
@@ -41,7 +42,13 @@ onMounted(() => {
   if (el && typeof ResizeObserver !== 'undefined') {
     const ro = new ResizeObserver(() => autoSizeText());
     ro.observe(el);
+    textObserver.value = ro;
   }
+});
+onUnmounted(() => {
+  // Disconnect the textarea observer so it doesn't leak per field instance.
+  textObserver.value?.disconnect();
+  textObserver.value = null;
 });
 watch(() => props.modelValue, () => nextTick(autoSizeText));
 
@@ -56,9 +63,32 @@ function exec(cmd, val = null) {
 function onRichInput(e) {
   set(e.target.innerHTML);
 }
+const ALLOWED_LINK_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'tel:']);
+
+// Only allow safe link schemes. A raw `javascript:`/`data:`/`vbscript:` URL
+// would otherwise be stored in the content and re-rendered via v-html (and
+// later on the public site), so reject anything outside the allowlist instead
+// of passing it to execCommand.
+function isSafeLinkUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  try {
+    // Relative URLs resolve against the page origin (http/https) and are fine;
+    // anything else must be on the allowlist.
+    const parsed = new URL(url, location.href);
+    return ALLOWED_LINK_PROTOCOLS.has(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
 function insertLink() {
   const url = prompt('URL del enlace:');
-  if (url) exec('createLink', url);
+  if (!url) return;
+  if (!isSafeLinkUrl(url)) {
+    alert('Solo se permiten enlaces http, https, mailto o tel.');
+    return;
+  }
+  exec('createLink', url);
 }
 
 // ---- image ------------------------------------------------------------
@@ -87,8 +117,8 @@ function removeImageAt(i) {
   set(arr);
 }
 function imagePreviewUrl(publicPath) {
-  if (publicPath.startsWith('http')) return publicPath
   if (!publicPath) return '';
+  if (publicPath.startsWith('http')) return publicPath;
   const relPath = mediaRelPathFromPublic(state.schema, publicPath);
   if (!relPath) return '';
   return publicFileUrl(state.dataBase, state.slug, encodePath(relPath));

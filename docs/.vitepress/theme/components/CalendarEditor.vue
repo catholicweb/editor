@@ -29,7 +29,7 @@ const eventFields = computed(() => {
 const eventTypes = computed(() => {
   // Event types are stored in state.config['event-types']?.types
   // This is populated when the user edits the event-types tab
-  const eventTypesData = state.config?.['event-types'].list;
+  const eventTypesData = state.config?.['event-types']?.list;
   if (eventTypesData && Array.isArray(eventTypesData)) {
     return eventTypesData;
   }

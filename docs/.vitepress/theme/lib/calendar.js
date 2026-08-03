@@ -420,20 +420,22 @@ export function resolveEventStyle(event, celebrants, eventTypes = null) {
     .map((id) => celebrantById(celebrants, id))
     .filter(Boolean);
 
-  // Assign colors from the predefined array if not set on the celebrant
+  // Resolve a stable palette color per celebrant WITHOUT mutating the shared
+  // celebrant records (assigning c.color would leak style state onto the
+  // document data). Use the celebrant's own color if set, otherwise the first
+  // palette color not already used by an earlier celebrant this render.
   const usedColors = new Set();
-  celebs.forEach((c, i) => {
-    if (!c.color) {
-      // Find the first unused color from the array
-      const availableColor = CELEBRANT_COLORS.find((clr) => !usedColors.has(clr));
-      c.color = availableColor || CELEBRANT_COLORS[i % CELEBRANT_COLORS.length];
-    }
-    usedColors.add(c.color);
+  const colors = celebs.map((c, i) => {
+    const color = c.color
+      || CELEBRANT_COLORS.find((clr) => !usedColors.has(clr))
+      || CELEBRANT_COLORS[i % CELEBRANT_COLORS.length];
+    usedColors.add(color);
+    return color;
   });
 
   return {
     icon: cfg.icon,
-    color: celebs[0]?.color || CELEBRANT_COLORS[0],
+    color: colors[0] || CELEBRANT_COLORS[0],
     celebrantName: celebs[0]?.name || null,
     celebrants: celebs,
     duration: event.duration ?? cfg.duration ?? DEFAULT_DURATION,
@@ -626,26 +628,6 @@ function getDefaultForType(type) {
     default:
       return []; // arrays, objects, etc.
   }
-}
-
-export function newCelebrant() {
-  return { id: generateId('cel'), name: '', color: '#4a90d9' };
-}
-
-// The document always has at least one celebrant — the párroco / moderador —
-// so a single-priest parish still has a sensible default and events default
-// to him. Stable id "parroco" so references survive across sessions.
-export function defaultParroco() {
-  return { id: 'parroco', name: 'Párroco / Moderador', color: '#4a90d9' };
-}
-
-// Which events reference a celebrant id (for delete warnings).
-export function referencesToCelebrant(events, id) {
-  const refs = [];
-  (events || []).forEach((evt, ei) => {
-    if (toArray(evt.celebrants).includes(id)) refs.push({ event: ei, title: evt.title || `Evento ${ei + 1}` });
-  });
-  return refs;
 }
 
 export function formatWeekRange(weekStart) {

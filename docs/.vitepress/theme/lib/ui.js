@@ -27,12 +27,19 @@ export function initUi() {
   if (ui.ready) return;
   ui.ready = true;
   applyBreakpoint();
-  // On large screens, always start with sidebar open (collapse was removed)
-  // On mobile, start with sidebar closed
+  // On mobile, always start with sidebar closed.
+  // On large screens, restore the persisted preference written by
+  // toggleSidebar (defaulting to open).
   if (ui.mobile) {
     ui.sidebarOpen = false;
   } else {
-    ui.sidebarOpen = true;
+    let saved = null;
+    try {
+      saved = localStorage.getItem(LS_KEY);
+    } catch {
+      /* ignore */
+    }
+    ui.sidebarOpen = saved === null ? true : saved === '1';
   }
   window.addEventListener('resize', onResize);
 }

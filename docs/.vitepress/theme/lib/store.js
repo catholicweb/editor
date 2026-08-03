@@ -187,37 +187,46 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken }) {
 
 // Apply accent color from config
 function applyAccentColorFromConfig() {
-  const color = state.config?.site?.theme?.accentColor;
+  const color = state.config?.theme?.accentColor;
   if (color) {
     applyAccentColor(color);
   }
 }
 
 // Watch for accent color changes in config
-watch(() => state.config?.site?.theme?.accentColor, (newColor) => {
+watch(() => state.config?.theme?.accentColor, (newColor) => {
   if (newColor) {
     applyAccentColor(newColor);
   }
 });
 
 // Watch for body font changes in config
-watch(() => state.config?.site?.theme?.bodyFont, (newFont) => {
-  if (newFont) {
-    loadGoogleFont(newFont);
-    document.documentElement.style.setProperty('--pe-body-font', `"${newFont}", system-ui, -apple-system, sans-serif`);
+watch(() => state.config?.theme?.bodyFont, (newFont) => {
+  const font = sanitizeFontName(newFont);
+  if (font) {
+    loadGoogleFont(font);
+    document.documentElement.style.setProperty('--pe-body-font', `"${font}", system-ui, -apple-system, sans-serif`);
   }
 });
 
 // Watch for heading font changes in config
-watch(() => state.config?.site?.theme?.headingFont, (newFont) => {
-  if (newFont) {
-    loadGoogleFont(newFont);
-    document.documentElement.style.setProperty('--pe-heading-font', `"${newFont}", system-ui, -apple-system, sans-serif`);
+watch(() => state.config?.theme?.headingFont, (newFont) => {
+  const font = sanitizeFontName(newFont);
+  if (font) {
+    loadGoogleFont(font);
+    document.documentElement.style.setProperty('--pe-heading-font', `"${font}", system-ui, -apple-system, sans-serif`);
   }
 });
 
+// Accept only #RGB / #RRGGBB hex colors; anything else is rejected so a
+// malicious or malformed config value can't inject into CSS or produce NaN.
+function validHexColor(str) {
+  return typeof str === 'string' && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(str);
+}
+
 // Apply accent color to CSS variables
 function applyAccentColor(color) {
+  if (!validHexColor(color)) return;
   const root = document.documentElement;
   root.style.setProperty('--pe-accent', color);
   root.style.setProperty('--pe-accent-hover', adjustColor(color, -20));
@@ -248,12 +257,21 @@ function adjustColor(color, amount) {
 // Keep track of loaded fonts to avoid duplicate loading
 const loadedFonts = new Set();
 
+// Only keep safe characters in a font-family name before it reaches a CSS
+// string or a Google Fonts URL. Rejects quotes, &, ; and other characters
+// that could break out of the URL/string, while keeping spaces (which become
+// '+' in the URL form).
+function sanitizeFontName(name) {
+  return String(name || '').replace(/[^A-Za-z0-9 ]/g, '').trim();
+}
+
 // Load Google Font dynamically
 function loadGoogleFont(fontName) {
-  if (!fontName || loadedFonts.has(fontName)) return;
+  const safeName = sanitizeFontName(fontName);
+  if (!safeName || loadedFonts.has(safeName)) return;
 
   // Sanitize font name for URL (replace spaces with +)
-  const fontFamily = fontName.replace(/ /g, '+');
+  const fontFamily = safeName.replace(/ /g, '+');
 
   // Create link element for Google Fonts
   const link = document.createElement('link');
@@ -261,13 +279,13 @@ function loadGoogleFont(fontName) {
   link.href = `https://fonts.googleapis.com/css2?family=${fontFamily}:wght@400;500;600;700&display=swap`;
 
   document.head.appendChild(link);
-  loadedFonts.add(fontName);
+  loadedFonts.add(safeName);
 }
 
 // Apply body and heading fonts from config
 function applyFontsFromConfig() {
-  const bodyFont = state.config?.site?.theme?.bodyFont;
-  const headingFont = state.config?.site?.theme?.headingFont;
+  const bodyFont = sanitizeFontName(state.config?.theme?.bodyFont);
+  const headingFont = sanitizeFontName(state.config?.theme?.headingFont);
 
   if (bodyFont) {
     loadGoogleFont(bodyFont);

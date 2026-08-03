@@ -202,7 +202,6 @@ async function searchMisasAPI(lat, lon) {
       const placeLat = parish.location?.coordinates?.[1] || parish.lat;
       const placeLon = parish.location?.coordinates?.[0] || parish.lon;
 
-      console.log(parish)
       return {
         name: parish.name || 'Sin nombre',
         geo: `${placeLat}, ${placeLon}`,
@@ -281,8 +280,6 @@ async function importEventsForPlace(place) {
 
     // Extract events from the response (usually under 'mass' key)
     const events = data?.morg?.data?.[0]?.mass || [];
-
-    console.log(data,events)
 
     return events;
   } catch (err) {
@@ -371,7 +368,6 @@ async function selectPlace(place) {
         // Add events to the list
         const mappedEvents = events.map(e => mapEvent(e, place));
         state.config.calendar.events.list.push(...mappedEvents);
-        console.log('Imported events for', place.name, ':', mappedEvents);
       }
     } catch (err) {
       console.error('Failed to import events:', err);
@@ -430,7 +426,6 @@ function closeModal() {
 
             <div v-for="(place, idx) in discoveredPlaces" :key="idx" class="place-item">
               <div class="place-info">
-                {{ place }}
                 <strong>{{ place.name }} - <span class="place-distance">{{ formatDistance(place.distance) }}</span></strong>
                 <!-- Show events if available -->
                 <div v-if="place.events && place.events.length > 0" class="place-events">

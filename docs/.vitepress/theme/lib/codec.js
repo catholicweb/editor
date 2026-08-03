@@ -63,15 +63,6 @@ export function encodePath(relPath) {
   return result;
 }
 
-// Decode is a no-op: filenames are human-readable and not decoded back to paths.
-// The schema defines the structure; we don't need to reconstruct paths.
-export function decodeToken(token) {
-  return token;
-}
-
-// Export for use by other modules that need to validate filenames.
-export const TOKEN_RE = FILENAME_RE;
-
 // Validate a filename and return it if valid, null otherwise.
 // Used to filter tokens when building the file index.
 export function safeRelPath(filename) {

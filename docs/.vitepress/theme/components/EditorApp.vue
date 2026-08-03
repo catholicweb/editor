@@ -3,7 +3,7 @@ import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import LoginView from './LoginView.vue';
 import FieldBrowser from './FieldBrowser.vue';
 import FieldsGroup from './FieldsGroup.vue';
-import { state, isLoggedIn, isDirty, saveCurrent, logout, login, loadSavedSession, initBeforeUnloadHandler, openEntry } from '../lib/store.js';
+import { state, isLoggedIn, logout, login, loadSavedSession, initBeforeUnloadHandler, openEntry } from '../lib/store.js';
 import { ui, initUi, toggleSidebar } from '../lib/ui.js';
 
 // Parse deep link from URL parameter (e.g., ?edit=site.collaborators)
@@ -117,11 +117,6 @@ function handlePopState() {
 
 const sidebarOpen = computed(() => ui.sidebarOpen);
 const isMobile = computed(() => ui.mobile);
-
-const currentTitle = computed(() => {
-  if (!state.currentEntry) return '';
-  return `${state.currentEntry.groupLabel} · ${state.currentEntry.displayName}`;
-});
 
 // Calendar documents use a full-width editor instead of the 760px form.
 const isCalendarDoc = computed(() =>
@@ -302,35 +297,6 @@ async function onLogout() {
   white-space: nowrap;
 }
 
-.icon-btn {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--pe-radius-sm);
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--pe-muted);
-  cursor: pointer;
-  transition: background var(--pe-transition), color var(--pe-transition), border-color var(--pe-transition);
-  flex-shrink: 0;
-}
-.icon-btn:hover {
-  background: var(--pe-hover);
-  color: var(--pe-text);
-}
-.collapse-btn .chevron {
-  font-size: 22px;
-  line-height: 1;
-  transform: rotate(0deg);
-  transition: transform var(--pe-transition);
-}
-.collapse-btn .chevron.left {
-  transform: rotate(180deg);
-}
-
-/* Menu button removed - sidebar toggled via bottom toolbar on mobile */
-
 /* ---------- Main panel ---------- */
 .main-panel {
   flex: 1;
@@ -347,11 +313,6 @@ async function onLogout() {
   padding: 9px 14px;
   border-radius: var(--pe-radius);
   border: 1px solid transparent;
-}
-.status {
-  color: var(--pe-accent);
-  background: var(--pe-accent-soft);
-  border-color: var(--pe-accent-soft-hover);
 }
 .error {
   color: var(--pe-danger);
@@ -393,34 +354,6 @@ async function onLogout() {
 }
 .empty-cta:hover {
   background: var(--pe-accent-soft-hover);
-}
-
-/* ---------- Document footer (delete button) ---------- */
-.document-footer {
-  margin-top: 40px;
-  padding-top: 24px;
-  border-top: 1px solid var(--pe-border);
-  display: flex;
-  justify-content: flex-end;
-}
-.delete-page-btn {
-  padding: 10px 20px;
-  border-radius: var(--pe-radius);
-  border: 1px solid var(--pe-danger);
-  background: var(--pe-danger);
-  color: #fff;
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background var(--pe-transition), opacity var(--pe-transition);
-}
-.delete-page-btn:hover:not(:disabled) {
-  background: #c0392b;
-  border-color: #c0392b;
-}
-.delete-page-btn:disabled {
-  cursor: default;
-  opacity: 0.5;
 }
 
 /* ---------- Mobile drawer ---------- */
@@ -486,22 +419,12 @@ async function onLogout() {
   .backdrop {
     display: none;
   }
-
-  .menu-btn {
-    display: none;
-  }
 }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 860px) {
   .main-panel {
     padding: 18px 18px 96px;
-  }
-  .floating-save-btn {
-    bottom: 80px; /* Above bottom toolbar */
-    right: 18px;
-    width: 48px;
-    height: 48px;
   }
   .sidebar-footer {
     padding: 10px;

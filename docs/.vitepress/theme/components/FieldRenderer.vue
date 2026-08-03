@@ -57,20 +57,11 @@ const isScalarList = computed(() => !isObject.value && !isBlock.value && isRepea
 const collapsible = computed(() => getCollapsibleConfig(props.field));
 const listConfig = computed(() => getListConfig(props.field));
 
-// Sorted items based on listConfig.sort option
+// Items in their stored order. ('alphabetical' client-side sorting was
+// removed because it fought the item index used for in-place editing.)
 const sortedItems = computed(() => {
   if (!isObjectList.value && !isScalarList.value) return scalarValue.value;
-  const items = [...scalarValue.value];
-  /* disabled coz this causes issues with the item idexes (you staring typing a name, it shows somewhere else)
-  if (listConfig.value?.sort === 'alphabetical') {
-    return items.sort((a, b) => {
-      const labelA = collapsible.value?.summary ? renderSummary(collapsible.value.summary, a) : '';
-      const labelB = collapsible.value?.summary ? renderSummary(collapsible.value.summary, b) : '';
-      return labelA.localeCompare(labelB);
-    });
-  }*/
-  // 'manual' or 'raw': return as-is (preserve order)
-  return items;
+  return [...scalarValue.value]; // 'manual' or 'raw': preserve order
 });
 
 

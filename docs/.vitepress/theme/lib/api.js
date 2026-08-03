@@ -47,7 +47,7 @@ export async function listFiles(apiBase, slug) {
 
 export async function putFile(apiBase, slug, token, fileToken, body, contentType) {
   const res = await fetch(
-    `${trimBase(apiBase)}/sites/${encodeURIComponent(slug)}/${fileToken}`,
+    `${trimBase(apiBase)}/sites/${encodeURIComponent(slug)}/${encodeURIComponent(fileToken)}`,
     {
       method: 'PUT',
       headers: {
@@ -58,20 +58,6 @@ export async function putFile(apiBase, slug, token, fileToken, body, contentType
     }
   );
   if (!res.ok) throw new Error(`No se pudo guardar el fichero: ${await errText(res)}`);
-  return res.json();
-}
-
-export async function deleteFile(apiBase, slug, token, fileToken) {
-  const res = await fetch(
-    `${trimBase(apiBase)}/sites/${encodeURIComponent(slug)}/${fileToken}`,
-    {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-  if (!res.ok) throw new Error(`No se pudo eliminar el fichero: ${await errText(res)}`);
   return res.json();
 }
 
@@ -88,7 +74,7 @@ function nocacheUrl(url) {
 }
 
 export function publicFileUrl(dataBase, slug, fileToken) {
-  return `${trimBase(dataBase)}/${encodeURIComponent(slug)}/${fileToken}`;
+  return `${trimBase(dataBase)}/${encodeURIComponent(slug)}/${encodeURIComponent(fileToken)}`;
 }
 
 export async function getFileText(dataBase, slug, fileToken) {
@@ -97,11 +83,4 @@ export async function getFileText(dataBase, slug, fileToken) {
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`No se pudo leer el fichero: ${await errText(res)}`);
   return res.text();
-}
-
-export async function getFileBlob(dataBase, slug, fileToken) {
-  const url = nocacheUrl(publicFileUrl(dataBase, slug, fileToken));
-  const res = await fetch(url, { cache: 'no-cache' });
-  if (!res.ok) throw new Error(`No se pudo leer la imagen: ${await errText(res)}`);
-  return res.blob();
 }
