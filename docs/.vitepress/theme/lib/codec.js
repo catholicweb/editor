@@ -5,8 +5,13 @@
  *   - config-api/src/index.js (FILENAME_RE validation)
  *   - web-template/docs/.vitepress/migrate.js (Node-side encode/decode)
  *
- * BEFORE making changes, ensure all three files produce identical results!
- * See ../../../../CLAUDE.md for full dependency documentation.
+ * The token-encoding contract (FILENAME_RE, ALLOWED_EXT, / -> - flattening) is
+ * canonical in config-api/README.md:
+ *   - local:   ../../../../../config-api/README.md
+ *   - GitHub:  https://github.com/catholicweb/config-api/blob/main/README.md
+ * The validator that must be matched is config-api/src/index.js (validateFilename).
+ * Before changing the encoding, ensure all three files (config-api/src/index.js,
+ * web-template/docs/.vitepress/migrate.js, and this module) produce identical results.
  */
 
 // Allowed file extensions (must match config-api ALLOWED_EXT exactly).

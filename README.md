@@ -57,7 +57,7 @@ referencia de la codificación de tokens (el editor la reimplementa en
 ```
 docs/.vitepress/theme/
   lib/
-    codec.js          base64url encode/decode (idéntico a migrate.js)
+    codec.js          encode/validación de filename plano (charset url-safe; / → -; idéntico a migrate.js)
     frontmatter.js     parseo/serialización YAML frontmatter para .md
     schema.js           normaliza pages.yml: resuelve `component:`, calcula
                         valores por defecto, interpola resúmenes collapsible
@@ -109,7 +109,7 @@ Se sigue **estrictamente el orden de `content:` en pages.yml**, nunca el
 orden en que el bucket devuelve los tokens. Para `type: collection`, los
 ficheros se ordenan alfabéticamente por su ruta decodificada dentro de esa
 carpeta. Al usuario se le muestra siempre el nombre decodificado, nunca el
-token base64. Los ficheros de `media` no aparecen en este listado principal
+token (filename plano codificado). Los ficheros de `media` no aparecen en este listado principal
 (solo son accesibles vía el selector de imágenes), y ningún fichero fuera
 del esquema se ofrece para editar.
 

@@ -5,8 +5,12 @@
  *   - config-api/src/index.js (endpoint definitions)
  *   - web-template/docs/.vitepress/migrate.js (also uses these endpoints)
  *
- * BEFORE changing API calls, update ALL dependent files!
- * See ../../../../CLAUDE.md for full dependency documentation.
+ * The contract for these endpoints is canonical in config-api/README.md:
+ *   - local:   ../../../../../config-api/README.md
+ *   - GitHub:  https://github.com/catholicweb/config-api/blob/main/README.md
+ * Endpoint definitions live in https://github.com/catholicweb/config-api/blob/main/src/index.js.
+ * Before changing API calls, update ALL dependent files (config-api/src/index.js,
+ * web-template/docs/.vitepress/migrate.js, and this module).
  */
 
 // Thin client for two hosts:
