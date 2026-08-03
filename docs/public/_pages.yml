@@ -246,11 +246,11 @@ content:
           - name: links
             label: Enlaces
             type: reference
-            options: { collection: pages.pages, multiple: true, label: "{title}" }
+            options: { collection: pages.list, multiple: true, label: "{title}" }
       - name: languages
         label: Idiomas de la web
         component: languages
-      - name: pages
+      - name: list
         label: Páginas
         type: object
         list: { collapsible: { collapsed: true, summary: "{fields.title}" }, sort: "alphabetical", modal: true  }
@@ -378,7 +378,7 @@ content:
                   - name: links
                     label: Enlaces internos
                     type: reference
-                    options: { collection: pages.pages, multiple: true, label: "{title}" }
+                    options: { collection: pages.list, multiple: true, label: "{title}" }
                   - { name: tags, label: Opciones avanzadas de estilo, component: tags }
       - { name: pageperlocatoin, label: Crear una página nueva automaticamente para cada templo, type: boolean, default: true }
 
