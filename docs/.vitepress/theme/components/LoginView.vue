@@ -6,7 +6,7 @@ const saved = loadSavedSession() || {};
 const form = reactive({
   apiBase: saved.apiBase || 'https://api.parroquia.app',
   dataBase: saved.dataBase || 'https://data.parroquia.app',
-  schemaUrl: '_pages.yml' || 'https://raw.githubusercontent.com/catholicweb/web-template/refs/heads/main/.pages.yml',
+  schemaUrl: '_pages.yml',
   editorToken: saved.editorToken || '',
 });
 

@@ -10,7 +10,7 @@
  */
 
 // Allowed file extensions (must match config-api ALLOWED_EXT exactly).
-const ALLOWED_EXT = ['md', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'pdf', 'json'];
+const ALLOWED_EXT = ['md', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'json'];
 
 // Filename validation regex (must match config-api FILENAME_RE exactly).
 const FILENAME_RE = /^[A-Za-z0-9_-]+(\.[a-z0-9]{1,5})?$/;
