@@ -2,8 +2,10 @@ import { reactive } from 'vue';
 
 // Small shared UI state so components that aren't direct children of
 // EditorApp (e.g. FieldBrowser) can react to / drive the sidebar drawer.
-const MOBILE_BREAK = 860;
-const LS_KEY = 'pe:sidebar';
+// Mobile breakpoint matches the CSS bottom-bar breakpoint in EditorApp.vue
+// (@media max-width: 768px) so the sidebar and bottom bar are exact opposites:
+// sidebar always visible on large screens, bottom bar always on small screens.
+const MOBILE_BREAK = 768;
 
 export const ui = reactive({
   sidebarOpen: true,
@@ -27,28 +29,15 @@ export function initUi() {
   if (ui.ready) return;
   ui.ready = true;
   applyBreakpoint();
-  // On mobile, always start with sidebar closed.
-  // On large screens, restore the persisted preference written by
-  // toggleSidebar (defaulting to open).
-  if (ui.mobile) {
-    ui.sidebarOpen = false;
-  } else {
-    let saved = null;
-    try {
-      saved = localStorage.getItem(LS_KEY);
-    } catch {
-      /* ignore */
-    }
-    ui.sidebarOpen = saved === null ? true : saved === '1';
-  }
+  // The sidebar is always visible on large screens and always hidden on small
+  // screens (the bottom bar takes over there). No persistence — it must stay in
+  // lockstep with the current breakpoint.
+  ui.sidebarOpen = !ui.mobile;
   window.addEventListener('resize', onResize);
 }
 
 export function toggleSidebar() {
   ui.sidebarOpen = !ui.sidebarOpen;
-  if (!ui.mobile) {
-    localStorage.setItem(LS_KEY, ui.sidebarOpen ? '1' : '0');
-  }
 }
 
 // Called after navigating to a file: close the mobile drawer so the
