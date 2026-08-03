@@ -3,7 +3,7 @@ import { computed, ref, nextTick, reactive } from 'vue';
 import WeekGrid from './WeekGrid.vue';
 import EventEditorModal from './EventEditorModal.vue';
 import EventTypeManager from './EventTypeManager.vue';
-import { newEvent, generateId, defaultParroco, startOfWeek, getEventFields } from '../lib/calendar.js';
+import { newEvent, generateId, startOfWeek, getEventFields } from '../lib/calendar.js';
 import { state } from '../lib/store.js';
 
 const props = defineProps({
@@ -15,10 +15,7 @@ const props = defineProps({
 // Ensure the events object exists in the container
 function ensureEventsShape() {
   if (!Array.isArray(props.container.list)) props.container.list = [];
-  if (!props.container.celebrants) props.container.celebrants = [];
   if (!props.container.eventTypes) props.container.eventTypes = [];
-  // A parish always has at least one celebrant (the párroco / moderador)
-  if (!props.container.celebrants.length) props.container.celebrants.push(defaultParroco());
 }
 ensureEventsShape();
 

@@ -28,10 +28,6 @@ export function getEventType(typeName, eventTypes) {
   return eventTypes?.find((t) => t.name === typeName) || null;
 }
 
-export function getEventTypeOptions(eventTypes) {
-  return eventTypes?.map((t) => ({ value: t.name, label: t.label }));
-}
-
 export function getTypeConfig(type, eventTypes) {
   const et = getEventType(type, eventTypes);
   if (et) {

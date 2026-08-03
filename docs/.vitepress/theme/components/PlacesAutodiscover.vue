@@ -344,7 +344,7 @@ async function selectPlace(place) {
   if (!Array.isArray(state.config.places.list)) state.config.places.list = [];
 
   state.config.places.list.push({
-    name: place.name,
+    name: place.name.replaceAll('Iglesia','').replaceAll('Parroquia','').replaceAll(' de ',' '),
     geo: place.geo,
     image: place.image,
   });

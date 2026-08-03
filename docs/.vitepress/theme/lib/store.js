@@ -219,7 +219,6 @@ watch(() => state.config?.site?.theme?.headingFont, (newFont) => {
 
 // Apply accent color to CSS variables
 function applyAccentColor(color) {
-  console.log(color)
   const root = document.documentElement;
   root.style.setProperty('--pe-accent', color);
   root.style.setProperty('--pe-accent-hover', adjustColor(color, -20));

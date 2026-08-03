@@ -23,33 +23,21 @@ const components = computed(() => state.schema?.components || {});
 // Build a concrete, resolved field def for an event field — same logic as
 // EventEditorModal.fieldDefFor, so the type editor shows the exact same
 // inputs (location/times/rrule resolved against pages.yml components).
-// The duration field's `default: 45` is intentionally stripped here so that
-// the type editor does NOT auto-write 45 into t.fields.duration on mount —
-// that would hide the field on events and override legacy type durations.
 function fieldDefFor(f) {
   if (f.component) {
     return resolveFieldDef({ name: f.name, component: f.component, label: f.label }, components.value);
   }
-  if (f.name === 'celebrants') {
-    return {
-      name: 'celebrants',
-      label: 'Celebrantes',
-      type: 'select',
-      options: {
-        multiple: true,
-        values: props.celebrants.map((c) => ({ value: c.id, label: c.name || '(sin nombre)' })),
-      },
-    };
-  }
   const def = { ...f };
-  //if (def.name === 'duration') delete def.default;
+  if (f.name == 'duration') def.default = 60
   return def;
 }
 
 // All event fields, resolved — rendered as editors bound to t.fields.
 const typeFieldDefs = computed(() => {
   const eventFields = state.schema?.eventFields || getEventFields();
-  return eventFields.map(fieldDefFor);
+  const e = eventFields.map(fieldDefFor);
+  console.log(e)
+  return e
 });
 
 function addType() {
@@ -80,11 +68,6 @@ function removeType(i) {
   if (editingIndex.value === i) editingIndex.value = null;
 }
 
-// Compute effective duration for display (from fields.duration or legacy top-level)
-function typeDuration(t) {
-  if (t.fields && t.fields.duration != null) return t.fields.duration;
-  return t.duration || 45;
-}
 </script>
 
 <template>
@@ -101,7 +84,6 @@ function typeDuration(t) {
             <PeIcon :name="t.icon" :size="18" />
           </span>
           <span class="type-label">{{ t.label }}</span>
-          <span class="type-duration"></span>
           <button class="del" @click.stop="removeType(i)" title="Eliminar">✕</button>
         </div>
 

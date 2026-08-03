@@ -47,7 +47,7 @@ const timeRows = computed(() => {
     if (!Number.isNaN(h) && !Number.isNaN(m)) {
       // Round down to nearest 15 minutes
       const roundedM = Math.floor(m / 15) * 15;
-      set.add(`${h}:${String(roundedM).padStart(2, '0')}`);
+      set.add(`${String(h).padStart(2,'0')}:${String(roundedM).padStart(2, '0')}`);
     }
   }
   return [...set].sort();
@@ -62,7 +62,7 @@ function cellFor(dayIndex, time) {
       const m = Number(timeStr.slice(3, 5));
       if (Number.isNaN(h) || Number.isNaN(m)) return false;
       const roundedM = Math.floor(m / 15) * 15;
-      return `${h}:${String(roundedM).padStart(2, '0')}` === time;
+      return `${String(h).padStart(2,'0')}:${String(roundedM).padStart(2, '0')}` === time;
     })
     .sort((a, b) => String(a.time).localeCompare(String(b.time)));
 }
@@ -200,14 +200,15 @@ function onAlldayClick(dayIndex, occs) {
             <span
               v-for="(o, idx) in cellFor(dayIdx - 1, t).slice(0, MAX_PER_CELL)"
               :key="`${o.eventIndex}-${idx}`"
-              class="ev"
+              class="ev ev-small"
               :class="[o.warn ? `warn-${o.warn}` : null, { dimmed: o.recurring }]"
-              :style="{ '--ev': o.style.color || '#9aa0a6' }"
+              :style="{ color: o.style.color || '#9aa0a6' }"
               :title="chipTitle(o)"
               @click.stop="emit('edit-occurrence', o)"
             >
               <PeIcon v-if="o.style.icon" :name="o.style.icon" :size="14" />
             </span>
+            
             <span
               v-if="cellFor(dayIdx - 1, t).length > MAX_PER_CELL"
               class="more"
@@ -233,15 +234,14 @@ function onAlldayClick(dayIndex, occs) {
         <h4 v-if="dayOccs.length" class="day-header">
           {{ WEEKDAY_NAMES[dayIdx] }} {{ weekDays[dayIdx]?.getDate() }}
         </h4>
-        <div v-for="(o, oi) in dayOccs" :key="`${o.eventIndex}-${oi}`" class="event-row" :class="{ dimmed: o.recurring }" @click="emit('edit-occurrence', o)">
+        <div v-for="(o, oi) in dayOccs" :key="`${o.eventIndex}-${oi}`" class="event-row" :class="{ dimmed: o.recurring }" @click="emit('edit-occurrence', o)" style="overflow-x: hidden;">
           <span class="event-time" v-if="o.time">{{ o.time }}</span>
           <span class="event-time" v-else>—</span>
-          <span class="event-icon" v-if="o.style.icon" :style="{ color: o.style.color || '#9aa0a6' }">
+          <span class="event-icon" v-if="o.style.icon" :class="[o.warn ? `ev ev-small warn-${o.warn}` : null]" :style="{ color: o.style.color || '#9aa0a6' }">
             <PeIcon :name="o.style.icon" :size="16" />
           </span>
           <span class="event-type">{{ o.title || 'Sin título' }}</span>
           <span class="event-location" v-if="o.location?.length">{{ o.location.join(', ') }}</span>
-          <span v-if="o.warn" class="event-warn" :class="`warn-${o.warn}`">⚠</span>
         </div>
       </div>
     </div>
@@ -378,6 +378,12 @@ function onAlldayClick(dayIndex, occs) {
   cursor: pointer;
   flex-shrink: 0;
 }
+.ev.ev-small {
+  background: transparent !important;
+  border: none !important;
+  width: 18px;
+  height: 18px;
+}
 .ev img {
   filter: brightness(0) invert(1); /* Make black SVG white */
 }
@@ -394,18 +400,17 @@ function onAlldayClick(dayIndex, occs) {
 /* warnings: purple = no celebrant, red = bilocation, orange = too tight */
 .ev.warn-purple {
   border-color: #9b59b6;
-  box-shadow: 0 0 0 2px rgba(155, 89, 182, 0.25);
   background: color-mix(in srgb, #9b59b6 22%, transparent);
-  color: #9b59b6;
+  color: #9b59b6 !important;
 }
 .ev.warn-red {
   border-color: var(--pe-danger);
-  box-shadow: 0 0 0 2px var(--pe-danger-soft);
   background: color-mix(in srgb, var(--pe-danger) 22%, transparent);
-  color: var(--pe-danger);
+  color: var(--pe-danger) !important;
 }
 .ev.warn-orange {
   border-color: #e8a838;
+  color: #e8a838 !important;
   box-shadow: 0 0 0 2px rgba(232, 168, 56, 0.25);
 }
 /* Dim events that are routine weekly/monthly recurrences so that one-off,
@@ -414,13 +419,13 @@ function onAlldayClick(dayIndex, occs) {
   opacity: 0.5;
   filter: saturate(0.6);
 }
-/* Warnings always render at full intensity even on dimmed events. */
+/* Warnings always render at full intensity even on dimmed events.
 .ev.dimmed.warn-purple,
 .ev.dimmed.warn-red,
 .ev.dimmed.warn-orange {
   opacity: 1;
   filter: none;
-}
+}*/
 .more {
   font-size: 9px;
   color: var(--pe-muted);

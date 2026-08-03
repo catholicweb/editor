@@ -209,7 +209,8 @@ function closeModal() {
 
   <!-- LEAF -->
   <div v-else class="field leaf-field">
-    <label class="field-label">{{ field.label || field.name }}</label>
+    <label class="field-label">{{ field.label || field.name }}<span v-if="field.options?.source"> - {{ field.options.source }}</span></label>
+
     <ScalarInput :field="field" v-model="scalarValue" />
   </div>
 

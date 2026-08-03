@@ -10,7 +10,6 @@ import {
   expandUpcomingOccurrences,
   hasRepetition,
   isoToDate,
-  getEventTypeOptions,
   getEventFields,
   getTypeConfig,
   getTypeFieldDefaults,
@@ -70,14 +69,14 @@ const typeDefaultFieldNames = computed(() => {
 });
 
 const eventFieldDefs = computed(() => {
-  const showCeleb = showCelebrants.value;
+  //const showCeleb = showCelebrants.value;
   const hidden = typeDefaultFieldNames.value;
   const eventFields = state.schema?.eventFields || getEventFields();
   const r = [
-    { name: 'type', label: 'Tipo de evento', type: 'select', options: { values: getEventTypeOptions(props.eventTypes) } },
+    { name: 'type', label: 'Tipo de evento', type: 'select', options: {source: "config>calendar.events.eventTypes" }},
     ...eventFields
       .filter((f) => !hidden.has(f.name))
-      .filter((f) => f.name !== 'celebrants' || showCeleb)
+      //.filter((f) => f.name !== 'celebrants' || showCeleb)
       .map(fieldDefFor),
   ];
   return r
@@ -85,7 +84,7 @@ const eventFieldDefs = computed(() => {
 
 // The celebrants field only makes sense when there's more than one possible
 // priest. With a single celebrant every event is his by default.
-const showCelebrants = computed(() => props.celebrants.length > 1);
+//const showCelebrants = computed(() => props.celebrants.length > 1);
 
 // Repeating events use exceptions (date-keyed overrides). The "effective"
 // event merges in the type's default fields (rrule/times/location), so an
@@ -221,7 +220,6 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
     <div class="modal">
       <header class="modal-header">
         <div class="title-wrap">
-          {{ props.eventTypes }}
           <span class="type-dot" :style="{ background: headerColor }">
             <PeIcon :name="headerIcon" :size="18" color="#fff" />
           </span>
