@@ -1,7 +1,7 @@
 import { reactive, computed, watch } from 'vue';
 import yaml from 'js-yaml';
 import * as api from './api.js';
-import { encodePath, decodeToken } from './codec.js';
+import { encodePath, safeRelPath } from './codec.js';
 import { parseFrontmatter, stringifyFrontmatter } from './frontmatter.js';
 import { normalizeSchema, applyDefaults } from './schema.js';
 import { buildFileIndex, listMediaFiles } from './content-index.js';
@@ -118,9 +118,8 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken }) {
     const { files } = await api.listFiles(apiBase, slug);
 
     // Separate config token from media tokens
-    const configToken = files?.find(f => {
-      try { return decodeToken(f) === 'pages/config.json'; } catch { return false; }
-    }) || null;
+    // Config file is 'pages/config.json', which encodes to 'pages-config.json'
+    const configToken = files?.find(f => f === 'pages-config.json') || null;
 
     state.slug = slug;
     state.schema = null;
@@ -292,9 +291,8 @@ export async function refreshFileList() {
   const { files } = await api.listFiles(state.apiBase, state.slug);
 
   // Update media tokens (config token stays the same)
-  const configToken = files?.find(f => {
-    try { return decodeToken(f) === 'pages/config.json'; } catch { return false; }
-  }) || null;
+  // Config file is 'pages/config.json', which encodes to 'pages-config.json'
+  const configToken = files?.find(f => f === 'pages-config.json') || null;
 
   state.configToken = configToken;
   state.mediaTokens = files?.filter(f => f !== configToken) || [];
@@ -498,5 +496,3 @@ export function initBeforeUnloadHandler() {
     }
   });
 }
-
-export { decodeToken };

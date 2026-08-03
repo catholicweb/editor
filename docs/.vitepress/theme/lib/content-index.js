@@ -1,4 +1,4 @@
-import { decodeToken, safeRelPath, TOKEN_RE } from './codec.js';
+import { safeRelPath, validateFilename } from './codec.js';
 import { stripLocalRoot } from './schema.js';
 
 // Build the ordered "which files can be edited" list, following pages.yml's
@@ -11,7 +11,7 @@ import { stripLocalRoot } from './schema.js';
 //     contentName, contentLabel,
 //     fields,                 // resolved field[] for this document
 //     relPath,                // 'pages/config.json'
-//     fileToken,              // base64url token for config.json
+//     fileToken,              // filename token for config.json
 //     format: 'json',
 //     displayName,            // tab display name
 //     groupLabel,             // content.label, for sidebar grouping
@@ -56,8 +56,9 @@ export function guessFormat(relPath) {
 // Media helpers -------------------------------------------------------------
 
 export function mediaPrefix(schema) {
-  if (!schema.media || !schema.media.input) return 'media/';
-  return stripLocalRoot(schema.media.input).replace(/\/?$/, '/');
+  if (!schema.media || !schema.media.input) return 'media-';
+  const input = stripLocalRoot(schema.media.input).replace(/\/?$/, '');
+  return input + '-';
 }
 
 export function mediaOutputPrefix(schema) {
@@ -66,48 +67,67 @@ export function mediaOutputPrefix(schema) {
 }
 
 // List every image-ish file under the media prefix, from the media token list.
+// Tokens are now flat filenames (e.g., "media-photo.jpg"), not encoded paths.
 export function listMediaFiles(schema, mediaTokens) {
   const prefix = mediaPrefix(schema);
   const out = [];
   for (const tok of mediaTokens || []) {
-    if (!TOKEN_RE.test(tok)) continue;
-    let rel;
-    try {
-      rel = decodeToken(tok);
-    } catch {
-      continue;
-    }
-    rel = safeRelPath(rel);
-    if (rel == null || !rel.startsWith(prefix)) continue;
-    out.push({ token: tok, relPath: rel, displayName: rel.slice(prefix.length) });
+    // Validate the token is a safe filename
+    const filename = safeRelPath(tok);
+    if (!filename) continue;
+    // Check if it's under the media prefix (flat format: "media-" not "media/")
+    if (!filename.startsWith(prefix)) continue;
+    // Extract display name (remove prefix)
+    const displayName = filename.slice(prefix.length);
+    out.push({ token: tok, filename, displayName });
   }
-  out.sort((a, b) => a.relPath.localeCompare(b.relPath, 'es'));
+  out.sort((a, b) => a.filename.localeCompare(b.filename, 'es'));
   return out;
 }
 
 // Public URL a browser/site visitor (and the site's own build) would use to
 // reference this media file — this is the string stored as the field value.
-export function mediaPublicPath(schema, relPath) {
-  const prefix = mediaPrefix(schema);
+export function mediaPublicPath(schema, filename) {
   const out = mediaOutputPrefix(schema);
-  if (relPath.startsWith(prefix)) return out + relPath.slice(prefix.length);
-  return out + relPath;
+  // filename is already the full token (e.g., "media-photo.jpg")
+  return out + filename;
 }
 
-// Reverse of mediaPublicPath: given a stored field value like "/media/x.jpg",
-// recover the R2-relative path ("media/x.jpg") so we can derive its token and
-// preview it directly, even if it isn't (yet) in the cached mediaFiles list.
+// Reverse of mediaPublicPath: given a stored field value like "/media/photo.jpg",
+// recover the token ("media-photo.jpg") so we can preview it directly.
 export function mediaRelPathFromPublic(schema, publicPath) {
   if (!publicPath) return null;
   const out = mediaOutputPrefix(schema);
-  const prefix = mediaPrefix(schema);
-  if (publicPath.startsWith(out)) return prefix + publicPath.slice(out.length);
-  // already looks like a relPath (e.g. hand-entered) — use as-is
+  if (publicPath.startsWith(out)) {
+    // Convert from path format to flat filename format
+    const pathPart = publicPath.slice(out.length);
+    return pathPart.replace(/\//g, '-');
+  }
+  // already looks like a filename (e.g. hand-entered) — use as-is
   return publicPath.replace(/^\/+/, '');
 }
 
+// Generate a safe filename for new media uploads.
+// The filename will be: <prefix><safe-name>.<ext>
+// where prefix is like "media-" and ext is validated/normalized.
 export function relPathForNewMedia(schema, filename) {
   const prefix = mediaPrefix(schema);
-  const safe = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-  return prefix + safe;
+  // Extract name and extension
+  const lastDot = filename.lastIndexOf('.');
+  let name = lastDot === -1 ? filename : filename.slice(0, lastDot);
+  let ext = lastDot === -1 ? '' : filename.slice(lastDot + 1).toLowerCase();
+
+  // Sanitize name: replace any char outside [A-Za-z0-9_-] with -
+  name = name.replace(/[^A-Za-z0-9_-]/g, '-');
+
+  // Always use .webp for media uploads (current behavior)
+  ext = 'webp';
+
+  const result = `${prefix}${name}.${ext}`;
+  if (!validateFilename(result)) {
+    // Fallback: generate a safe name with timestamp
+    const timestamp = Date.now();
+    return `${prefix}image-${timestamp}.webp`;
+  }
+  return result;
 }

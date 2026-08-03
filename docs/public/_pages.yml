@@ -215,7 +215,7 @@ content:
             component: event
 
   - name: places
-    icon: building-library
+    icon: material-symbols:church-rounded
     type: tab
     label: Templos
     fields:
@@ -385,17 +385,17 @@ content:
 
 
   - name: theme
-    label: Tema visual
+    label: Diseño
     icon: fluent-mdl2:color-solid
-    type: object
+    type: tab
     fields:
-      - { name: bodyFont, label: Tipo de letra del cuerpo (cualquiera de https://fonts.google.com/), component: font }
-      - { name: headingFont, label: Tipo de letra de los titulos (cualquiera de https://fonts.google.com/), component: font }
       - { name: accentColor, label: "Color elementos acentuados", type: color }
       - { name: accentPrimary, label: "Color secundario", type: color }
+      - { name: headingFont, label: Tipo de letra de los titulos (cualquiera de https://fonts.google.com/), component: font }
+      - { name: bodyFont, label: Tipo de letra del cuerpo (cualquiera de https://fonts.google.com/), component: font }
       - { name: navStyle, label: Estilo de la barrra de navegación, type: string }
       - name: styles
-        label: Estilos y efectos individuales
+        label: Estilos avanzados
         type: object
         list: { collapsible: { collapsed: true, summary: "{fields.selector}" } }
         fields:
