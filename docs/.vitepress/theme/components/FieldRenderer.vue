@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import FieldsGroup from './FieldsGroup.vue';
 import ScalarInput from './ScalarInput.vue';
+import PeIcon from './PeIcon.vue';
 import CalendarEditor from './CalendarEditor.vue';
 import PlacesAutodiscover from './PlacesAutodiscover.vue';
 import {
@@ -136,7 +137,7 @@ function closeModal() {
             <span class="spacer" />
             <button type="button" class="move" @click.stop.prevent="moveUp(i)">↑</button>
             <button type="button" class="move" @click.stop.prevent="moveDown(i)">↓</button>
-            <button type="button" class="del" @click.stop.prevent="removeAt(i)">✕</button>
+            <button type="button" class="del" @click.stop.prevent="removeAt(i)" :aria-label="'Eliminar'" title="Eliminar"><PeIcon name="trash" :size="14" /></button>
           </summary>
           <FieldsGroup v-if="blockDefFor(item)" :fields="blockDefFor(item).fields" :container="item" />
           <p v-else class="hint">Tipo de bloque desconocido: {{ item.type }}</p>
@@ -165,7 +166,7 @@ function closeModal() {
             <span class="spacer" />
             <button v-if="listConfig?.sort === 'manual'" type="button" class="move" @click.stop.prevent="moveUp(i)">↑</button>
             <button v-if="listConfig?.sort === 'manual'" type="button" class="move" @click.stop.prevent="moveDown(i)">↓</button>
-            <button type="button" class="del" @click.stop.prevent="removeAt(i)">✕</button>
+            <button type="button" class="del" @click.stop.prevent="removeAt(i)" :aria-label="'Eliminar'" title="Eliminar"><PeIcon name="trash" :size="14" /></button>
           </summary>
           <FieldsGroup :fields="field.fields" :container="item" />
         </details>
@@ -174,7 +175,7 @@ function closeModal() {
           <span class="spacer" />
           <button v-if="listConfig?.sort === 'manual'" type="button" class="move" @click.stop.prevent="moveUp(i)">↑</button>
           <button v-if="listConfig?.sort === 'manual'" type="button" class="move" @click.stop.prevent="moveDown(i)">↓</button>
-          <button type="button" class="del" @click.stop.prevent="removeAt(i)">✕</button>
+          <button type="button" class="del" @click.stop.prevent="removeAt(i)" :aria-label="'Eliminar'" title="Eliminar"><PeIcon name="trash" :size="14" /></button>
         </div>
       </div>
     </div>
@@ -193,7 +194,7 @@ function closeModal() {
     <div class="scalar-list">
       <div v-for="(_, i) in scalarValue" :key="i" class="scalar-list-row">
         <ScalarInput :field="{ ...field, list: false }" v-model="scalarValue[i]" />
-        <button type="button" class="del" @click="removeAt(i)">✕</button>
+        <button type="button" class="del" @click="removeAt(i)" :aria-label="'Eliminar'" title="Eliminar"><PeIcon name="trash" :size="14" /></button>
       </div>
     </div>
     <button type="button" class="add" @click="addScalarItem">+ Añadir</button>
@@ -350,15 +351,21 @@ fieldset.object-field legend {
 .del {
   border: none;
   background: transparent;
-  color: var(--pe-muted);
   cursor: pointer;
   font-size: 12px;
   padding: 2px 6px;
   border-radius: var(--pe-radius-sm);
   transition: background var(--pe-transition), color var(--pe-transition);
 }
-.move:hover,
-.del:hover {
+.move {
+  color: var(--pe-muted);
+}
+.del {
+  display: inline-flex;
+  align-items: center;
+  color: var(--pe-danger);
+}
+.move:hover {
   background: var(--pe-hover);
   color: var(--pe-text);
 }

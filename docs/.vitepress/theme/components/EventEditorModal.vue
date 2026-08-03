@@ -258,7 +258,7 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
                   <div class="exception-actions">
                     <button @click="moveException(i, -1)" :disabled="i === 0">↑</button>
                     <button @click="moveException(i, 1)" :disabled="i === (event.except.length - 1)">↓</button>
-                    <button class="del" @click="removeException(i)">✕</button>
+                    <button class="del" @click="removeException(i)" :aria-label="'Eliminar'" title="Eliminar"><PeIcon name="trash" :size="14" /></button>
                   </div>
                 </summary>
                 <div class="exception-fields">
@@ -498,6 +498,7 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
 }
 .exception-actions button:hover:not(:disabled) { background: var(--pe-hover); color: var(--pe-text); }
 .exception-actions button:disabled { opacity: 0.3; cursor: default; }
+.exception-actions .del { display: inline-flex; align-items: center; color: var(--pe-danger); }
 .exception-actions .del:hover { background: var(--pe-danger-soft); color: var(--pe-danger); }
 .exception-fields {
   display: flex;

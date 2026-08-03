@@ -2,6 +2,7 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import SelectField from './SelectField.vue';
 import ImagePickerModal from './ImagePickerModal.vue';
+import PeIcon from './PeIcon.vue';
 import IconPicker from './fields/IconPicker.vue';
 import { state } from '../lib/store.js';
 import { publicFileUrl } from '../lib/api.js';
@@ -335,7 +336,7 @@ function updateRefDropdownPosition() {
           <img v-if="imagePreviewUrl(p)" :src="imagePreviewUrl(p)" />
           <div class="image-actions">
             <button type="button" @click="openPicker(i)">Cambiar</button>
-            <button type="button" @click="removeImageAt(i)">✕</button>
+            <button type="button" class="del" @click="removeImageAt(i)" :aria-label="'Eliminar'" title="Eliminar"><PeIcon name="trash" :size="14" /></button>
           </div>
         </div>
         <button type="button" class="image-add" @click="openPicker(null)">+ Imagen</button>
@@ -620,6 +621,13 @@ textarea.auto-grow {
 .image-actions button:hover {
   background: var(--pe-hover);
   border-color: var(--pe-border-strong);
+}
+.image-actions .del {
+  display: inline-flex;
+  align-items: center;
+  color: var(--pe-danger);
+  border-color: var(--pe-danger-soft);
+  background: var(--pe-danger-soft);
 }
 .checkbox-list {
   display: flex;
