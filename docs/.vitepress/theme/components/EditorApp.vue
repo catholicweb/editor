@@ -191,27 +191,7 @@ async function onLogout() {
       class="sidebar"
       :class="{ open: sidebarOpen, mobile: isMobile }"
     >
-      <div class="sidebar-header">
-        <div class="brand">
-          <span class="brand-mark">✚</span>
-          <div class="brand-text">
-            <span class="brand-title">Editor</span>
-            <span class="slug">{{ state.slug }}</span>
-          </div>
-        </div>
-      </div>
       <FieldBrowser />
-      <div class="sidebar-footer">
-        <button
-          class="sidebar-logout-btn"
-          @click="onLogout"
-          title="Cerrar sesión"
-          aria-label="Cerrar sesión"
-        >
-          <span class="logout-icon" aria-hidden="true">⏻</span>
-          <span class="logout-label">Cerrar sesión</span>
-        </button>
-      </div>
     </aside>
 
     <main class="main-panel">
