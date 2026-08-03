@@ -2,6 +2,7 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import SelectField from './SelectField.vue';
 import ImagePickerModal from './ImagePickerModal.vue';
+import IconPicker from './fields/IconPicker.vue';
 import { state } from '../lib/store.js';
 import { publicFileUrl } from '../lib/api.js';
 import { encodePath } from '../lib/codec.js';
@@ -86,6 +87,7 @@ function removeImageAt(i) {
   set(arr);
 }
 function imagePreviewUrl(publicPath) {
+  if (publicPath.startsWith('http')) return publicPath
   if (!publicPath) return '';
   const relPath = mediaRelPathFromPublic(state.schema, publicPath);
   if (!relPath) return '';
@@ -357,6 +359,22 @@ function updateRefDropdownPosition() {
       </Teleport>
     </div>
   </div>
+
+  <!-- icon picker -->
+  <IconPicker
+    v-else-if="field.type === 'icon'"
+    :model-value="modelValue"
+    @update:model-value="set($event)"
+  />
+
+  <!-- uuid (read-only, auto-generated) -->
+  <input
+    v-else-if="field.type === 'uuid'"
+    type="text"
+    :value="modelValue ?? ''"
+    readonly
+    class="uuid-field"
+  />
 
   <input v-else type="text" :value="modelValue ?? ''" @input="set($event.target.value)" />
 </template>
@@ -657,5 +675,11 @@ textarea.auto-grow {
 }
 .reference-field .chip-x:hover {
   background: var(--pe-accent-soft-hover);
+}
+.uuid-field {
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  background: var(--pe-bg) !important;
+  color: var(--pe-muted);
+  cursor: default;
 }
 </style>

@@ -1,8 +1,7 @@
 <script setup>
-import { computed, ref, nextTick, reactive } from 'vue';
+import { computed, ref, nextTick } from 'vue';
 import WeekGrid from './WeekGrid.vue';
 import EventEditorModal from './EventEditorModal.vue';
-import EventTypeManager from './EventTypeManager.vue';
 import { newEvent, generateId, startOfWeek, getEventFields } from '../lib/calendar.js';
 import { state } from '../lib/store.js';
 
@@ -15,7 +14,6 @@ const props = defineProps({
 // Ensure the events object exists in the container
 function ensureEventsShape() {
   if (!Array.isArray(props.container.list)) props.container.list = [];
-  if (!props.container.eventTypes) props.container.eventTypes = [];
 }
 ensureEventsShape();
 
@@ -27,21 +25,21 @@ const eventFields = computed(() => {
   return state.schema?.eventFields || getEventFields();
 });
 
-const urlsField = {
-  name: 'urls',
-  label: 'Calendarios externos (.ics)',
-  type: 'string',
-  list: { collapsible: { collapsed: true } },
-};
+// Load event types from the schema-driven content (event-types tab)
+const eventTypes = computed(() => {
+  // Event types are stored in state.config['event-types']?.types
+  // This is populated when the user edits the event-types tab
+  const eventTypesData = state.config?.['event-types'].list;
+  if (eventTypesData && Array.isArray(eventTypesData)) {
+    return eventTypesData;
+  }
+  return [];
+});
 
 // The week currently shown in the grid. Lifted here (not inside WeekGrid)
 // so the event-editor modal can expand "the next 25 occurrences" anchored at
 // the visible week for its exception picker.
 const weekStart = ref(startOfWeek(new Date()));
-
-// EventTypeManager modal
-const showEventTypeManager = ref(false);
-function closeEventTypeManager() { showEventTypeManager.value = false; }
 
 // Event modal ----------------------------------------------------------
 const editingIndex = ref(null); // index into value.list
@@ -112,7 +110,7 @@ function closeModal() {
       :events="value.list || []"
       :celebrants="value.celebrants || []"
       :defaults="value.defaults || {}"
-      :event-types="value.eventTypes || []"
+      :event-types="eventTypes"
       :week-start="weekStart"
       @update:week-start="weekStart = $event"
       @edit-event="editEvent"
@@ -126,7 +124,7 @@ function closeModal() {
       :event-index="editingIndex"
       :celebrants="value.celebrants || []"
       :defaults="value.defaults || {}"
-      :event-types="value.eventTypes || []"
+      :event-types="eventTypes"
       :week-start="weekStart"
       :preset-occurrence="presetOccurrence"
       @close="closeModal"
@@ -134,22 +132,6 @@ function closeModal() {
       @duplicate="duplicateEvent"
       @save="saveEvent"
     />
-
-    <!-- EventTypeManager modal -->
-    <div v-if="showEventTypeManager" class="overlay" @click.self="closeEventTypeManager">
-      <div class="modal">
-        <header class="modal-header">
-          <h2>Tipos de eventos</h2>
-          <button class="close" @click="closeEventTypeManager">✕</button>
-        </header>
-        <div class="modal-body">
-          <EventTypeManager
-            :event-types="value.eventTypes || []"
-            :celebrants="value.celebrants || []"
-          />
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -167,58 +149,5 @@ function closeModal() {
   margin: 0 0 14px;
   font-size: 13px;
   color: var(--pe-muted);
-}
-
-/* Modal overlay for EventTypeManager */
-.overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 17, 21, 0.5);
-  backdrop-filter: blur(2px);
-  display: flex;
-  align-items: stretch;
-  justify-content: stretch;
-  z-index: 1000;
-  padding: 0;
-}
-.modal {
-  background: var(--pe-panel);
-  border-radius: 0;
-  width: 100%;
-  max-width: none;
-  height: 100%;
-  max-height: none;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: none;
-  box-shadow: none;
-}
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 18px;
-  border-bottom: 1px solid var(--pe-border);
-}
-.modal-header h2 {
-  font-size: 16px;
-  margin: 0;
-  font-weight: 700;
-}
-.close {
-  border: none;
-  background: transparent;
-  font-size: 16px;
-  cursor: pointer;
-  color: var(--pe-muted);
-  width: 30px;
-  height: 30px;
-  border-radius: var(--pe-radius-sm);
-}
-.close:hover { background: var(--pe-hover); color: var(--pe-text); }
-.modal-body {
-  overflow-y: auto;
-  padding: 18px;
 }
 </style>

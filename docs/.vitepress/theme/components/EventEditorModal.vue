@@ -73,7 +73,7 @@ const eventFieldDefs = computed(() => {
   const hidden = typeDefaultFieldNames.value;
   const eventFields = state.schema?.eventFields || getEventFields();
   const r = [
-    { name: 'type', label: 'Tipo de evento', type: 'select', options: {source: "calendar.events.eventTypes" }},
+    { name: 'type', label: 'Tipo de evento', type: 'select', options: {source: "event-types.list" }},
     ...eventFields
       .filter((f) => !hidden.has(f.name))
       //.filter((f) => f.name !== 'celebrants' || showCeleb)

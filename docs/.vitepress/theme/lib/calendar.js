@@ -41,7 +41,7 @@ export function getTypeConfig(type, eventTypes) {
 
 export function getTypeFieldDefaults(type, eventTypes) {
   const et = getEventType(type, eventTypes);
-  return et?.fields || {};
+  return et?.defaults || {};
 }
 
 // Build the "effective" event by filling any empty event fields with the

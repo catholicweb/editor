@@ -195,6 +195,25 @@ content:
       # (see FieldRenderer's `field.type === 'calendario'` branch)
       - { name: events, type: calendario, label: Calendario de eventos }
 
+  - name: event-types
+    icon: squares-2x2
+    type: tab
+    label: Tipos de Evento
+    fields:
+      - name: list
+        label: Tipos de evento
+        type: object
+        list:
+          collapsible:
+            collapsed: true
+            summary: "{fields.label}"
+        fields:
+          - { name: name, label: Identificador, type: uuid, hidden: true }
+          - { name: label, label: "Tipo de evento (ej: Eucaristía)", type: string }
+          - { name: icon, label: Icono (se mostrará unicamente en este editor), type: icon }
+          - name: defaults
+            component: event
+
   - name: places
     icon: building-library
     type: tab

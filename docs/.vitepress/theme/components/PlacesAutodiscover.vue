@@ -202,6 +202,7 @@ async function searchMisasAPI(lat, lon) {
       const placeLat = parish.location?.coordinates?.[1] || parish.lat;
       const placeLon = parish.location?.coordinates?.[0] || parish.lon;
 
+      console.log(parish)
       return {
         name: parish.name || 'Sin nombre',
         geo: `${placeLat}, ${placeLon}`,
@@ -211,6 +212,7 @@ async function searchMisasAPI(lat, lon) {
         distance: userLocation.value ? calculateDistance(userLocation.value.lat, userLocation.value.lon, placeLat, placeLon) : null,
         events: parish.mass || parish.events || [], // Events from misas.org
         source: 'misas.org', // Mark source for merging
+        image: parish.pic? [`https://misas.org/images/${parish.pic}`] : undefined
       };
     });
 
@@ -428,6 +430,7 @@ function closeModal() {
 
             <div v-for="(place, idx) in discoveredPlaces" :key="idx" class="place-item">
               <div class="place-info">
+                {{ place }}
                 <strong>{{ place.name }} - <span class="place-distance">{{ formatDistance(place.distance) }}</span></strong>
                 <!-- Show events if available -->
                 <div v-if="place.events && place.events.length > 0" class="place-events">

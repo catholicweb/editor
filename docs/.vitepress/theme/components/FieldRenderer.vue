@@ -131,8 +131,10 @@ function closeModal() {
 </script>
 
 <template>
+  <!-- Skip rendering hidden fields -->
+  <div v-if="field.hidden"></div>
   <!-- BLOCK: polymorphic list of named block variants -->
-  <div v-if="isBlock" class="field block-field" :data-field-name="field.name">
+  <div v-else-if="isBlock" class="field block-field" :data-field-name="field.name">
     <label class="field-label">{{ field.label || field.name }}</label>
     <div class="block-list">
       <div v-for="(item, i) in scalarValue" :key="i" class="block-item">
