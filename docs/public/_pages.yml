@@ -78,7 +78,7 @@ components:
     label: Lugares
     type: select
     options:
-      source: "config>places.list"
+      source: "places.list"
   tags:
     label: Options
     type: select
@@ -173,14 +173,14 @@ components:
       - { name: times, label: Hora, component: times }
       - { name: rrule, label: Se repite, component: rrule }
       - { name: duration, label: Duración (min), type: number }
-      - { name: celebrants, label: Celebrantes, type: select, options: {  multiple: true,      source: "config>site.collaborators" } }
+      - { name: celebrants, label: Celebrantes, type: select, options: {  multiple: true,      source: "site.collaborators" } }
   exception:
     label: Excepción
     type: object
     fields:
       - { name: newTime, label: Nueva hora (vacío = original), component: times }
       - { name: newPlace, label: Nuevo lugar (vacío = original), component: location }
-      - { name: celebrants, label: Celebrantes, type: select, options: {  multiple: true,      source: "config>site.collaborators" } }
+      - { name: celebrants, label: Celebrantes, type: select, options: {  multiple: true,      source: "site.collaborators" } }
 media:
   input: docs/public/media
   output: /media

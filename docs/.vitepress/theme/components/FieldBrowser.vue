@@ -13,6 +13,11 @@ function isCurrentEntry(entry) {
 
 async function selectEntry(entry) {
   if (isCurrentEntry(entry)) return;
+
+  // Update URL with the current tab (for deep linking / browser history)
+  const newUrl = `${window.location.pathname}?edit=${entry.tabPath}`;
+  window.history.pushState({}, '', newUrl);
+
   // openEntry() now saves unsaved changes before switching
   await openEntry(entry);
   onNavigate();

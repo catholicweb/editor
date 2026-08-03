@@ -14,6 +14,22 @@ import {
   getListConfig,
 } from '../lib/schema.js';
 
+// Navigate to the source field by updating URL and triggering parseDeepLink
+function navigateToSource(source) {
+  if (!source) return;
+
+  // Parse source format: "config>tabPath.fieldName" or just "tabPath.fieldName"
+  const path = source.replace('config>', '');
+  const editParam = `?edit=${path}`;
+
+  // Update URL
+  const newUrl = `${window.location.pathname}${editParam}`;
+  window.history.pushState({}, '', newUrl);
+
+  // Dispatch popstate event to trigger parseDeepLink in EditorApp
+  window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
 const props = defineProps({
   field: { type: Object, required: true },
   container: { type: Object, required: true },
@@ -116,7 +132,7 @@ function closeModal() {
 
 <template>
   <!-- BLOCK: polymorphic list of named block variants -->
-  <div v-if="isBlock" class="field block-field">
+  <div v-if="isBlock" class="field block-field" :data-field-name="field.name">
     <label class="field-label">{{ field.label || field.name }}</label>
     <div class="block-list">
       <div v-for="(item, i) in scalarValue" :key="i" class="block-item">
@@ -146,7 +162,7 @@ function closeModal() {
   </div>
 
   <!-- OBJECT LIST -->
-  <div v-else-if="isObjectList" class="field object-list-field">
+  <div v-else-if="isObjectList" class="field object-list-field" :data-field-name="field.name">
     <label class="field-label">{{ field.label || field.name }}</label>
     <div class="object-list">
       <div v-for="(item, i) in sortedItems" :key="i" class="object-item" @click="listConfig?.modal ? editInModal(item, i) : null">
@@ -173,13 +189,13 @@ function closeModal() {
   </div>
 
   <!-- SINGLE OBJECT -->
-  <fieldset v-else-if="isObject" class="field object-field">
+  <fieldset v-else-if="isObject" class="field object-field" :data-field-name="field.name">
     <legend>{{ field.label || field.name }}</legend>
     <FieldsGroup :fields="field.fields" :container="scalarValue" />
   </fieldset>
 
   <!-- SCALAR LIST (strings/numbers/dates repeated) -->
-  <div v-else-if="isScalarList" class="field scalar-list-field">
+  <div v-else-if="isScalarList" class="field scalar-list-field" :data-field-name="field.name">
     <label class="field-label">{{ field.label || field.name }}</label>
     <div class="scalar-list">
       <div v-for="(_, i) in scalarValue" :key="i" class="scalar-list-row">
@@ -208,8 +224,13 @@ function closeModal() {
   </ClientOnly>
 
   <!-- LEAF -->
-  <div v-else class="field leaf-field">
-    <label class="field-label">{{ field.label || field.name }}<span v-if="field.options?.source"> - {{ field.options.source }}</span></label>
+  <div v-else class="field leaf-field" :data-field-name="field.name">
+    <label class="field-label">
+      {{ field.label || field.name }}
+      <span v-if="field.options?.source" class="source-link" @click="navigateToSource(field.options.source)">
+        Editar opciones
+      </span>
+    </label>
 
     <ScalarInput :field="field" v-model="scalarValue" />
   </div>
@@ -238,6 +259,18 @@ function closeModal() {
   font-size: 13px;
   font-weight: 600;
   color: var(--pe-text);
+}
+.source-link {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--pe-accent);
+  cursor: pointer;
+  transition: color var(--pe-transition);
+  margin-left: 4px;
+}
+.source-link:hover {
+  color: var(--pe-accent-hover);
+  text-decoration: underline;
 }
 fieldset.object-field {
   border: 1px solid var(--pe-border);

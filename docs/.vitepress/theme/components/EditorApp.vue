@@ -1,16 +1,87 @@
 <script setup>
-import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import LoginView from './LoginView.vue';
 import FieldBrowser from './FieldBrowser.vue';
 import FieldsGroup from './FieldsGroup.vue';
-import { state, isLoggedIn, isDirty, saveCurrent, logout, login, loadSavedSession, initBeforeUnloadHandler } from '../lib/store.js';
+import { state, isLoggedIn, isDirty, saveCurrent, logout, login, loadSavedSession, initBeforeUnloadHandler, openEntry } from '../lib/store.js';
 import { ui, initUi, toggleSidebar } from '../lib/ui.js';
+
+// Parse deep link from URL parameter (e.g., ?edit=site.collaborators)
+async function parseDeepLink(retryCount = 0) {
+  if (!isLoggedIn.value) return;
+
+  // Wait for fileIndex to be populated
+  if (!state.fileIndex || state.fileIndex.length === 0) {
+    if (retryCount < 10) {
+      // Retry after a short delay
+      setTimeout(() => parseDeepLink(retryCount + 1), 100);
+      return;
+    } else {
+      console.warn('[DeepLink] fileIndex not populated, giving up');
+      return;
+    }
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const editParam = params.get('edit');
+  if (!editParam) return;
+
+  // Parse path format: "tab.field" or just "tab"
+  const parts = editParam.split('.');
+  const tabName = parts[0];
+  const fieldName = parts[1] || null;
+
+  // Find the tab in fileIndex by matching tabPath
+  const entry = state.fileIndex.find(e => e.tabPath === tabName);
+  if (!entry) {
+    console.warn(`[DeepLink] Tab not found: ${tabName}`);
+    return;
+  }
+
+  // Open the entry
+  await openEntry(entry);
+
+  // If field specified, focus it
+  if (fieldName) {
+    focusField(fieldName);
+  }
+}
+
+// Focus and highlight a specific field by name
+function focusField(fieldName) {
+  // Wait for next tick to ensure field is rendered
+  nextTick(() => {
+    // Find the field element by data attribute
+    const fieldEl = document.querySelector(`[data-field-name="${fieldName}"]`);
+
+    if (fieldEl) {
+      // Scroll into view with smooth behavior
+      fieldEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      // Add highlight effect
+      fieldEl.classList.add('field-highlight');
+      setTimeout(() => fieldEl.classList.remove('field-highlight'), 2000);
+
+      // Try to focus the input within the field
+      const input = fieldEl.querySelector('input, textarea, select');
+      if (input && input.focus) {
+        input.focus();
+      }
+    } else {
+      console.warn(`[DeepLink] Field not found: ${fieldName}`);
+    }
+  });
+}
 
 const booting = ref(false);
 
 onMounted(async () => {
   initUi();
   initBeforeUnloadHandler(); // Warn user about unsaved changes when leaving
+
+  // Listen for browser back/forward navigation
+  window.addEventListener('popstate', handlePopState);
+
   // Auto-login when a session with a token is already saved locally. The
   // user can still log out later. On failure we fall through to the login
   // form, prefilled with the saved values and showing the error.
@@ -26,6 +97,23 @@ onMounted(async () => {
     }
   }
 });
+
+onUnmounted(() => {
+  window.removeEventListener('popstate', handlePopState);
+});
+
+// Watch for login completion and parse deep link
+watch(isLoggedIn, (loggedIn) => {
+  if (loggedIn) {
+    // Small delay to ensure fileIndex is populated
+    setTimeout(parseDeepLink, 100);
+  }
+});
+
+// Handle browser back/forward navigation
+function handlePopState() {
+  parseDeepLink();
+}
 
 const sidebarOpen = computed(() => ui.sidebarOpen);
 const isMobile = computed(() => ui.mobile);

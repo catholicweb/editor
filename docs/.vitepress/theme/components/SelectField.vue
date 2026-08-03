@@ -16,9 +16,8 @@ const maxChips = options.max || 0; // 0 = unlimited
 // Reactively compute options from state.config if source is "config>"
 const normalizedOptions = computed(() => {
   // Check if options should come from config
-  if (options.source && options.source.startsWith('config>')) {
-    const fieldPath = options.source.slice(7); // Remove "config>"
-    const pathParts = fieldPath.split('.');
+  if (options.source) {
+    const pathParts = options.source.split('.');
     let data = state.config; // Start from state.config
 
     // Navigate the path (e.g., "site>collaborators" -> state.config.site.collaborators)

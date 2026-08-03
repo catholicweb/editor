@@ -26,7 +26,7 @@ const props = defineProps({
   eventTypes: { type: Array, default: () => [] },
   presetOccurrence: { type: Object, default: null }, // occurrence clicked on the grid
 });
-const emit = defineEmits(['close', 'remove', 'duplicate', 'save', 'openEventTypeManager']);
+const emit = defineEmits(['close', 'remove', 'duplicate', 'save']);
 
 const components = computed(() => state.schema?.components || {});
 
@@ -73,7 +73,7 @@ const eventFieldDefs = computed(() => {
   const hidden = typeDefaultFieldNames.value;
   const eventFields = state.schema?.eventFields || getEventFields();
   const r = [
-    { name: 'type', label: 'Tipo de evento', type: 'select', options: {source: "config>calendar.events.eventTypes" }},
+    { name: 'type', label: 'Tipo de evento', type: 'select', options: {source: "calendar.events.eventTypes" }},
     ...eventFields
       .filter((f) => !hidden.has(f.name))
       //.filter((f) => f.name !== 'celebrants' || showCeleb)
@@ -228,9 +228,6 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
         </div>
         <div class="header-actions">
           <button class="close" @click="emit('close')" title="Cerrar">✕</button>
-          <button class="manage-types-btn" @click="emit('openEventTypeManager')" title="Gestionar tipos de eventos">
-            <PeIcon name="adjustments-vertical" :size="16" />
-          </button>
         </div>
       </header>
       <div class="modal-body">

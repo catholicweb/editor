@@ -85,3 +85,24 @@ h1, h2, h3, h4, h5, h6 {
   background-clip: padding-box;
   border: 2px solid transparent;
 }
+
+/* Field highlight animation for deep linking */
+@keyframes field-highlight-pulse {
+  0% {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.6);
+    background-color: rgba(59, 130, 246, 0.05);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.3);
+    background-color: rgba(59, 130, 246, 0.08);
+  }
+  100% {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0);
+    background-color: transparent;
+  }
+}
+
+.field-highlight {
+  animation: field-highlight-pulse 1.5s ease-out;
+  border-radius: var(--pe-radius, 6px);
+}

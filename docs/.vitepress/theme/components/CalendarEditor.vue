@@ -41,7 +41,6 @@ const weekStart = ref(startOfWeek(new Date()));
 
 // EventTypeManager modal
 const showEventTypeManager = ref(false);
-function openEventTypeManager() { showEventTypeManager.value = true; }
 function closeEventTypeManager() { showEventTypeManager.value = false; }
 
 // Event modal ----------------------------------------------------------
@@ -134,7 +133,6 @@ function closeModal() {
       @remove="removeEvent"
       @duplicate="duplicateEvent"
       @save="saveEvent"
-      @open-event-type-manager="openEventTypeManager"
     />
 
     <!-- EventTypeManager modal -->

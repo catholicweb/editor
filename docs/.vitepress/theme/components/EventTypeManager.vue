@@ -50,20 +50,13 @@ function addType() {
   editingIndex.value = props.eventTypes.length - 1;
 }
 
-function ensureFields(t) {
-  if (!t.fields || typeof t.fields !== 'object') t.fields = {};
-  return t.fields;
-}
 
 function editType(i) {
-  // Lazily ensure `fields` exists before binding FieldRenderer to it.
-  ensureFields(props.eventTypes[i]);
   editingIndex.value = editingIndex.value === i ? null : i;
 }
 
 function removeType(i) {
   const t = props.eventTypes[i];
-  if (!confirm(`¿Eliminar el tipo "${t.label}"? Los eventos que lo usen mantendrán sus datos pero el tipo ya no estará disponible.`)) return;
   props.eventTypes.splice(i, 1);
   if (editingIndex.value === i) editingIndex.value = null;
 }
