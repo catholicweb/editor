@@ -4,6 +4,7 @@ import WeekGrid from './WeekGrid.vue';
 import EventEditorModal from './EventEditorModal.vue';
 import { newEvent, generateId, startOfWeek, getEventFields } from '../lib/calendar.js';
 import { state } from '../lib/store.js';
+import { resolvePath } from '../lib/schema.js';
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -11,9 +12,18 @@ const props = defineProps({
   keyName: { type: [String, Number], required: true },
 });
 
+// Every datapath the calendar editor touches is configurable via the
+// `calendario` field's options in pages.yml (keyList/keyCelebrants/keyDefaults/
+// eventTypesPath), so renaming/relocating fields in the schema doesn't break it.
+const opts = props.field.options || {};
+const listKey = opts.keyList || 'list';
+const celebrantsKey = opts.keyCelebrants || 'celebrants';
+const defaultsKey = opts.keyDefaults || 'defaults';
+const eventTypesPath = opts.eventTypesPath || 'event-types.list';
+
 // Ensure the events object exists in the container
 function ensureEventsShape() {
-  if (!Array.isArray(props.container.list)) props.container.list = [];
+  if (!Array.isArray(props.container[listKey])) props.container[listKey] = [];
 }
 ensureEventsShape();
 
@@ -25,15 +35,14 @@ const eventFields = computed(() => {
   return state.schema?.eventFields || getEventFields();
 });
 
-// Load event types from the schema-driven content (event-types tab)
+// The event-types source path, shared with EventEditorModal so the type select
+// and the calendar read from the SAME place (single source of truth).
+const eventTypesSource = computed(() => eventTypesPath);
+
+// Load event types from the configured config dot-path (default: event-types tab)
 const eventTypes = computed(() => {
-  // Event types are stored in state.config['event-types']?.types
-  // This is populated when the user edits the event-types tab
-  const eventTypesData = state.config?.['event-types']?.list;
-  if (eventTypesData && Array.isArray(eventTypesData)) {
-    return eventTypesData;
-  }
-  return [];
+  const data = resolvePath(state.config, eventTypesPath);
+  return Array.isArray(data) ? data : [];
 });
 
 // The week currently shown in the grid. Lifted here (not inside WeekGrid)
@@ -42,10 +51,10 @@ const eventTypes = computed(() => {
 const weekStart = ref(startOfWeek(new Date()));
 
 // Event modal ----------------------------------------------------------
-const editingIndex = ref(null); // index into value.list
+const editingIndex = ref(null); // index into value[listKey]
 const modalOpen = computed(() => editingIndex.value !== null);
 const editingEvent = computed(() =>
-  editingIndex.value === null ? null : value.list?.[editingIndex.value]
+  editingIndex.value === null ? null : value[listKey]?.[editingIndex.value]
 );
 const presetOccurrence = ref(null); // occurrence clicked on the grid, used as default for exceptions
 
@@ -63,19 +72,19 @@ function addEvent(preset = {}) {
   if (preset.time) evt.times = preset.time ? [preset.time] : [];
   // New events default to the first celebrant (the párroco / moderador) so
   // they're never left without one.
-  const first = value.celebrants?.[0];
+  const first = value[celebrantsKey]?.[0];
   if (first) evt.celebrants = [first.id];
-  // Ensure value.list exists before pushing
-  if (!Array.isArray(value.list)) value.list = [];
-  value.list.push(evt);
-  editingIndex.value = value.list.length - 1;
+  // Ensure value[listKey] exists before pushing
+  if (!Array.isArray(value[listKey])) value[listKey] = [];
+  value[listKey].push(evt);
+  editingIndex.value = value[listKey].length - 1;
 }
 function removeEvent() {
   const i = editingIndex.value;
   if (i === null) return;
   if (!confirm('¿Eliminar este evento?')) return;
-  if (value.list) {
-    value.list.splice(i, 1);
+  if (value[listKey]) {
+    value[listKey].splice(i, 1);
   }
   editingIndex.value = null;
 }
@@ -85,10 +94,10 @@ async function duplicateEvent() {
   // Copy all fields except id (generate a new one) and except (start empty).
   const { id, except, ...rest } = src;
   const evt = { ...rest, id: generateId('evt'), except: [] };
-  // Ensure value.list exists before pushing
-  if (!Array.isArray(value.list)) value.list = [];
-  value.list.push(evt);
-  const newIndex = value.list.length - 1;
+  // Ensure value[listKey] exists before pushing
+  if (!Array.isArray(value[listKey])) value[listKey] = [];
+  value[listKey].push(evt);
+  const newIndex = value[listKey].length - 1;
   closeModal();
   // Open the new event after the modal resets.
   nextTick(() => {
@@ -107,9 +116,9 @@ function closeModal() {
 <template>
   <div class="calendar-editor">
     <WeekGrid
-      :events="value.list || []"
-      :celebrants="value.celebrants || []"
-      :defaults="value.defaults || {}"
+      :events="value[listKey] || []"
+      :celebrants="value[celebrantsKey] || []"
+      :defaults="value[defaultsKey] || {}"
       :event-types="eventTypes"
       :week-start="weekStart"
       @update:week-start="weekStart = $event"
@@ -122,9 +131,10 @@ function closeModal() {
       v-if="modalOpen && editingEvent"
       :event="editingEvent"
       :event-index="editingIndex"
-      :celebrants="value.celebrants || []"
-      :defaults="value.defaults || {}"
+      :celebrants="value[celebrantsKey] || []"
+      :defaults="value[defaultsKey] || {}"
       :event-types="eventTypes"
+      :event-types-source="eventTypesSource"
       :week-start="weekStart"
       :preset-occurrence="presetOccurrence"
       @close="closeModal"

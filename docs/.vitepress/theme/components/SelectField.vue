@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref, nextTick, watch, onUnmounted } from 'vue';
 import { state } from '../lib/store.js';
+import { resolvePath } from '../lib/schema.js';
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -13,17 +14,11 @@ const multiple = !!options.multiple;
 const creatable = !!options.creatable;
 const maxChips = options.max || 0; // 0 = unlimited
 
-// Reactively compute options from state.config if source is "config>"
+// Reactively compute options from state.config if a source path is set
 const normalizedOptions = computed(() => {
-  // Check if options should come from config
+  // Check if options should come from config (dot-path via shared resolver)
   if (options.source) {
-    const pathParts = options.source.split('.');
-    let data = state.config; // Start from state.config
-
-    // Navigate the path (e.g., "site>collaborators" -> state.config.site.collaborators)
-    for (const part of pathParts) {
-      data = data?.[part];
-    }
+    const data = resolvePath(state.config, options.source);
 
     if (Array.isArray(data)) {
       return data.map((item) => ({

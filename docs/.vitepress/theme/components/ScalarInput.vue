@@ -7,6 +7,7 @@ import IconPicker from './fields/IconPicker.vue';
 import { state } from '../lib/store.js';
 import { publicFileUrl } from '../lib/api.js';
 import { encodePath } from '../lib/codec.js';
+import { resolvePath } from '../lib/schema.js';
 import { mediaRelPathFromPublic } from '../lib/content-index.js';
 
 const props = defineProps({
@@ -130,12 +131,8 @@ const refOptions = computed(() => {
   const collectionPath = props.field.options?.collection;
   if (!collectionPath || !state.config) return [];
 
-  // Navigate state.config using the collection path (e.g., "events.list" -> config.events.list)
-  const pathParts = collectionPath.split('.');
-  let data = state.config;
-  for (const part of pathParts) {
-    data = data?.[part];
-  }
+  // Resolve state.config using the shared dot-path resolver.
+  const data = resolvePath(state.config, collectionPath);
 
   // If data is an array, map to { id, label } format
   if (Array.isArray(data)) {

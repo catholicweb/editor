@@ -193,7 +193,15 @@ content:
     fields:
       # `calendario` is a custom field type rendered by CalendarEditor.vue
       # (see FieldRenderer's `field.type === 'calendario'` branch)
-      - { name: events, type: calendario, label: Calendario de eventos }
+      - name: events
+        type: calendario
+        label: Calendario de eventos
+        options:
+          eventTypesPath: "event-types.list"   # config dot-path to the event-types array
+          eventFields: "event"                 # components entry providing the event field set
+          keyList: "list"                      # events doc sub-key holding the array
+          keyCelebrants: "celebrants"          # events doc sub-key holding the celebrant list
+          keyDefaults: "defaults"              # events doc sub-key holding the per-type defaults map
 
   - name: event-types
     icon: squares-2x2
@@ -230,6 +238,9 @@ content:
       - name: autodiscover
         label: Encontrar templos
         type: places-autodiscover
+        options:
+          listPath: "list"                     # field (relative to this tab) where selected places are appended
+          eventsPath: "calendar.events.list"   # config dot-path to the events ARRAY to import into
 
   - name: pages
     icon: document
@@ -389,10 +400,22 @@ content:
     icon: fluent-mdl2:color-solid
     type: tab
     fields:
-      - { name: accentColor, label: "Color elementos acentuados", type: color }
-      - { name: accentPrimary, label: "Color secundario", type: color }
-      - { name: headingFont, label: Tipo de letra de los titulos (cualquiera de https://fonts.google.com/), component: font }
-      - { name: bodyFont, label: Tipo de letra del cuerpo (cualquiera de https://fonts.google.com/), component: font }
+      - name: accentColor
+        label: "Color elementos acentuados"
+        type: color
+        options: { themeRole: accent }
+      - name: accentPrimary
+        label: "Color secundario"
+        type: color
+        options: { themeRole: primary }
+      - name: headingFont
+        label: "Tipo de letra de los titulos (cualquiera de https://fonts.google.com/)"
+        component: font
+        options: { themeRole: heading }
+      - name: bodyFont
+        label: "Tipo de letra del cuerpo (cualquiera de https://fonts.google.com/)"
+        component: font
+        options: { themeRole: body }
       - { name: navStyle, label: Estilo de la barrra de navegación, type: string }
       - name: styles
         label: Estilos avanzados

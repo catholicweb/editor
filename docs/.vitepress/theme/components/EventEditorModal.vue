@@ -24,6 +24,9 @@ const props = defineProps({
   weekStart: { type: Object, default: null }, // visible week, anchors the exception picker
   defaults: { type: Object, default: () => ({}) },
   eventTypes: { type: Array, default: () => [] },
+  // Config dot-path to the event-types array, passed down by CalendarEditor so
+  // the type select reads from the SAME source as the calendar (not hardcoded).
+  eventTypesSource: { type: String, default: 'event-types.list' },
   presetOccurrence: { type: Object, default: null }, // occurrence clicked on the grid
 });
 const emit = defineEmits(['close', 'remove', 'duplicate', 'save']);
@@ -73,7 +76,7 @@ const eventFieldDefs = computed(() => {
   const hidden = typeDefaultFieldNames.value;
   const eventFields = state.schema?.eventFields || getEventFields();
   const r = [
-    { name: 'type', label: 'Tipo de evento', type: 'select', options: {source: "event-types.list" }},
+    { name: 'type', label: 'Tipo de evento', type: 'select', options: { source: props.eventTypesSource } },
     ...eventFields
       .filter((f) => !hidden.has(f.name))
       //.filter((f) => f.name !== 'celebrants' || showCeleb)
