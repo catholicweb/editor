@@ -1,12 +1,20 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { state } from '../lib/store.js';
+import { ensurePath } from '../lib/schema.js';
 
 const props = defineProps({
   field: { type: Object, required: true },
   container: { type: Object, required: true },
   keyName: { type: [String, Number], required: true },
 });
+
+// Where autodiscovered data lands is declared in pages.yml, not hardcoded:
+//   listPath   — field (relative to this tab's container) where places are added
+//   eventsPath — config dot-path to the events ARRAY that imported events append to
+const opts = props.field.options || {};
+const listPath = opts.listPath || 'list';
+const eventsPath = opts.eventsPath || 'calendar.events.list';
 
 const showAutodiscover = ref(false);
 const isLoading = ref(false);
@@ -338,11 +346,9 @@ async function startAutodiscover() {
 }
 
 async function selectPlace(place) {
-  // Add the place to places.list
-  if (!state.config.places) state.config.places = {};
-  if (!Array.isArray(state.config.places.list)) state.config.places.list = [];
-
-  state.config.places.list.push({
+  // Add the place to the configured list field of this tab's container.
+  const list = ensurePath(props.container, listPath, () => []);
+  list.push({
     name: place.name.replaceAll('Iglesia','').replaceAll('Parroquia','').replaceAll(' de ',' '),
     geo: place.geo,
     image: place.image,
@@ -360,14 +366,10 @@ async function selectPlace(place) {
     try {
       const events = place.events
       if (events.length > 0) {
-        // Ensure state.config.calendar.list exists
-        if (!state.config.calendar) state.config.calendar = {};
-        if (!state.config.calendar.events) state.config.calendar.events = {};
-        if (!Array.isArray(state.config.calendar.events.list)) state.config.calendar.events.list = [];
-
-        // Add events to the list
+        // Append to the configured config dot-path (the events array).
+        const eventsList = ensurePath(state.config, eventsPath, () => []);
         const mappedEvents = events.map(e => mapEvent(e, place));
-        state.config.calendar.events.list.push(...mappedEvents);
+        eventsList.push(...mappedEvents);
       }
     } catch (err) {
       console.error('Failed to import events:', err);

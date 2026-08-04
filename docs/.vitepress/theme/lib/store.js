@@ -186,23 +186,42 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken }) {
   }
 }
 
+// Theme values are located in pages.yml, not hardcoded here: each field that
+// feeds a CSS variable carries `options: { themeRole: <role> }` (accent/body/
+// heading). Resolving the actual (tab, field) from the schema lets a schema
+// author rename/relocate theme fields without touching this module.
+function themeField(role) {
+  for (const tab of state.schema?.content || []) {
+    for (const f of tab.fields || []) {
+      if (f.options?.themeRole === role) {
+        return { tabPath: tab.name, name: f.name };
+      }
+    }
+  }
+  return null;
+}
+function themeValue(role) {
+  const t = themeField(role);
+  return t ? state.config?.[t.tabPath]?.[t.name] : undefined;
+}
+
 // Apply accent color from config
 function applyAccentColorFromConfig() {
-  const color = state.config?.theme?.accentColor;
+  const color = themeValue('accent');
   if (color) {
     applyAccentColor(color);
   }
 }
 
 // Watch for accent color changes in config
-watch(() => state.config?.theme?.accentColor, (newColor) => {
+watch(() => themeValue('accent'), (newColor) => {
   if (newColor) {
     applyAccentColor(newColor);
   }
 });
 
 // Watch for body font changes in config
-watch(() => state.config?.theme?.bodyFont, (newFont) => {
+watch(() => themeValue('body'), (newFont) => {
   const font = sanitizeFontName(newFont);
   if (font) {
     loadGoogleFont(font);
@@ -211,7 +230,7 @@ watch(() => state.config?.theme?.bodyFont, (newFont) => {
 });
 
 // Watch for heading font changes in config
-watch(() => state.config?.theme?.headingFont, (newFont) => {
+watch(() => themeValue('heading'), (newFont) => {
   const font = sanitizeFontName(newFont);
   if (font) {
     loadGoogleFont(font);
@@ -285,8 +304,8 @@ function loadGoogleFont(fontName) {
 
 // Apply body and heading fonts from config
 function applyFontsFromConfig() {
-  const bodyFont = sanitizeFontName(state.config?.theme?.bodyFont);
-  const headingFont = sanitizeFontName(state.config?.theme?.headingFont);
+  const bodyFont = sanitizeFontName(themeValue('body'));
+  const headingFont = sanitizeFontName(themeValue('heading'));
 
   if (bodyFont) {
     loadGoogleFont(bodyFont);

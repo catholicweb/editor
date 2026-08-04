@@ -21,6 +21,33 @@ export function stripLocalRoot(p) {
   return p;
 }
 
+// Resolve a config dot-path (e.g. 'event-types.list' or 'calendar.events').
+// The single place the editor walks dotted datapaths, so every consumer agrees
+// on semantics. Returns undefined when any intermediate segment is missing.
+export function resolvePath(obj, path) {
+  if (!obj || !path) return undefined;
+  let cur = obj;
+  for (const part of String(path).split('.').filter(Boolean)) {
+    if (cur == null) return undefined;
+    cur = cur[part];
+  }
+  return cur;
+}
+
+// Like resolvePath but creates missing intermediate objects along the way, and
+// the leaf via `factory()` when absent. Returns the leaf object.
+export function ensurePath(obj, path, factory) {
+  const parts = String(path).split('.').filter(Boolean);
+  let cur = obj;
+  for (let i = 0; i < parts.length; i++) {
+    if (cur[parts[i]] == null) {
+      cur[parts[i]] = i === parts.length - 1 ? factory() : {};
+    }
+    cur = cur[parts[i]];
+  }
+  return cur;
+}
+
 // Resolve one field-like definition (a field, a block-variant, or a
 // component), inheriting from its `component:` reference (if any) and
 // letting its own explicit keys win.
@@ -31,8 +58,14 @@ export function resolveFieldDef(raw, components) {
     if (comp) base = resolveFieldDef({ ...comp }, components);
   }
   const out = { ...base };
-  for (const k of ['label', 'type', 'options', 'list', 'hidden', 'default']) {
+  for (const k of ['label', 'type', 'list', 'hidden', 'default']) {
     if (raw[k] !== undefined) out[k] = raw[k];
+  }
+  // Options are MERGED, not replaced: a field that uses `component:` can add its
+  // own option keys (e.g. a `themeRole` marker) without wiping the component's own
+  // options (e.g. a font select's `values` list). No case needs a deeper merge.
+  if (raw.options !== undefined) {
+    out.options = { ...(out.options || {}), ...raw.options };
   }
   out.name = raw.name;
   // Preserve the component property from the component definition (Vue component name)
@@ -64,11 +97,19 @@ export async function normalizeSchema(raw, configLoader) {
     fields: (c.fields || []).map((f) => resolveFieldDef(f, components)),
   }));
 
-  // Extract event fields from components if defined, normalizing them like
-  // every other content type so `component:`-inherited fields (location/times/rrule)
-  // get a real `type` instead of `undefined`.
-  const eventFields = components.event
-    ? (components.event.fields || []).map((f) => resolveFieldDef(f, components))
+  // Determine which component provides the event field set for the calendar
+  // editor. Defaults to `event`, but a `calendario` field can point elsewhere
+  // via its `options.eventFields`.
+  let eventCompName = 'event';
+  for (const c of content) {
+    const cf = (c.fields || []).find((f) => f.type === 'calendario');
+    if (cf && cf.options && cf.options.eventFields) eventCompName = cf.options.eventFields;
+  }
+  const eventComp = components[eventCompName];
+  // Normalize like every other content type so `component:`-inherited fields
+  // (location/times/rrule) get a real `type` instead of `undefined`.
+  const eventFields = eventComp
+    ? (eventComp.fields || []).map((f) => resolveFieldDef(f, components))
     : [];
 
   return {
@@ -120,27 +161,22 @@ function scalarDefault(field) {
   }
 }
 
-// Default event-types array (used as fallback when a document has no
-// custom eventTypes). Simple structure: just label, icon, duration.
-// Icons now use Heroicon names (see PeIcon.vue component)
-const DEFAULT_EVENT_TYPES = [
-  { name: 'funeral',      label: 'Funeral',           icon: 'heart',    duration:45, rrule: 'nunca' },
-  { name: 'mass',         label: 'Eucaristía',        icon: 'church',  duration: 30 },
-  { name: 'confession',   label: 'Confesiones',        icon: 'chat-bubble-bottom-center-text',    duration: 60 },
-  { name: 'wayofthecross',label: 'Viacrucis',         icon: 'map-pin',   duration: 45 },
-  { name: 'feast',        label: 'Festividad',         icon: 'star',    duration: 60 },
-  { name: 'group',        label: 'Grupo / Catequesis', icon: 'users',   duration: 45 },
-  { name: 'custom',       label: 'Otro',               icon: 'calendar',duration: 60 },
-];
-
 export function defaultForField(field) {
   if (isRepeatable(field)) return [];
   // The `calendario` field owns a whole events document object; give it a
   // proper empty shape so opening a new file doesn't start null. It is NOT
   // treated as an `object`/`block` by applyDefaults (no `fields`), so the
   // generic recursion leaves its nested structure to the calendar editor.
+  // The sub-keys are driven by the field's options (keyList/keyCelebrants/
+  // keyDefaults) so the schema author controls where data lives; the live
+  // sub-keys are `list`, `celebrants`, `defaults`.
   if (field.type === 'calendario') {
-    return { list: [], urls: [], celebrants: [], eventTypes: DEFAULT_EVENT_TYPES };
+    const o = field.options || {};
+    return {
+      [o.keyList || 'list']: [],
+      [o.keyCelebrants || 'celebrants']: [],
+      [o.keyDefaults || 'defaults']: {},
+    };
   }
   if (field.type === 'object') return defaultObject(field);
   if (field.type === 'block') return [];
