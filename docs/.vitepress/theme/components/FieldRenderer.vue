@@ -166,7 +166,8 @@ function closeModal() {
             <span class="spacer" />
             <button v-if="listConfig?.sort === 'manual'" type="button" class="move" @click.stop.prevent="moveUp(i)">↑</button>
             <button v-if="listConfig?.sort === 'manual'" type="button" class="move" @click.stop.prevent="moveDown(i)">↓</button>
-            <button type="button" class="del" @click.stop.prevent="removeAt(i)" :aria-label="'Eliminar'" title="Eliminar"><PeIcon name="trash" :size="14" /></button>
+            <button v-if="!item.protected" type="button" class="del" @click.stop.prevent="removeAt(i)" :aria-label="'Eliminar'" title="Eliminar"><PeIcon name="trash" :size="14" /></button>
+            <span v-else aria-label="'Imposible eliminar'" title="Imposible eliminar" class="move"><PeIcon name="lock-closed" :size="14" /></span>
           </summary>
           <FieldsGroup :fields="field.fields" :container="item" />
         </details>
@@ -175,7 +176,8 @@ function closeModal() {
           <span class="spacer" />
           <button v-if="listConfig?.sort === 'manual'" type="button" class="move" @click.stop.prevent="moveUp(i)">↑</button>
           <button v-if="listConfig?.sort === 'manual'" type="button" class="move" @click.stop.prevent="moveDown(i)">↓</button>
-          <button type="button" class="del" @click.stop.prevent="removeAt(i)" :aria-label="'Eliminar'" title="Eliminar"><PeIcon name="trash" :size="14" /></button>
+          <button v-if="!item.protected" type="button" class="del" @click.stop.prevent="removeAt(i)" :aria-label="'Eliminar'" title="Eliminar"><PeIcon name="trash" :size="14" /></button>
+          <span v-else aria-label="'Imposible eliminar'" title="Imposible eliminar" class="move"><PeIcon name="lock-closed" :size="14" /></span>
         </div>
       </div>
     </div>

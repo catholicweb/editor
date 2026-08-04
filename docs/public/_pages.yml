@@ -132,20 +132,6 @@ components:
         fields:
           - { name: title, label: Título, type: string }
           - { name: link, label: Accion, type: string }
-  events:
-    label: Eventos
-    type: object
-    fields:
-      - name: list
-        label: Lista de eventos
-        type: object
-        list: { collapsible: { collapsed: true, summary: "{fields.title}" } }
-        fields:
-          - { name: title, type: string, label: Título }
-          - { name: date, type: date, label: Fecha }
-          - { name: times, type: string, label: Hora }
-          - { name: location, type: string, label: Lugar }
-          - { name: description, type: text, label: Descripción }
   gallery:
     label: Galleria imagenes
     type: object
@@ -173,14 +159,146 @@ components:
       - { name: times, label: Hora, component: times }
       - { name: rrule, label: Se repite, component: rrule }
       - { name: duration, label: Duración (min), type: number }
-      - { name: celebrants, label: Celebrantes, type: select, options: {  multiple: true,      source: "site.collaborators" } }
+      - { name: celebrants, label: Celebrantes, type: select, options: {  multiple: true,      source: "info.collaborators" } }
   exception:
     label: Excepción
     type: object
     fields:
       - { name: newTime, label: Nueva hora (vacío = original), component: times }
       - { name: newPlace, label: Nuevo lugar (vacío = original), component: location }
-      - { name: celebrants, label: Celebrantes, type: select, options: {  multiple: true,      source: "site.collaborators" } }
+      - { name: celebrants, label: Celebrantes, type: select, options: {  multiple: true,      source: "info.collaborators" } }
+  page:
+    label: Página
+    type: object
+    fields:
+        - { name: title, label: Título, type: string }
+        - { name: description, label: Subtitulo, type: string }
+        - { name: image, label: Imagen, type: image }
+        - { name: protected, label: 'Elemento protegido/imborrable (dev only, ira escondido)', type: boolean }
+        #- { name: hideHero, label: Esconder cabezera por defecto, type: boolean, default: false }
+        - name: sections
+          label: Secciones de la página
+          type: block
+          list: { collapsible: { collapsed: true, summary: "{fields.title}" } }
+          blocks:
+            - name: accordion
+              label: FAQ
+              fields:
+                - { name: title, type: string, label: Titulo sección }
+                - name: elements
+                  label: Preguntas y respuestas
+                  type: object
+                  list: { collapsible: { collapsed: true, summary: "{fields.title}" } }
+                  fields:
+                    - { name: title, label: Pregunta, type: string }
+                    - { name: html, label: Respuesta, type: rich-text }
+                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+            - name: scrollyTelling
+              label: Narración interactiva
+              fields:
+                - { name: title, type: string, label: Titulo sección }
+                - name: elements
+                  label: Viñetas
+                  type: object
+                  list: { collapsible: { collapsed: true } }
+                  fields:
+                    - { name: text, label: Texto, type: rich-text }
+                    - { name: image, label: Imagen, type: image }
+                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+            - name: gallery
+              label: Galeria de imagenes
+              fields:
+                - { name: title, type: string, label: Titulo sección }
+                - { name: list, type: image, label: Seleccion de imagenes, options: { multiple: true } }
+                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+            - name: text
+              label: Texto
+              fields:
+                - { name: title, type: string, label: Titulo sección }
+                - { name: html, label: Texto largo, type: rich-text }
+                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+            - name: gospel
+              label: Evangelio del día
+              fields:
+                - { name: title, type: string, label: Titulo sección }
+                - { name: readings, label: Mostrar primera/segunda y salmo, type: boolean, default: false }
+                - { name: audio, label: Añadir audio, type: boolean, default: false }
+                - { name: images, label: Mostrar imagenes, type: boolean, default: true }
+                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+            - name: calendar
+              label: Eventos
+              fields:
+                - { name: title, type: string, label: Titulo sección }
+                - { name: filter, label: Filtro. Incluir solo eventos que contengan, type: string }
+                - { name: order, label: "Agrupación de eventos (tabla, fila, columna, subfila, notas)", component: ordering }
+                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+            - name: video-gospel
+              label: Audios Nuevo Testamento
+              fields:
+                - { name: title, type: string, label: Titulo sección }
+                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+            - name: video-podcast
+              label: Podcast católicos
+              fields:
+                - { name: title, type: string, label: Titulo sección }
+                - { name: links, label: Podcast, component: podcast }
+                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+            - name: video-channel
+              label: Canal de Youtube
+              fields:
+                - { name: title, type: string, label: Titulo sección }
+                - { name: filter, label: Filtro. Incluir solo videos que contengan, type: string }
+                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+            - name: town
+              label: Lista de pueblos
+              fields:
+                - { name: title, type: string, label: Titulo sección }
+                - { name: filters, label: Filtros a mostrar, type: select, options: { multiple: true, creatable: true } }
+                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+            - name: video
+              label: Lista de videos/audios (Youtube/Spotify/...)
+              fields:
+                - { name: title, type: string, label: Titulo sección }
+                - { name: links, label: Enlaces externos, type: string, list: { collapsible: { collapsed: true } } }
+                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+            - name: map
+              label: Mapa
+              fields:
+                - { name: title, type: string, label: Título sección }
+                - { name: geo, type: string, label: "Coordenadas (ej: 42.801941, -1.645660)" }
+                - { name: name, type: string, label: Nombre }
+                - { name: image, type: image, label: Imagen }
+                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+            - name: fundraising
+              label: Campaña financiación
+              fields:
+                - { name: title, type: string, label: Titulo sección }
+                - { name: name, type: string, label: "Nombre causa (ej: Nuevo tejado)" }
+                - { name: description, type: string, label: Descripcion }
+                - { name: raised, type: number, label: Recaudado hasta la fecha }
+                - { name: goal, type: number, label: Total a recaudar }
+                - { name: action, type: string, label: Nombre acción, hidden: true, default: Donar }
+                - { name: image, type: image, label: Imagen }
+                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+            - name: hero
+              label: Cabezera de sección
+              component: hero
+            - name: team
+              label: Miembros del equipo
+              fields:
+                - { name: title, type: string, label: Titulo sección }
+                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+            - name: links
+              label: Enlaces internos
+              fields:
+                - { name: title, type: string, label: Titulo sección }
+                - name: links
+                  label: Enlaces internos
+                  type: reference
+                  options: { collection: pages.list, multiple: true, label: "{title}" }
+                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+
+
 media:
   input: docs/public/media
   output: /media
@@ -204,7 +322,7 @@ content:
           keyDefaults: "defaults"              # events doc sub-key holding the per-type defaults map
 
   - name: event-types
-    icon: squares-2x2
+    icon: false # this hides the tab
     type: tab
     label: Tipos de Evento
     fields:
@@ -215,12 +333,41 @@ content:
           collapsible:
             collapsed: true
             summary: "{fields.label}"
+          sort: 'alphabetical'
         fields:
           - { name: name, label: Identificador, type: uuid, hidden: true }
           - { name: label, label: "Tipo de evento (ej: Eucaristía)", type: string }
           - { name: icon, label: Icono (se mostrará unicamente en este editor), type: icon }
-          - name: defaults
-            component: event
+          - { name: defaults, component: event }
+          - { name: protected, label: 'Elemento protegido/imborrable (dev only, ira escondido)', type: boolean }
+
+  - name: info
+    icon: identification
+    type: tab
+    label: Info
+    fields:
+      - { name: title, label: Titulo sitio, type: string }
+      - { name: description, label: Description del sitio, type: text }
+      - name: social
+        label: Redes sociales, youtube...
+        type: string
+        list: { collapsible: { collapsed: true } }
+      - name: collaborators
+        label: Colaboradores
+        type: object
+        list: { collapsible: { collapsed: true, summary: "{fields.name}" } }
+        fields:
+          - { name: name, label: Nombre, type: string }
+          - { name: phonenumber, label: Número de telefono, type: string }
+          - { name: email, label: Correo electrónico, type: string }
+          - { name: image, label: Image, type: image }
+      - name: bank
+        label: Bizum y cuentas bancarias
+        type: object
+        list: { collapsible: { collapsed: true, summary: "{fields.title}" } }
+        fields:
+          - { name: title, label: "Nombre (ej: BIZUM/BBVA/...)", type: string }
+          - { name: account, label: Número de cuenta/bizum, type: string }
 
   - name: places
     icon: material-symbols:church-rounded
@@ -243,10 +390,9 @@ content:
           eventsPath: "calendar.events.list"   # config dot-path to the events ARRAY to import into
 
   - name: pages
-    icon: document
+    icon: document-text
     label: Páginas
     type: tab
-    subfolders: false
     fields:
       - name: nav
         label: Menu de navegación
@@ -263,136 +409,10 @@ content:
         component: languages
       - name: list
         label: Páginas
-        type: object
+        component: page
         list: { collapsible: { collapsed: true, summary: "{fields.title}" }, sort: "alphabetical", modal: true  }
-        fields:
-          - { name: title, label: Título, type: string }
-          - { name: description, label: Subtitulo, type: string }
-          - { name: image, label: Imagen, type: image }
-          - { name: hideHero, label: Esconder cabezera por defecto, type: boolean, default: false }
-          - name: sections
-            label: Secciones de la página
-            type: block
-            list: { collapsible: { collapsed: true, summary: "{fields.title}" } }
-            blocks:
-              - name: accordion
-                label: FAQ
-                fields:
-                  - { name: title, type: string, label: Titulo sección }
-                  - name: elements
-                    label: Preguntas y respuestas
-                    type: object
-                    list: { collapsible: { collapsed: true, summary: "{fields.title}" } }
-                    fields:
-                      - { name: title, label: Pregunta, type: string }
-                      - { name: html, label: Respuesta, type: rich-text }
-                  - { name: tags, label: Opciones avanzadas de estilo, component: tags }
-              - name: scrollyTelling
-                label: Narración interactiva
-                fields:
-                  - { name: title, type: string, label: Titulo sección }
-                  - name: elements
-                    label: Viñetas
-                    type: object
-                    list: { collapsible: { collapsed: true } }
-                    fields:
-                      - { name: text, label: Texto, type: rich-text }
-                      - { name: image, label: Imagen, type: image }
-                  - { name: tags, label: Opciones avanzadas de estilo, component: tags }
-              - name: gallery
-                label: Galeria de imagenes
-                fields:
-                  - { name: title, type: string, label: Titulo sección }
-                  - { name: list, type: image, label: Seleccion de imagenes, options: { multiple: true } }
-                  - { name: tags, label: Opciones avanzadas de estilo, component: tags }
-              - name: text
-                label: Texto
-                fields:
-                  - { name: title, type: string, label: Titulo sección }
-                  - { name: html, label: Texto largo, type: rich-text }
-                  - { name: tags, label: Opciones avanzadas de estilo, component: tags }
-              - name: gospel
-                label: Evangelio del día
-                fields:
-                  - { name: title, type: string, label: Titulo sección }
-                  - { name: readings, label: Mostrar primera/segunda y salmo, type: boolean, default: false }
-                  - { name: audio, label: Añadir audio, type: boolean, default: false }
-                  - { name: images, label: Mostrar imagenes, type: boolean, default: true }
-                  - { name: tags, label: Opciones avanzadas de estilo, component: tags }
-              - name: calendar
-                label: Eventos
-                fields:
-                  - { name: title, type: string, label: Titulo sección }
-                  - { name: filter, label: Filtro. Incluir solo eventos que contengan, type: string }
-                  - { name: order, label: "Agrupación de eventos (tabla, fila, columna, subfila, notas)", component: ordering }
-                  - { name: tags, label: Opciones avanzadas de estilo, component: tags }
-              - name: video-gospel
-                label: Audios Nuevo Testamento
-                fields:
-                  - { name: title, type: string, label: Titulo sección }
-                  - { name: tags, label: Opciones avanzadas de estilo, component: tags }
-              - name: video-podcast
-                label: Podcast católicos
-                fields:
-                  - { name: title, type: string, label: Titulo sección }
-                  - { name: links, label: Podcast, component: podcast }
-                  - { name: tags, label: Opciones avanzadas de estilo, component: tags }
-              - name: video-channel
-                label: Canal de Youtube
-                fields:
-                  - { name: title, type: string, label: Titulo sección }
-                  - { name: filter, label: Filtro. Incluir solo videos que contengan, type: string }
-                  - { name: tags, label: Opciones avanzadas de estilo, component: tags }
-              - name: town
-                label: Lista de pueblos
-                fields:
-                  - { name: title, type: string, label: Titulo sección }
-                  - { name: filters, label: Filtros a mostrar, type: select, options: { multiple: true, creatable: true } }
-                  - { name: tags, label: Opciones avanzadas de estilo, component: tags }
-              - name: video
-                label: Lista de videos/audios (Youtube/Spotify/...)
-                fields:
-                  - { name: title, type: string, label: Titulo sección }
-                  - { name: links, label: Enlaces externos, type: string, list: { collapsible: { collapsed: true } } }
-                  - { name: tags, label: Opciones avanzadas de estilo, component: tags }
-              - name: map
-                label: Mapa
-                fields:
-                  - { name: title, type: string, label: Título sección }
-                  - { name: geo, type: string, label: "Coordenadas (ej: 42.801941, -1.645660)" }
-                  - { name: name, type: string, label: Nombre }
-                  - { name: image, type: image, label: Imagen }
-                  - { name: tags, label: Opciones avanzadas de estilo, component: tags }
-              - name: fundraising
-                label: Campaña financiación
-                fields:
-                  - { name: title, type: string, label: Titulo sección }
-                  - { name: name, type: string, label: "Nombre causa (ej: Nuevo tejado)" }
-                  - { name: description, type: string, label: Descripcion }
-                  - { name: raised, type: number, label: Recaudado hasta la fecha }
-                  - { name: goal, type: number, label: Total a recaudar }
-                  - { name: action, type: string, label: Nombre acción, hidden: true, default: Donar }
-                  - { name: image, type: image, label: Imagen }
-                  - { name: tags, label: Opciones avanzadas de estilo, component: tags }
-              - name: hero
-                label: Cabezera de sección
-                component: hero
-              - name: team
-                label: Miembros del equipo
-                fields:
-                  - { name: title, type: string, label: Titulo sección }
-                  - { name: tags, label: Opciones avanzadas de estilo, component: tags }
-              - name: links
-                label: Enlaces internos
-                fields:
-                  - { name: title, type: string, label: Titulo sección }
-                  - name: links
-                    label: Enlaces internos
-                    type: reference
-                    options: { collection: pages.list, multiple: true, label: "{title}" }
-                  - { name: tags, label: Opciones avanzadas de estilo, component: tags }
-      - { name: pageperlocatoin, label: Crear una página nueva automaticamente para cada templo, type: boolean, default: true }
-
+        
+      - { name: pageperlocatoin, label: Crear una página automaticamente para cada templo, type: boolean, default: true }
 
 
   - name: theme
@@ -400,6 +420,8 @@ content:
     icon: fluent-mdl2:color-solid
     type: tab
     fields:
+      - { name: image, label: Imagen del sitio, type: image }
+      - { name: icon, label: Icono del sitio, type: image }
       - name: accentColor
         label: "Color elementos acentuados"
         type: color
@@ -426,33 +448,4 @@ content:
           - { name: cssClass, label: "Efecto a aplicar", component: effect }
           - { name: scroll, label: "Aplicar al hacer scroll", type: boolean, default: false }
 
-  - name: site
-    icon: cog-6-tooth
-    type: tab
-    label: Configuración
-    fields:
-      - { name: title, label: Titulo sitio, type: string }
-      - { name: description, label: Description del sitio, type: text }
-      - { name: image, label: Imagen del sitio, type: image }
-      - { name: icon, label: Icono del sitio, type: image }
-      - name: social
-        label: Redes sociales, youtube...
-        type: string
-        list: { collapsible: { collapsed: true } }
-      - name: collaborators
-        label: Colaboradores
-        type: object
-        list: { collapsible: { collapsed: true, summary: "{fields.name}" } }
-        fields:
-          - { name: name, label: Nombre, type: string }
-          - { name: phonenumber, label: Número de telefono, type: string }
-          - { name: email, label: Correo electrónico, type: string }
-          - { name: image, label: Image, type: image }
-      - name: bank
-        label: Bizum y cuentas bancarias
-        type: object
-        list: { collapsible: { collapsed: true, summary: "{fields.title}" } }
-        fields:
-          - { name: title, label: "Nombre (ej: BIZUM/BBVA/...)", type: string }
-          - { name: account, label: Número de cuenta/bizum, type: string }
       

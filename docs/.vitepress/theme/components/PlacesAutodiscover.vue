@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { state } from '../lib/store.js';
 import { ensurePath } from '../lib/schema.js';
+import PeIcon from './PeIcon.vue';
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -174,7 +175,7 @@ function formatPlaces(elements) {
     const distance = (userLat && userLon) ? calculateDistance(userLat, userLon, lat, lon) : null;
 
     places.push({
-      name: el.tags.name || 'Sin nombre',
+      name: cleanPlaceName(el.tags.name) || 'Sin nombre',
       geo: `${lat}, ${lon}`,
       lat: lat,
       lon: lon,
@@ -211,7 +212,7 @@ async function searchMisasAPI(lat, lon) {
       const placeLon = parish.location?.coordinates?.[0] || parish.lon;
 
       return {
-        name: parish.name || 'Sin nombre',
+        name: cleanPlaceName(parish.name) || 'Sin nombre',
         geo: `${placeLat}, ${placeLon}`,
         lat: placeLat,
         lon: placeLon,
@@ -345,11 +346,17 @@ async function startAutodiscover() {
   }
 }
 
+function cleanPlaceName(name){
+  if (!name) return ''
+  const str = name.replaceAll('Iglesia','').replaceAll('Parroquia','').replaceAll(' de ',' ')
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 async function selectPlace(place) {
   // Add the place to the configured list field of this tab's container.
   const list = ensurePath(props.container, listPath, () => []);
   list.push({
-    name: place.name.replaceAll('Iglesia','').replaceAll('Parroquia','').replaceAll(' de ',' '),
+    name: place.name,
     geo: place.geo,
     image: place.image,
   });
@@ -390,7 +397,8 @@ function closeModal() {
   <div class="places-autodiscover">
     <div class="field-header">
       <button type="button" class="autodiscover-btn" @click="startAutodiscover">
-        📍 Encontrar parroquias cercanas
+          <PeIcon name="magnifying-glass" :size="16" />
+          Buscar parroquias cercanas
       </button>
     </div>
 

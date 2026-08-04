@@ -5,7 +5,7 @@ import { onNavigate } from '../lib/ui.js';
 import PeIcon from './PeIcon.vue';
 
 // Show all entries from fileIndex (not grouped)
-const entries = computed(() => state.fileIndex);
+const entries = computed(() => state.fileIndex.filter(e => e.icon));
 
 function isCurrentEntry(entry) {
   return state.currentEntry && state.currentEntry === entry;

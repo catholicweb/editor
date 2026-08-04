@@ -131,7 +131,7 @@ const saveState = computed(() => {
   return isDirty.value ? 'dirty' : 'saved';
 });
 const saveIcon = computed(() =>
-  saveState.value === 'saving' ? 'arrow-path' : 'arrow-down-tray'
+  saveState.value === 'saving' ? 'arrow-path' : 'cloud-arrow-up'
 );
 const saveTitle = computed(() =>
   ({ saved: 'Guardado.', dirty: 'Sin guardar', saving: 'Guardando…' }[saveState.value])
