@@ -18,7 +18,8 @@ async function selectEntry(entry) {
   const newUrl = `${window.location.pathname}?edit=${entry.tabPath}`;
   window.history.pushState({}, '', newUrl);
 
-  // openEntry() now saves unsaved changes before switching
+  // openEntry() switches tabs; dirty state is tracked against the whole config,
+  // so switching away never drops pending changes (they stay until saved).
   await openEntry(entry);
   onNavigate();
 }

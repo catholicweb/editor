@@ -2,7 +2,6 @@ import { reactive, computed, watch } from 'vue';
 import yaml from 'js-yaml';
 import * as api from './api.js';
 import { encodePath, safeRelPath } from './codec.js';
-import { parseFrontmatter, stringifyFrontmatter } from './frontmatter.js';
 import { normalizeSchema, applyDefaults } from './schema.js';
 import { buildFileIndex, listMediaFiles } from './content-index.js';
 
@@ -46,14 +45,30 @@ export const state = reactive({
   currentEntry: null,
   draft: null, // reactive parsed data object
   currentBody: '', // markdown body text (preserved but not edited), for round-trip
-  baselineText: '', // last-saved-or-loaded serialized text, for dirty check
+  savedText: '', // whole-config serialization last confirmed on the server (dirty baseline)
 });
 
 export const isLoggedIn = computed(() => !!state.slug && !!state.schema);
 
+// Serialize the WHOLE config for dirty comparison, overlaying the currently
+// open tab's draft. The active draft can diverge from `state.config[tab]` after
+// a save (saveCurrent replaces that key with a copy), so we must read edits
+// from the draft rather than from `state.config` when comparing.
+function fullConfigText() {
+  const base = state.config || {};
+  if (state.currentEntry && state.draft != null) {
+    return JSON.stringify(
+      { ...base, [state.currentEntry.tabPath]: { ...state.draft } },
+      null,
+      2
+    ) + '\n';
+  }
+  return JSON.stringify(base, null, 2) + '\n';
+}
+
 export const isDirty = computed(() => {
-  if (!state.currentEntry || state.draft == null) return false;
-  return serializeCurrent() !== state.baselineText;
+  if (!state.config || state.draft == null) return false;
+  return fullConfigText() !== state.savedText;
 });
 
 // ---------------------------------------------------------------------------
@@ -161,9 +176,17 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken }) {
     const schema = await normalizeSchema(rawSchema || {}, configLoader);
 
     state.schema = schema;
-    state.config = config; // Store config in reactive state
+    state.config = config || {}; // Store config in reactive state
     state.fileIndex = buildFileIndex(schema); // No longer needs rawTokens
     state.mediaFiles = listMediaFiles(schema, state.mediaTokens); // Use mediaTokens
+
+    // Pre-apply schema defaults to every editable tab so that simply opening a
+    // tab (which re-applies the same defaults) never counts as a change. This
+    // keeps the whole-config dirty baseline comparable with the live config.
+    for (const entry of state.fileIndex) {
+      if (!state.config[entry.tabPath]) state.config[entry.tabPath] = {};
+      applyDefaults(entry.fields, state.config[entry.tabPath]);
+    }
 
     // Apply accent color from config
     applyAccentColorFromConfig();
@@ -175,6 +198,10 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken }) {
     if (!state.currentEntry && state.fileIndex.length > 0) {
       await openEntry(state.fileIndex[0]);
     }
+
+    // Baseline the dirty check against the loaded (defaulted) config, so a
+    // fresh login shows "Guardado." rather than spurious "Sin guardar".
+    state.savedText = fullConfigText();
 
     saveSession();
     state.status = ''; // Removed connection banner
@@ -333,7 +360,7 @@ export function logout() {
   state.currentEntry = null;
   state.draft = null;
   state.currentBody = '';
-  state.baselineText = '';
+  state.savedText = '';
   state.status = '';
   state.error = '';
 }
@@ -341,31 +368,6 @@ export function logout() {
 // ---------------------------------------------------------------------------
 // Opening / editing a document
 // ---------------------------------------------------------------------------
-
-function parseContent(text, format) {
-  if (text == null || text === '') return {};
-  if (format === 'md') return parseFrontmatter(text).data;
-  try {
-    return JSON.parse(text);
-  } catch (err) {
-    console.error('JSON parse error, starting from empty document:', err);
-    return {};
-  }
-}
-
-function serializeContent(data, format, body = '') {
-  if (format === 'md') return stringifyFrontmatter(data, body);
-  return JSON.stringify(data, null, 2) + '\n';
-}
-
-function extractBody(text, format) {
-  if (format !== 'md') return '';
-  return parseFrontmatter(text || '').body || '';
-}
-
-function serializeCurrent() {
-  return serializeContent(state.draft, state.currentEntry.format, state.currentBody);
-}
 
 export async function openEntry(entry) {
   state.error = '';
@@ -389,14 +391,15 @@ export async function openEntry(entry) {
     // Extract the relevant field from config.json
     const data = state.config ? (state.config[entry.tabPath] || {}) : {};
 
-    // Apply defaults from schema
+    // Apply defaults from schema (a no-op for tabs already defaulted at login).
     applyDefaults(entry.fields, data);
 
-    // Set baseline to field value for dirty checking
     state.currentEntry = entry;
     state.draft = reactive(data);
     state.currentBody = '';
-    state.baselineText = JSON.stringify(data, null, 2) + '\n';
+    // Note: `savedText` (the whole-config dirty baseline) is intentionally NOT
+    // touched here. It only advances on a confirmed save or login, so switching
+    // tabs can never clear pending changes.
     state.status = '';
   } catch (err) {
     state.error = err.message || String(err);
@@ -405,7 +408,7 @@ export async function openEntry(entry) {
   }
 }
 
-export async function saveCurrent() {
+export async function saveCurrent({ keepalive = false } = {}) {
   if (!state.currentEntry || state.draft == null) return;
   state.loading = true;
   state.saving = true;
@@ -413,11 +416,12 @@ export async function saveCurrent() {
   try {
     const entry = state.currentEntry;
 
-    // Update the config object
+    // Serialize and save the entire config. `state.draft` aliases
+    // `state.config[tabPath]` (see openEntry), so every edit already lives in
+    // the whole config — no need to copy the tab here. Deliberately NOT
+    // replacing `config[tabPath]` with a copy: that used to sever the alias,
+    // letting edits made after a save escape the config until the next save.
     state.config = state.config || {};
-    state.config[entry.tabPath] = { ...state.draft };
-
-    // Serialize and save the entire config
     const text = JSON.stringify(state.config, null, 2) + '\n';
     const contentType = 'application/json; charset=utf-8';
 
@@ -428,10 +432,11 @@ export async function saveCurrent() {
       state.configToken = fileToken;
     }
 
-    await api.putFile(state.apiBase, state.slug, state.editorToken, fileToken, text, contentType);
+    await api.putFile(state.apiBase, state.slug, state.editorToken, fileToken, text, contentType, { keepalive });
 
-    // Update baseline to the saved field value
-    state.baselineText = JSON.stringify(state.draft, null, 2) + '\n';
+    // Only advance the whole-config dirty baseline after a CONFIRMED save, so a
+    // transient failure never looks like the data was persisted.
+    state.savedText = text;
     state.status = 'Guardado.';
 
   } catch (err) {
@@ -455,9 +460,8 @@ export function scheduleAutosave() {
   autosaveTimer = setTimeout(async () => {
     if (!state.currentEntry || state.draft == null) return;
 
-    // Check if there are changes
-    const currentText = serializeCurrent();
-    if (currentText === state.baselineText) return; // No changes
+    // Check if there are changes across the whole config
+    if (fullConfigText() === state.savedText) return; // No changes
 
     // Save
     try {
@@ -501,19 +505,35 @@ watch(
   { deep: true }
 );
 
-// Beforeunload handler: warn user if there are unsaved changes
-export function initBeforeUnloadHandler() {
-  document.addEventListener('visibilitychange', () => {
-    // Triggers when the tab goes hidden or the user navigates away/closes
-    if (document.visibilityState === 'hidden' && isDirty.value) {
-      // 1. Clear any pending auto-save timers
-      if (autosaveTimer) {
-        clearTimeout(autosaveTimer);
-        autosaveTimer = null;
-      }
+// Leave handler: when the tab is hidden, navigated away from, or closed, push
+// any pending changes to the server. The request uses fetch keepalive so it
+// survives the page unload (sendBeacon can't carry our Authorization header).
+// Fires on pagehide / beforeunload / visibilitychange-hidden for cross-browser
+// coverage; the in-flight guard plus the whole-config baseline (advanced only
+// on a confirmed save) make the extra events harmless no-ops.
+let unloadFlushInFlight = false;
 
-      // 2. Fire the background save request (no await needed)
-      saveCurrent().catch(err => console.error('Failed to save before unload:', err));
-    }
+function flushIfDirty() {
+  if (unloadFlushInFlight) return;
+  if (!isDirty.value) return;
+
+  if (autosaveTimer) {
+    clearTimeout(autosaveTimer);
+    autosaveTimer = null;
+  }
+
+  unloadFlushInFlight = true;
+  saveCurrent({ keepalive: true })
+    .catch((err) => console.error('Failed to save before unload:', err))
+    .finally(() => {
+      unloadFlushInFlight = false;
+    });
+}
+
+export function initBeforeUnloadHandler() {
+  window.addEventListener('pagehide', flushIfDirty);
+  window.addEventListener('beforeunload', flushIfDirty);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushIfDirty();
   });
 }
