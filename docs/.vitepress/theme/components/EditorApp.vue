@@ -3,7 +3,7 @@ import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import LoginView from './LoginView.vue';
 import FieldBrowser from './FieldBrowser.vue';
 import FieldsGroup from './FieldsGroup.vue';
-import { state, isLoggedIn, isDirty, logout, login, loadSavedSession, initBeforeUnloadHandler, openEntry } from '../lib/store.js';
+import { state, isLoggedIn, isDirty, logout, login, loadSavedSession, initBeforeUnloadHandler, openEntry, saveCurrent } from '../lib/store.js';
 import { ui, initUi, toggleSidebar } from '../lib/ui.js';
 import PeIcon from './PeIcon.vue';
 
@@ -78,7 +78,7 @@ const booting = ref(false);
 
 onMounted(async () => {
   initUi();
-  initBeforeUnloadHandler(); // Warn user about unsaved changes when leaving
+  initBeforeUnloadHandler(); // Auto-flush unsaved changes (keepalive) on leave
 
   // Listen for browser back/forward navigation
   window.addEventListener('popstate', handlePopState);
@@ -125,6 +125,7 @@ const headerTitle = computed(() =>
 );
 
 // Save-status indicator: shows whether the open data has reached the server.
+// The same button also triggers a manual save on click.
 const saveState = computed(() => {
   if (state.saving) return 'saving';
   return isDirty.value ? 'dirty' : 'saved';
@@ -135,6 +136,12 @@ const saveIcon = computed(() =>
 const saveTitle = computed(() =>
   ({ saved: 'Guardado.', dirty: 'Sin guardar', saving: 'Guardando…' }[saveState.value])
 );
+
+function onSave() {
+  saveCurrent().catch(() => {
+    // Error already surfaced in state.error
+  });
+}
 
 // Calendar documents use a full-width editor instead of the 760px form.
 const isCalendarDoc = computed(() =>
@@ -167,6 +174,8 @@ async function onLogout() {
           :class="saveState"
           :title="saveTitle"
           :aria-label="saveTitle"
+          :disabled="state.saving"
+          @click="onSave"
         >
           <PeIcon :name="saveIcon" :size="20" />
         </button>

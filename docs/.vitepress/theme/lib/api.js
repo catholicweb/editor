@@ -49,7 +49,7 @@ export async function listFiles(apiBase, slug) {
   return res.json(); // { slug, files: [token, ...] }
 }
 
-export async function putFile(apiBase, slug, token, fileToken, body, contentType) {
+export async function putFile(apiBase, slug, token, fileToken, body, contentType, { keepalive = false } = {}) {
   const res = await fetch(
     `${trimBase(apiBase)}/sites/${encodeURIComponent(slug)}/${encodeURIComponent(fileToken)}`,
     {
@@ -59,6 +59,9 @@ export async function putFile(apiBase, slug, token, fileToken, body, contentType
         'Content-Type': contentType || 'application/octet-stream',
       },
       body,
+      // keepalive lets the request survive page unload (used for the on-leave
+      // flush). We need a real fetch (not sendBeacon) to carry the bearer token.
+      keepalive,
     }
   );
   if (!res.ok) throw new Error(`No se pudo guardar el fichero: ${await errText(res)}`);
