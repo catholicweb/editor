@@ -398,7 +398,7 @@ function closeModal() {
     <div class="field-header">
       <button type="button" class="autodiscover-btn" @click="startAutodiscover">
           <PeIcon name="magnifying-glass" :size="16" />
-          Buscar parroquias cercanas
+          Buscar templos cercanos
       </button>
     </div>
 

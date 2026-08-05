@@ -78,7 +78,7 @@ components:
     label: Lugares
     type: select
     options:
-      source: "places.list"
+      source: "info.places"
   tags:
     label: Options
     type: select
@@ -174,7 +174,7 @@ components:
         - { name: title, label: Título, type: string }
         - { name: description, label: Subtitulo, type: string }
         - { name: image, label: Imagen, type: image }
-        - { name: protected, label: 'Elemento protegido/imborrable (dev only, ira escondido)', type: boolean }
+        - { name: protected, label: 'Elemento protegido/imborrable (dev only, ira escondido)', type: text }
         #- { name: hideHero, label: Esconder cabezera por defecto, type: boolean, default: false }
         - name: sections
           label: Secciones de la página
@@ -339,42 +339,27 @@ content:
           - { name: label, label: "Tipo de evento (ej: Eucaristía)", type: string }
           - { name: icon, label: Icono (se mostrará unicamente en este editor), type: icon }
           - { name: defaults, component: event }
-          - { name: protected, label: 'Elemento protegido/imborrable (dev only, ira escondido)', type: boolean }
+          - { name: protected, label: 'Elemento protegido/imborrable (dev only, ira escondido)', type: text }
 
   - name: info
     icon: identification
     type: tab
-    label: Info
+    label: Datos
     fields:
-      - { name: title, label: Titulo sitio, type: string }
-      - { name: description, label: Description del sitio, type: text }
-      - name: social
-        label: Redes sociales, youtube...
-        type: string
-        list: { collapsible: { collapsed: true } }
+      - { name: title, label: Nombre o título de la página web, type: string }
+      - { name: description, label: Breve descripción de la web, type: text }
       - name: collaborators
-        label: Colaboradores
+        label: Lista de colaboradores
         type: object
         list: { collapsible: { collapsed: true, summary: "{fields.name}" } }
         fields:
           - { name: name, label: Nombre, type: string }
-          - { name: phonenumber, label: Número de telefono, type: string }
-          - { name: email, label: Correo electrónico, type: string }
-          - { name: image, label: Image, type: image }
-      - name: bank
-        label: Bizum y cuentas bancarias
-        type: object
-        list: { collapsible: { collapsed: true, summary: "{fields.title}" } }
-        fields:
-          - { name: title, label: "Nombre (ej: BIZUM/BBVA/...)", type: string }
-          - { name: account, label: Número de cuenta/bizum, type: string }
-
-  - name: places
-    icon: material-symbols:church-rounded
-    type: tab
-    label: Templos
-    fields:
-      - name: list
+          - name: social
+            label: Información de contacto (teléfono, email...)
+            type: string
+            list: { collapsible: { collapsed: true } }
+          - { name: image, label: Foto, type: image }
+      - name: places
         label: Lista de templos
         type: object
         list: { collapsible: { collapsed: true, summary: "{fields.name}" }, sort: "alphabetical", modal: false }
@@ -386,14 +371,32 @@ content:
         label: Encontrar templos
         type: places-autodiscover
         options:
-          listPath: "list"                     # field (relative to this tab) where selected places are appended
+          listPath: "places"                     # field (relative to this tab) where selected places are appended
           eventsPath: "calendar.events.list"   # config dot-path to the events ARRAY to import into
+      - name: bank
+        label: Bizum y cuentas bancarias
+        type: object
+        list: { collapsible: { collapsed: true, summary: "{fields.title}" } }
+        fields:
+          - { name: title, label: "Nombre (ej: BIZUM/BBVA/...)", type: string }
+          - { name: account, label: Número de cuenta/bizum, type: string }
+      - name: social
+        label: Redes sociales, youtube...
+        type: string
+        list: { collapsible: { collapsed: true } }
 
   - name: pages
     icon: document-text
     label: Páginas
     type: tab
     fields:
+      - name: languages
+        label: Idiomas de la web
+        component: languages
+      - name: list
+        label: Lista de páginas
+        component: page
+        list: { collapsible: { collapsed: true, summary: "{fields.title}" }, sort: "alphabetical", modal: true  }
       - name: nav
         label: Menu de navegación
         type: object
@@ -404,16 +407,7 @@ content:
             label: Enlaces
             type: reference
             options: { collection: pages.list, multiple: true, label: "{title}" }
-      - name: languages
-        label: Idiomas de la web
-        component: languages
-      - name: list
-        label: Páginas
-        component: page
-        list: { collapsible: { collapsed: true, summary: "{fields.title}" }, sort: "alphabetical", modal: true  }
-        
-      - { name: pageperlocatoin, label: Crear una página automaticamente para cada templo, type: boolean, default: true }
-
+      - { name: pageperlocatoin, label: Crear una página automaticamente para cada templo, type: boolean, default: true }  
 
   - name: theme
     label: Diseño

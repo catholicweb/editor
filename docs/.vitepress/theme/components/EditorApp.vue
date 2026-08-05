@@ -121,7 +121,7 @@ const isMobile = computed(() => ui.mobile);
 
 // Header title: '{site.title} - Editor', falling back to the site slug.
 const headerTitle = computed(() =>
-  (state.config?.site?.title || state.slug) + ' - Editor'
+  (state.config?.info?.title || state.slug) + ' - Editor'
 );
 
 // Save-status indicator: shows whether the open data has reached the server.

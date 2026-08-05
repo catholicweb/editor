@@ -7,7 +7,7 @@ import { buildFileIndex, listMediaFiles } from './content-index.js';
 
 // Autosave: debounce timer per file
 let autosaveTimer = null;
-const AUTOSAVE_DELAY = 10000; // 10 seconds
+const AUTOSAVE_DELAY = 60_000; // (long time, we rely on autosave on visibility change)
 
 const LS_PREFIX = 'parroquiaEditor';
 
