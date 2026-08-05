@@ -134,8 +134,8 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken }) {
     const { files } = await api.listFiles(apiBase, slug);
 
     // Separate config token from media tokens
-    // Config file is 'pages/config.json', which encodes to 'pages-config.json'
-    const configToken = files?.find(f => f === 'pages-config.json') || null;
+    // Config file is 'config.json'
+    const configToken = files?.find(f => f === 'config.json') || null;
 
     state.slug = slug;
     state.schema = null;
@@ -356,8 +356,8 @@ export async function refreshFileList() {
   const { files } = await api.listFiles(state.apiBase, state.slug);
 
   // Update media tokens (config token stays the same)
-  // Config file is 'pages/config.json', which encodes to 'pages-config.json'
-  const configToken = files?.find(f => f === 'pages-config.json') || null;
+  // Config file is 'config.json'
+  const configToken = files?.find(f => f === 'config.json') || null;
 
   state.configToken = configToken;
   state.mediaTokens = files?.filter(f => f !== configToken) || [];
