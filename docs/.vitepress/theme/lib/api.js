@@ -14,8 +14,7 @@
  */
 
 // Thin client for two hosts:
-//   - the parroquia-config-api worker (whoami, list, PUT writes — needs the
-//     editor bearer token)
+//   - the parroquia-config-api worker (magic-link login, list, PUT writes)
 //   - the public read host (data.parroquia.app or whatever the site owner
 //     configures) that serves file bytes at /:slug/:token with NO auth,
 //     since content is public. Listing (which tokens exist) still comes
@@ -33,8 +32,32 @@ async function errText(res) {
   }
 }
 
+// ---- worker: magic-link login (no auth) -----------------------------------
+
+export async function requestMagicLink(apiBase, email) {
+  const res = await fetch(`${trimBase(apiBase)}/auth/request`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) throw new Error(`No se pudo enviar el enlace: ${await errText(res)}`);
+  return res.json(); // { ok, email }
+}
+
+export async function exchangeMagic(apiBase, code) {
+  const res = await fetch(`${trimBase(apiBase)}/auth/magic`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
+  if (!res.ok) throw new Error(`No se pudo validar el enlace: ${await errText(res)}`);
+  return res.json(); // { ok, slug, token }
+}
+
 // ---- worker (auth) calls ---------------------------------------------------
 
+// Resolve a bearer token to its slug. login() only calls this as a fallback for
+// legacy saved sessions that predate storing the slug alongside the token.
 export async function whoami(apiBase, token) {
   const res = await fetch(`${trimBase(apiBase)}/whoami`, {
     headers: { Authorization: `Bearer ${token}` },

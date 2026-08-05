@@ -11,6 +11,14 @@ const AUTOSAVE_DELAY = 60_000; // (long time, we rely on autosave on visibility 
 
 const LS_PREFIX = 'parroquiaEditor';
 
+// Connection defaults. Used by the /magic landing (first visit has no saved
+// session to inherit from) and by the login form.
+export const DEFAULTS = {
+  apiBase: 'https://api.parroquia.app',
+  dataBase: 'https://data.parroquia.app',
+  schemaUrl: '_pages.yml',
+};
+
 // No module-level cache needed - config is stored in state.config
 
 function lsKey(...parts) {
@@ -95,6 +103,7 @@ function saveSession() {
         dataBase: state.dataBase,
         schemaUrl: state.schemaUrl,
         editorToken: state.editorToken,
+        slug: state.slug,
       })
     );
   } catch {
@@ -114,7 +123,7 @@ function clearSavedSession() {
 // Login / bootstrap
 // ---------------------------------------------------------------------------
 
-export async function login({ apiBase, dataBase, schemaUrl, editorToken }) {
+export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug }) {
   state.error = '';
   state.loading = true;
   try {
@@ -123,35 +132,39 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken }) {
     state.schemaUrl = schemaUrl;
     state.editorToken = editorToken;
 
-    const [{ slug }, schemaText] = await Promise.all([
-      api.whoami(apiBase, editorToken),
+    // The slug comes from the caller (saved session or the magic-link exchange),
+    // so we no longer need whoami. It is only resolved here as a fallback for a
+    // legacy saved session that predates storing the slug.
+    const resolvedSlug = slug || (await api.whoami(apiBase, editorToken)).slug;
+
+    // Fetch the schema, config.json (directly — it is always named config.json,
+    // so there is no file-listing dependency) and the media listing in parallel.
+    const [schemaText, configText, { files } = { files: [] }] = await Promise.all([
       fetchSchemaText(schemaUrl),
+      api.getFileText(state.dataBase, resolvedSlug, 'config.json').catch((err) => {
+        console.error('Failed to fetch config during login:', err);
+        return null;
+      }),
+      api.listFiles(apiBase, resolvedSlug).catch(() => ({ files: [] })),
     ]);
 
     const rawSchema = yaml.load(schemaText);
 
-    // Get file list
-    const { files } = await api.listFiles(apiBase, slug);
+    // The config file is always 'config.json'; the rest of the listing is media.
+    const configToken = 'config.json';
 
-    // Separate config token from media tokens
-    // Config file is 'config.json'
-    const configToken = files?.find(f => f === 'config.json') || null;
-
-    state.slug = slug;
+    state.slug = resolvedSlug;
     state.schema = null;
     state.configToken = configToken;
-    state.mediaTokens = files?.filter(f => f !== configToken) || [];
+    state.mediaTokens = files.filter((f) => f !== configToken);
 
     // Fetch config.json during login
     let config = null;
-    if (configToken) {
+    if (configText) {
       try {
-        const text = await api.getFileText(state.dataBase, state.slug, configToken);
-        if (text) {
-          config = JSON.parse(text);
-        }
+        config = JSON.parse(configText);
       } catch (err) {
-        console.error('Failed to fetch config during login:', err);
+        console.error('Failed to parse config during login:', err);
       }
     }
 
@@ -205,6 +218,37 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken }) {
 
     saveSession();
     state.status = ''; // Removed connection banner
+  } catch (err) {
+    state.error = err.message || String(err);
+    throw err;
+  } finally {
+    state.loading = false;
+  }
+}
+
+// Email a magic login link to every site the address can edit (server resolves
+// the slug(s) from emails.json). Forwards the generic ok response.
+export async function requestMagicLink({ apiBase, email }) {
+  state.error = '';
+  state.loading = true;
+  try {
+    return await api.requestMagicLink(apiBase, email);
+  } catch (err) {
+    state.error = err.message || String(err);
+    throw err;
+  } finally {
+    state.loading = false;
+  }
+}
+
+// Redeem a one-time magic code from an emailed link (POST /auth/magic) and log
+// in with the minted token + slug — no whoami round-trip needed.
+export async function redeemMagic({ apiBase, dataBase, schemaUrl, code }) {
+  state.error = '';
+  state.loading = true;
+  try {
+    const { slug, token } = await api.exchangeMagic(apiBase, code);
+    await login({ apiBase, dataBase, schemaUrl, editorToken: token, slug });
   } catch (err) {
     state.error = err.message || String(err);
     throw err;
@@ -367,7 +411,8 @@ export async function refreshFileList() {
 export function logout() {
   saveCurrent();
   // Forget the saved session so an explicit logout is honored on the next
-  // load (no auto-login). The user can log back in by re-entering the token.
+  // load (no auto-login). The user can log back in by requesting a new magic
+  // link.
   clearSavedSession();
   state.slug = '';
   state.schema = null;
