@@ -3,7 +3,7 @@ import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import LoginView from './LoginView.vue';
 import FieldBrowser from './FieldBrowser.vue';
 import FieldsGroup from './FieldsGroup.vue';
-import { state, isLoggedIn, isDirty, logout, login, loadSavedSession, initBeforeUnloadHandler, openEntry, saveCurrent } from '../lib/store.js';
+import { state, isLoggedIn, isDirty, logout, login, redeemMagic, loadSavedSession, initBeforeUnloadHandler, openEntry, saveCurrent, DEFAULTS } from '../lib/store.js';
 import { ui, initUi, toggleSidebar } from '../lib/ui.js';
 import PeIcon from './PeIcon.vue';
 
@@ -83,11 +83,36 @@ onMounted(async () => {
   // Listen for browser back/forward navigation
   window.addEventListener('popstate', handlePopState);
 
-  // Auto-login when a session with a token is already saved locally. The
-  // user can still log out later. On failure we fall through to the login
-  // form, prefilled with the saved values and showing the error.
   const saved = loadSavedSession();
-  if (saved && saved.editorToken) {
+
+  // Magic-link landing: the emailed link arrives as /magic?slug=X&code=Y.
+  // Redeem the one-time code first (it takes precedence over a saved session),
+  // then strip the code from the URL so a refresh never re-exchanges the
+  // now-consumed single-use code.
+  const code = new URLSearchParams(window.location.search).get('code');
+  if (code) {
+    booting.value = true;
+    try {
+      await redeemMagic({
+        apiBase: saved?.apiBase || DEFAULTS.apiBase,
+        dataBase: saved?.dataBase || DEFAULTS.dataBase,
+        schemaUrl: saved?.schemaUrl || DEFAULTS.schemaUrl,
+        code,
+      });
+    } catch {
+      // error already surfaced in state.error; fall through to the login form
+    } finally {
+      booting.value = false;
+      const p = new URLSearchParams(window.location.search);
+      p.delete('code');
+      p.delete('slug');
+      const qs = p.toString();
+      window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : ''));
+    }
+  } else if (saved && saved.editorToken) {
+    // Auto-login when a session is already saved locally (slug is stored with
+    // it, so login skips whoami). The user can still log out later. On failure
+    // we fall through to the login form, prefilled and showing the error.
     booting.value = true;
     try {
       await login(saved);

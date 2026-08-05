@@ -1,22 +1,30 @@
 <script setup>
-import { reactive } from 'vue';
-import { state, login, loadSavedSession } from '../lib/store.js';
+import { reactive, ref } from 'vue';
+import { state, requestMagicLink, loadSavedSession, DEFAULTS } from '../lib/store.js';
 
 const saved = loadSavedSession() || {};
 const form = reactive({
-  apiBase: saved.apiBase || 'https://api.parroquia.app',
-  dataBase: saved.dataBase || 'https://data.parroquia.app',
-  schemaUrl: '_pages.yml',
-  editorToken: saved.editorToken || '',
+  apiBase: saved.apiBase || DEFAULTS.apiBase,
+  dataBase: saved.dataBase || DEFAULTS.dataBase,
+  schemaUrl: saved.schemaUrl || DEFAULTS.schemaUrl,
+  email: '',
 });
 
+// True once a link has been requested: show the "revisa tu correo" panel.
+const sent = ref(false);
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 async function submit() {
-  if (!form.editorToken.trim()) {
-    state.error = 'Introduce tu token de escritura.';
+  const email = form.email.trim();
+  if (!EMAIL_RE.test(email)) {
+    state.error = 'Introduce un correo válido.';
     return;
   }
+  state.error = '';
   try {
-    await login({ ...form, editorToken: form.editorToken.trim() });
+    await requestMagicLink({ apiBase: form.apiBase, email });
+    sent.value = true;
   } catch {
     // error already set in the store
   }
@@ -25,25 +33,25 @@ async function submit() {
 
 <template>
   <div class="login-screen">
-    <form class="login-card" @submit.prevent="submit">
+    <form v-if="!sent" class="login-card" @submit.prevent="submit">
       <h1>Editor de contenidos</h1>
       <p class="hint">
-        Introduce tu token de escritura del sitio. El editor resolverá tu
-        slug automáticamente y descargará la lista de ficheros.
+        Introduce tu correo y te enviaremos un enlace de acceso. Cada enlace es
+        de un solo uso y caduca en unos minutos.
       </p>
 
       <label>
-        Token de escritura
+        Tu correo
         <input
-          v-model="form.editorToken"
-          type="password"
-          autocomplete="off"
-          placeholder="token de editor"
+          v-model="form.email"
+          type="email"
+          autocomplete="email"
+          placeholder="editor@ejemplo.com"
           required
         />
       </label>
 
-      <!--<details class="advanced">
+      <details class="advanced">
         <summary>Opciones avanzadas de conexión</summary>
         <label>
           API (worker) base URL
@@ -57,14 +65,24 @@ async function submit() {
           URL del esquema (pages.yml)
           <input v-model="form.schemaUrl" type="text" placeholder="https://.../_pages.yml" />
         </label>
-      </details>-->
+      </details>
 
       <button type="submit" :disabled="state.loading">
-        {{ state.loading ? 'Conectando…' : 'Entrar' }}
+        {{ state.loading ? 'Enviando…' : 'Enviarme el enlace de acceso' }}
       </button>
 
       <p v-if="state.error" class="error">{{ state.error }}</p>
     </form>
+
+    <div v-else class="login-card">
+      <h1>Revisa tu correo</h1>
+      <p class="hint">
+        Te hemos enviado un enlace de acceso a <strong>{{ form.email.trim() }}</strong>.
+        Ábrelo y pulsa el enlace para entrar. Si tu correo tiene acceso a algún
+        sitio, recibirás un mensaje con el enlace.
+      </p>
+      <button type="button" @click="sent = false">Volver</button>
+    </div>
   </div>
 </template>
 
