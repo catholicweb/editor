@@ -103,6 +103,7 @@ function chipTitle(o) {
   const parts = [o.title || 'Sin título'];
   if (o.location?.length) parts.push(o.location.join(', '));
   if (o.time) parts.push(o.time);
+  if (o.recurLabel) parts.push(o.recurLabel);
   if (o.warn) parts.push(`⚠ ${o.warnReason}`);
   return parts.join(' · ');
 }
@@ -234,7 +235,7 @@ function onAlldayClick(dayIndex, occs) {
         <h4 v-if="dayOccs.length" class="day-header">
           {{ WEEKDAY_NAMES[dayIdx] }} {{ weekDays[dayIdx]?.getDate() }}
         </h4>
-        <div v-for="(o, oi) in dayOccs" :key="`${o.eventIndex}-${oi}`" class="event-row" :class="{ dimmed: o.recurring }" @click="emit('edit-occurrence', o)" style="overflow-x: hidden;">
+        <div v-for="(o, oi) in dayOccs" :key="`${o.eventIndex}-${oi}`" class="event-row" :class="{ dimmed: o.recurring }" @click="emit('edit-occurrence', o)">
           <span class="event-time" v-if="o.time">{{ o.time }}</span>
           <span class="event-time" v-else>—</span>
           <span class="event-icon" v-if="o.style.icon" :class="[o.warn ? `ev ev-small warn-${o.warn}` : null]" :style="{ color: o.style.color || '#9aa0a6' }">
@@ -242,6 +243,7 @@ function onAlldayClick(dayIndex, occs) {
           </span>
           <span class="event-type">{{ o.title || 'Sin título' }}</span>
           <span class="event-location" v-if="o.location?.length">{{ o.location.join(', ') }}</span>
+          <span class="event-rec" v-if="o.recurLabel">{{ o.recurLabel }}</span>
         </div>
       </div>
     </div>
@@ -524,6 +526,21 @@ function onAlldayClick(dayIndex, occs) {
 .event-location {
   color: var(--pe-muted);
   font-size: 11px;
+}
+.event-rec {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--pe-accent);
+  background: var(--pe-accent-soft);
+  padding: 2px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.event-row.dimmed .event-rec {
+  opacity: 0.85;
 }
 .event-warn {
   margin-left: auto;
