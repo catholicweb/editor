@@ -215,7 +215,7 @@ function onSingleChange(e) {
           ref="inputEl"
           v-model="search"
           class="tags-input"
-          :placeholder="selectedList.length ? '' : (creatable ? 'Elegir o escribir…' : 'Elegir…')"
+          :placeholder="selectedList.length ? '' : (props.field.hint || (creatable ? 'Elegir o escribir…' : 'Elegir…'))"
           @focus="openDropdown"
           @blur="closeDropdownSoon"
           @keydown="onKeydown"

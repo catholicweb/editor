@@ -15,6 +15,7 @@ import {
   getTypeFieldDefaults,
   mergeTypeDefaults,
   isFieldSet,
+  toArray,
 } from '../lib/calendar.js';
 
 const props = defineProps({
@@ -98,14 +99,40 @@ const repeats = computed(() => hasRepetition(effEvent.value));
 
 // Build field defs for an exception's editable overrides (newTime, newPlace).
 // Reads the 'exception' component from pages.yml to get the field definitions.
+// Each override gets a `hint` with the event's CURRENT value, shown as the
+// field's placeholder. The stored value (ex.newTime/newPlace/celebrants) stays
+// empty until the user actively changes it, so "vacío = original" holds.
 function exceptionFieldDefs(ex) {
   if (!ex.takesPlace) return [];
   const comps = components.value;
   const exceptionComp = comps['exception'];
+  const eff = effEvent.value;
+
+  const hintFor = (name) => {
+    if (name === 'newTime') {
+      const t = toArray(eff.times)[0];
+      return t ? `${String(t).replace('.', ':')} (actual)` : null;
+    }
+    if (name === 'newPlace') {
+      const p = toArray(eff.location)[0];
+      return p ? `${p} (actual)` : null;
+    }
+    if (name === 'celebrants') {
+      const names = toArray(eff.celebrants)
+        .map((id) => props.celebrants.find((c) => c.id === id)?.name)
+        .filter(Boolean);
+      return names.length ? `${names.join(', ')} (actual)` : null;
+    }
+    return null;
+  };
 
   // If exception component is defined in pages.yml, use it
   if (exceptionComp && exceptionComp.fields) {
-    return exceptionComp.fields.map(f => resolveFieldDef(f, comps));
+    return exceptionComp.fields.map((f) => {
+      const d = resolveFieldDef(f, comps);
+      d.hint = hintFor(f.name);
+      return d;
+    });
   }
 
   // Fallback to hardcoded fields if exception component is not defined
@@ -113,17 +140,20 @@ function exceptionFieldDefs(ex) {
   const timeDef = resolveFieldDef({ name: 'newTime', component: 'times', label: 'Nueva hora (vacío = original)' }, comps);
   if (timeDef) {
     if (timeDef.options) timeDef.options = { ...timeDef.options, multiple: false };
+    timeDef.hint = hintFor('newTime');
     fields.push(timeDef);
   }
   const placeDef = resolveFieldDef({ name: 'newPlace', component: 'location', label: 'Nuevo lugar (vacío = original)' }, comps);
   if (placeDef) {
     if (placeDef.options) placeDef.options = { ...placeDef.options, multiple: false };
+    placeDef.hint = hintFor('newPlace');
     fields.push(placeDef);
   }
   fields.push({
     name: 'celebrants',
     label: 'Celebrantes',
     type: 'select',
+    hint: hintFor('celebrants'),
     options: {
       multiple: true,
       values: props.celebrants.map((c) => ({ value: c.id, label: c.name || '(sin nombre)' })),
@@ -140,14 +170,19 @@ function ensureExcept() {
 function exceptKeyOf(o) {
   return `${o.date}|${o.time ?? ''}|${o.place ?? ''}`;
 }
-// Next 25 concrete occurrences from the visible week forward, minus the ones
-// already turned into exceptions.
-const upcoming = computed(() => {
+// Next 25 concrete occurrences from the visible week forward. `upcoming`
+// drops the ones already turned into exceptions (used by "+ Añadir excepción"
+// and addException's default); `allOccurrences` keeps them all, so the
+// "Cambiar ocurrencia…" picker can reflect the occurrence an existing
+// exception currently refers to.
+const allOccurrences = computed(() => {
   if (!repeats.value || !props.weekStart) return [];
   const wsISO = `${props.weekStart.getFullYear()}-${String(props.weekStart.getMonth() + 1).padStart(2, '0')}-${String(props.weekStart.getDate()).padStart(2, '0')}`;
-  const list = expandUpcomingOccurrences(effEvent.value, wsISO, 25);
+  return expandUpcomingOccurrences(effEvent.value, wsISO, 25);
+});
+const upcoming = computed(() => {
   const added = new Set((props.event.except || []).map(exceptKeyOf));
-  return list.filter((o) => !added.has(exceptKeyOf(o)));
+  return allOccurrences.value.filter((o) => !added.has(exceptKeyOf(o)));
 });
 function addException() {
   if (props.presetOccurrence && props.presetOccurrence.date) {
@@ -165,9 +200,9 @@ function addException() {
   }
 }
 function pickOccurrence(ex, event) {
-  const idx = Number(event.target.value);
-  if (!idx && idx !== 0) return;
-  const pick = upcoming.value[idx];
+  const key = event.target.value;
+  if (!key) return;
+  const pick = allOccurrences.value.find((o) => exceptKeyOf(o) === key);
   if (!pick) return;
   Object.assign(ex, newException(pick));
 }
@@ -270,13 +305,23 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
                     <span class="occ-value">{{ ex.date }} {{ ex.time || '' }} {{ ex.place || '' }}</span>
                     <select class="picker-select" @change="pickOccurrence(ex, $event)">
                       <option value="">Cambiar ocurrencia...</option>
-                      <option v-for="(o, oi) in upcoming" :key="oi" :value="oi">{{ exLabel(o) }}</option>
+                      <option v-for="o in allOccurrences" :key="exceptKeyOf(o)" :value="exceptKeyOf(o)" :selected="exceptKeyOf(o) === exceptKeyOf(ex)">{{ exLabel(o) }}</option>
                     </select>
                   </div>
-                  <label class="field leaf-field bool-row">
-                    <input type="checkbox" v-model="ex.takesPlace" />
+                  <label class="toggle-row">
+                    <button
+                      type="button"
+                      class="toggle-switch"
+                      :class="{ active: !!ex.takesPlace }"
+                      @click="ex.takesPlace = !ex.takesPlace"
+                      role="switch"
+                      :aria-checked="!!ex.takesPlace"
+                    >
+                      <span class="toggle-thumb"></span>
+                    </button>
                     <span>Tiene lugar</span>
                   </label>
+                  <p v-if="!ex.takesPlace" class="cancelled-note">Cancelado — no tiene lugar esa fecha</p>
                   <FieldRenderer
                     v-for="f in exceptionFieldDefs(ex)"
                     :key="f.name"
@@ -577,6 +622,52 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
   outline: none;
   border-color: var(--pe-accent);
   box-shadow: var(--pe-ring);
+}
+
+/* ---- "Tiene lugar" toggle switch (mirrors ScalarInput boolean) ---- */
+.toggle-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  border: 1px solid var(--pe-border-strong);
+  background: var(--pe-border);
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--pe-transition), border-color var(--pe-transition);
+  flex-shrink: 0;
+}
+.toggle-switch.active {
+  background: var(--pe-accent);
+  border-color: var(--pe-accent);
+}
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform var(--pe-transition);
+}
+.toggle-switch.active .toggle-thumb {
+  transform: translateX(20px);
+}
+.cancelled-note {
+  margin: -4px 0 0;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--pe-danger);
 }
 .bool-row {
   display: inline-flex;

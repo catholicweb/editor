@@ -318,6 +318,52 @@ function normalizeRRule(rrule) {
     .filter(Boolean);
 }
 
+// Compact recurrence badge for an event, derived from its rrule tokens.
+// Day initials in week order (mo..sa), `su` = "Domingos y festivos" appended
+// as `· D+fest`, `ve` vísperas, yearly/monthly/biweekly words, and a `weekN`
+// modifier as "Nª sem". Returns '' when the event does not repeat, so the
+// caller can hide the badge entirely (one-off / 'never').
+const INITIALS = { mo: 'L', tu: 'M', we: 'X', th: 'J', fr: 'V', sa: 'S' };
+const DAY_ORDER = ['mo', 'tu', 'we', 'th', 'fr', 'sa']; // su handled separately
+const SPECIAL_LABEL = {
+  su: 'D+fest',
+  ve: 'Víspera',
+  yearly: 'Anual',
+  monthly: 'Mensual',
+  biweekly: 'Bisem.',
+};
+export function recurrenceLabel(rrule) {
+  const tokens = normalizeRRule(rrule);
+  if (!tokens.length) return '';
+  const has = new Set(tokens);
+  const weekMod = tokens.find((t) => /^week[1-5]$/.test(t));
+
+  // Weekday initials for the Mon..Sat days actually selected, in week order.
+  const initials = DAY_ORDER.filter((t) => has.has(t)).map((t) => INITIALS[t]);
+  const allDays = DAY_ORDER.every((t) => has.has(t)) && has.has('su');
+
+  let dayStr = '';
+  if (allDays) {
+    dayStr = 'Diario';
+  } else {
+    const monFri =
+      has.has('mo') && has.has('tu') && has.has('we') &&
+      has.has('th') && has.has('fr') && !has.has('sa');
+    dayStr = monFri ? 'L–V' : initials.join(' ');
+    if (has.has('su')) dayStr = dayStr ? `${dayStr} · D+fest` : 'D+fest';
+  }
+
+  const specials = tokens
+    .filter((t) => SPECIAL_LABEL[t] && t !== 'su')
+    .map((t) => SPECIAL_LABEL[t]);
+
+  const parts = [];
+  if (weekMod) parts.push(`${weekMod.slice(4)}ª sem`);
+  parts.push(...specials);
+  if (dayStr) parts.push(dayStr);
+  return parts.join(' · ');
+}
+
 // Returns the Date[] within [weekStart, weekStart+7) on which the rule fires.
 // `dateISO` is the group/acto date used as the anchor for yearly/monthly/
 // biweekly semantics.
@@ -494,6 +540,7 @@ export function expandEventToWeek(event, eventIndex, weekStart, defaults = {}, e
         out.push({
           date: iso, dayIndex, time: effTime, title, description, image, location,
           celebrants: celebs, type: event.type, eventIndex, duration, recurring,
+          recurLabel: recurrenceLabel(base.rrule),
           style: styleBag,
         });
       }
