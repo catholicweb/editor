@@ -302,7 +302,6 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
                 <div class="exception-fields">
                   <div class="occurrence-info">
                     <span class="occ-label">Ocurrencia:</span>
-                    <span class="occ-value">{{ ex.date }} {{ ex.time || '' }} {{ ex.place || '' }}</span>
                     <select class="picker-select" @change="pickOccurrence(ex, $event)">
                       <option value="">Cambiar ocurrencia...</option>
                       <option v-for="o in allOccurrences" :key="exceptKeyOf(o)" :value="exceptKeyOf(o)" :selected="exceptKeyOf(o) === exceptKeyOf(ex)">{{ exLabel(o) }}</option>

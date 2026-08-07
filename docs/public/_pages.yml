@@ -59,7 +59,7 @@ components:
     type: select
     options:
       creatable: true
-      values: ["Roboto", "Open Sans", "Lato", "Montserrat", "Poppins", "Merriweather", "Raleway", "Oswald", "Playfair Display", "Source Sans Pro", "Nunito", "Quicksand", "Work Sans", "Bebas Neue", "Muli", "Roboto Slab", "Lora", "Josefin Sans", "Droid Serif", "Cabin", "Arimo", "Ubuntu", "Zilla Slab", "Tisa", "Anton", "Fira Sans", "Varela Round", "Crimson Pro", "Spectral", "Exo 2", "Bitter", "Archivo", "Dosis", "PT Sans", "Lobster", "Pacifico", "Dancing Script", "Sacramento", "Tangerine", "Unbounded", "Pangolin", "Bree Serif", "Vollkorn", "Monda", "Be Vietnam", "Karla", "Noto Sans", "Kalam"]
+      values: ["Roboto", "Open Sans", "Basque Smile", "Lato", "Montserrat", "Poppins", "Merriweather", "Raleway", "Oswald", "Playfair Display", "Source Sans Pro", "Nunito", "Quicksand", "Work Sans", "Bebas Neue", "Muli", "Roboto Slab", "Lora", "Josefin Sans", "Droid Serif", "Cabin", "Arimo", "Ubuntu", "Zilla Slab", "Tisa", "Anton", "Fira Sans", "Varela Round", "Crimson Pro", "Spectral", "Exo 2", "Bitter", "Archivo", "Dosis", "PT Sans", "Lobster", "Pacifico", "Dancing Script", "Sacramento", "Tangerine", "Unbounded", "Pangolin", "Bree Serif", "Vollkorn", "Monda", "Be Vietnam", "Karla", "Noto Sans", "Kalam"]
   selector:
     label: Selector
     type: select
@@ -168,8 +168,8 @@ components:
     label: Excepción
     type: object
     fields:
-      - { name: newTime, label: Nueva hora (vacío = original), component: times }
-      - { name: newPlace, label: Nuevo lugar (vacío = original), component: location }
+      - { name: newTime, label: Nueva hora, component: times }
+      - { name: newPlace, label: Nuevo lugar, component: location }
       - { name: celebrants, label: Celebrantes, type: select, options: {  multiple: true,      source: "info.collaborators" } }
   page:
     label: Página

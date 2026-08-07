@@ -23,7 +23,7 @@ const normalizedOptions = computed(() => {
     if (Array.isArray(data)) {
       return data.map((item) => ({
         value: item.name || item.id || item,
-        label: item.label || item.name || item.id || item,
+        label: item.title || item.label || item.name || item.id || item,
       }));
     }
     return [];
@@ -48,7 +48,9 @@ watch(
 
 function labelFor(val) {
   const found = normalizedOptions.value.find((o) => o.value === val);
-  return found ? found.label : val;
+  if (found) return found.label
+  if (Array.isArray(val)) return val[0]
+  return val;
 }
 
 const selectedList = computed(() => {

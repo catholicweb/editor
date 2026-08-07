@@ -354,7 +354,7 @@ const isCalendarDoc = computed(() =>
 
 /* ---------- Sidebar ---------- */
 .sidebar {
-  width: 264px;
+  width: 164px;
   flex-shrink: 0;
   border-right: 1px solid var(--pe-border);
   display: flex;
