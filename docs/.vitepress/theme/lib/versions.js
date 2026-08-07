@@ -63,8 +63,7 @@ async function decompressFromBase64(b64) {
 
 function readRaw(key) {
   try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : null;
+    return localStorage.getItem(key);
   } catch {
     return null;
   }
@@ -79,6 +78,12 @@ function writeRaw(key, encoded) {
   }
 }
 
+// Storage holds ONE value per key: the whole snapshots array gzipped as a single
+// base64 blob (see writeRaw). Decode that blob back into the array.
+async function decodeList(raw) {
+  return JSON.parse(await decompressFromBase64(raw)) || [];
+}
+
 /**
  * Add a snapshot of `configText` (a serialized config) to the versions stored
  * under `key`, pruning the oldest until the whole blob fits the budget.
@@ -87,7 +92,21 @@ function writeRaw(key, encoded) {
 export async function pushSnapshot(key, configText, label = '') {
   if (!compressionSupported) return;
 
-  const list = readRaw(key) || [];
+  const raw = readRaw(key);
+  let list;
+  if (raw) {
+    try {
+      list = await decodeList(raw);
+    } catch {
+      // Unreadable blob (corrupt / from a newer format) — start fresh rather
+      // than adding onto garbage.
+      console.warn('Historial de versiones ilegible, se descarta.');
+      list = [];
+    }
+  } else {
+    list = [];
+  }
+
   const newest = list[list.length - 1];
   if (newest && newest.config === configText) return; // identical to newest → no-op
 
@@ -111,7 +130,7 @@ export async function getSnapshots(key) {
   const raw = readRaw(key);
   if (!raw) return [];
   try {
-    return JSON.parse(await decompressFromBase64(raw)) || [];
+    return await decodeList(raw);
   } catch {
     console.warn('No se pudo leer el historial de versiones (¿corrupto?).');
     return [];
