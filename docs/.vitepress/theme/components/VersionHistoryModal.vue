@@ -98,10 +98,9 @@ async function restoreRow(row) {
         <div v-for="row in rows" :key="row.id" class="row" :class="{ backup: row.source === 'backup' }">
           <div class="meta">
             <span class="badge" :class="row.source">
-              {{ row.source === 'backup' ? 'Respaldo diario' : 'Local' }}
+              {{ row.source === 'backup' ? 'Servidor' : 'Local' }}
             </span>
             <span class="date">{{ dateFmt.format(row.ts) }}</span>
-            <span v-if="row.title" class="title">{{ row.title }}</span>
             <span v-if="row.error" class="row-error">{{ row.error }}</span>
           </div>
           <button
@@ -219,7 +218,7 @@ header h2 {
 }
 .badge.backup {
   background: var(--pe-success-soft);
-  color: var(--pe-success);
+  color: var(--pe-muted);
 }
 .date {
   font-size: 13px;

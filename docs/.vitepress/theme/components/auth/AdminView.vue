@@ -172,7 +172,7 @@ function handleLogout() {
         <span>Volver al editor</span>
       </button>
       <span class="admin-title">Administración</span>
-      <UserAvatar :src="state.config?.theme?.icon" @click="logout()" />
+      <UserAvatar :src="state.config?.theme?.icon" />
     </header>
 
     <main class="admin-body">
@@ -180,55 +180,13 @@ function handleLogout() {
       <p v-if="info" class="info banner">{{ info }}</p>
 
       <section class="panel">
-        <h2>Sitio</h2>
+        <h2>Estas editando</h2>
         <p class="slug-row">
-          Slug actual: <code class="slug-value">{{ state.slug }}</code>
+          <code class="slug-value">{{ state.slug }}</code>.parroquia.app
         </p>
       </section>
 
-      <section class="panel">
-        <h2>Crear un sitio nuevo</h2>
-        <p class="hint">
-          Puedes crear un sitio nuevo para que otra persona lo edite. Indica el
-          correo de quien lo va a gestionar y el nombre (slug) que quieres para el
-          sitio. Se comprobará si el nombre está disponible y se enviará un enlace
-          de acceso al correo indicado. Tú permaneces en este sitio.
-        </p>
-
-        <form class="create-form" novalidate @submit.prevent="handleCreate">
-          <label class="field">
-            <span class="field-label">Correo de la persona invitada</span>
-            <input
-              v-model="createEmail"
-              type="email"
-              autocomplete="email"
-              placeholder="correo@ejemplo.com"
-            />
-          </label>
-
-          <label class="field">
-            <span class="field-label">Nombre del sitio (slug)</span>
-            <input
-              v-model="newSlug"
-              type="text"
-              autocomplete="off"
-              autocapitalize="none"
-              spellcheck="false"
-              placeholder="mi-sitio"
-            />
-          </label>
-          <p v-if="slugStatus === 'available'" class="avail avail-ok">Disponible</p>
-          <p v-else-if="slugStatus === 'taken'" class="avail avail-bad">Ya en uso</p>
-          <p v-else-if="slugStatus === 'invalid'" class="avail avail-bad">Nombre no válido</p>
-          <p v-else-if="slugStatus === 'checking'" class="avail">Comprobando…</p>
-
-          <p v-if="createError" class="create-error">{{ createError }}</p>
-
-          <button type="submit" class="create-btn" :disabled="creating">
-            {{ creating ? 'Creando…' : 'Crear sitio y enviar invitación' }}
-          </button>
-        </form>
-      </section>
+      
 
       <section class="panel">
         <h2>Colaboradores</h2>
@@ -265,6 +223,50 @@ function handleLogout() {
           </li>
         </ul>
         <p v-else class="empty">No hay colaboradores que mostrar.</p>
+      </section>
+
+
+      <section class="panel">
+        <h2>Crear un sitio nuevo</h2>
+        <p class="hint">
+          Puedes crear un sitio nuevo para que otra persona lo edite. Indica el
+          correo de quien lo va a gestionar y el nombre que quieres para el
+          sitio.
+        </p>
+
+        <form class="create-form" novalidate @submit.prevent="handleCreate">
+          <label class="field">
+            <span class="field-label">Correo de la persona invitada</span>
+            <input
+              v-model="createEmail"
+              type="email"
+              autocomplete="email"
+              placeholder="correo@ejemplo.com"
+            />
+          </label>
+
+          <label class="field">
+            <span class="field-label">Nombre del sitio. Se publicará en {{newSlug}}.parroquia.app</span>
+            <input
+              v-model="newSlug"
+              type="text"
+              autocomplete="off"
+              autocapitalize="none"
+              spellcheck="false"
+              placeholder="mi-sitio"
+            />
+          </label>
+          <p v-if="slugStatus === 'available'" class="avail avail-ok">Disponible</p>
+          <p v-else-if="slugStatus === 'taken'" class="avail avail-bad">Ya en uso</p>
+          <p v-else-if="slugStatus === 'invalid'" class="avail avail-bad">Nombre no válido</p>
+          <p v-else-if="slugStatus === 'checking'" class="avail">Comprobando…</p>
+
+          <p v-if="createError" class="create-error">{{ createError }}</p>
+
+          <button type="submit" class="create-btn" :disabled="creating">
+            {{ creating ? 'Creando…' : 'Crear sitio y enviar invitación' }}
+          </button>
+        </form>
       </section>
 
       <div class="logout-wrap">
