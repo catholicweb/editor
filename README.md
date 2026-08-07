@@ -14,16 +14,21 @@ npm run dev      # http://localhost:5173
 npm run build    # genera docs/.vitepress/dist (estático, se puede subir a cualquier hosting)
 ```
 
-Al abrir el editor te pedirá:
+Al abrir el editor, el usuario solo introduce su **correo**; el editor le envía
+un enlace de acceso de un solo uso (magic link) y, al abrirlo, entra
+directamente en su sitio.
 
-1. **Token de escritura** del sitio (obligatorio).
-2. En "Opciones avanzadas": la URL del worker (API), la URL pública de
-   lectura de datos, y la URL del `pages.yml`. Se guardan en `localStorage`
-   para no tener que repetirlas cada vez (igual de sensibles que el propio
-   token, que también se guarda ahí).
+Las direcciones de conexión (worker/API, host público de lectura de datos y
+ubicación del `pages.yml`) son **configuración fija de despliegue**: no son
+editables por el usuario ni se muestran en la UI de acceso. Se resuelven
+siempre a partir de los valores por defecto de `DEFAULTS`
+(`docs/.vitepress/theme/lib/store.js`), que se pueden **sobrescribir en tiempo
+de build** exportando variables `VITE_PE_API_BASE`, `VITE_PE_DATA_BASE` y
+`VITE_PE_SCHEMA_URL` (consultar `.env.example`):
 
-El editor llama a `GET /whoami` con el token para resolver el `:slug`
-automáticamente — no hace falta que el usuario lo escriba.
+```bash
+VITE_PE_API_BASE=https://api.parroquia.app VITE_PE_DATA_BASE=https://data.parroquia.app npm run build
+```
 
 ## Cambios necesarios en el Worker
 
