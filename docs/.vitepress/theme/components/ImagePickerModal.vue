@@ -4,6 +4,7 @@ import { state, uploadMedia, refreshFileList } from '../lib/store.js';
 import { publicFileUrl } from '../lib/api.js';
 import { relPathForNewMedia, mediaPublicPath } from '../lib/content-index.js';
 import { compressToWebP } from '../lib/image-compression.js';
+import { sha256Hex } from '../lib/hash.js';
 
 const emit = defineEmits(['select', 'close']);
 
@@ -38,7 +39,12 @@ async function onFileChosen(e) {
       minQuality: 0.6
     });
 
-    const relPath = relPathForNewMedia(state.schema, compressedFile.name);
+    // Hash the exact WebP bytes being stored and append a brief content hash to
+    // the filename, so a changed image produces a new URL (cache-busting).
+    const bytes = await compressedFile.arrayBuffer();
+    const hashSuffix = (await sha256Hex(bytes)).slice(0, 8);
+
+    const relPath = relPathForNewMedia(state.schema, compressedFile.name, hashSuffix);
     await uploadMedia(compressedFile, relPath);
     await refreshFileList();
     emit('select', mediaPublicPath(state.schema, relPath));
