@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, ref } from 'vue';
-import { state, requestMagicLink, loadSavedSession, DEFAULTS } from '../lib/store.js';
+import { state, requestMagicLink, loadSavedSession, DEFAULTS } from '../../lib/store.js';
+import SessionScreen from './SessionScreen.vue';
 
 const saved = loadSavedSession() || {};
 const form = reactive({
@@ -32,7 +33,7 @@ async function submit() {
 </script>
 
 <template>
-  <div class="login-screen">
+  <SessionScreen>
     <form v-if="!sent" class="login-card" @submit.prevent="submit">
       <h1>Editor de contenidos</h1>
       <p class="hint">
@@ -83,21 +84,14 @@ async function submit() {
       </p>
       <button type="button" @click="sent = false">Volver</button>
     </div>
-  </div>
+  </SessionScreen>
 </template>
 
 <style scoped>
-.login-screen {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--pe-bg);
-  padding: 24px;
-}
 .login-card {
   width: 100%;
   max-width: 420px;
+  margin: auto; /* center the card in the SessionScreen flex column */
   background: var(--pe-panel);
   border: 1px solid var(--pe-border);
   border-radius: var(--pe-radius-lg);

@@ -49,6 +49,9 @@ export const state = reactive({
   fileIndex: [], // ordered editable entries (see content-index.js)
   mediaFiles: [], // for the image picker
 
+  // editor roster: emails granted edit access to this slug (see /editors API)
+  editors: [],
+
   // currently open document
   currentEntry: null,
   draft: null, // reactive parsed data object
@@ -421,12 +424,35 @@ export function logout() {
   state.config = null;
   state.fileIndex = [];
   state.mediaFiles = [];
+  state.editors = [];
   state.currentEntry = null;
   state.draft = null;
   state.currentBody = '';
   state.savedText = '';
   state.status = '';
   state.error = '';
+}
+
+// ---------------------------------------------------------------------------
+// Editor roster (who has edit access to this slug)
+// ---------------------------------------------------------------------------
+
+export async function loadEditors() {
+  if (!state.slug || !state.editorToken) return;
+  const { editors } = await api.listEditors(state.apiBase, state.slug, state.editorToken);
+  state.editors = editors || [];
+}
+
+// Grant edit access + email an invite link, then refresh the roster.
+export async function addEditor(email) {
+  await api.addEditor(state.apiBase, state.slug, state.editorToken, email);
+  await loadEditors();
+}
+
+// Remove an editor's access + revoke their tokens, then refresh the roster.
+export async function removeEditor(email) {
+  await api.removeEditor(state.apiBase, state.slug, state.editorToken, email);
+  await loadEditors();
 }
 
 // ---------------------------------------------------------------------------

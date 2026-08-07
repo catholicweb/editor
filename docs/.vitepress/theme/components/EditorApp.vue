@@ -1,10 +1,12 @@
 <script setup>
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
-import LoginView from './LoginView.vue';
+import LoginView from './auth/LoginView.vue';
+import AdminView from './auth/AdminView.vue';
 import FieldBrowser from './FieldBrowser.vue';
 import FieldsGroup from './FieldsGroup.vue';
-import { state, isLoggedIn, isDirty, logout, login, redeemMagic, loadSavedSession, initBeforeUnloadHandler, openEntry, saveCurrent, DEFAULTS } from '../lib/store.js';
+import { state, isLoggedIn, isDirty, login, redeemMagic, loadSavedSession, initBeforeUnloadHandler, openEntry, saveCurrent, DEFAULTS } from '../lib/store.js';
 import { ui, initUi, toggleSidebar } from '../lib/ui.js';
+import UserAvatar from './UserAvatar.vue';
 import PeIcon from './PeIcon.vue';
 
 // Parse deep link from URL parameter (e.g., ?edit=site.collaborators)
@@ -128,9 +130,15 @@ onUnmounted(() => {
   window.removeEventListener('popstate', handlePopState);
 });
 
-// Watch for login completion and parse deep link
+// Full-app view: the regular editor or the admin screen. Controlled by the
+// header avatar; the admin screen can also flip back here.
+const view = ref('editor');
+
+// Watch for login completion and parse deep link. Reset to the editor view so
+// a fresh login never lands back on a stale admin screen.
 watch(isLoggedIn, (loggedIn) => {
   if (loggedIn) {
+    view.value = 'editor';
     // Small delay to ensure fileIndex is populated
     setTimeout(parseDeepLink, 100);
   }
@@ -172,11 +180,6 @@ function onSave() {
 const isCalendarDoc = computed(() =>
   (state.currentEntry?.fields || []).some((f) => f.type === 'calendario')
 );
-
-
-async function onLogout() {
-  logout();
-}
 </script>
 
 <template>
@@ -190,9 +193,16 @@ async function onLogout() {
 
   <LoginView v-else-if="!isLoggedIn" />
 
+  <AdminView v-else-if="view === 'admin'" @back="view = 'editor'" />
+
   <div v-else class="editor-shell" :class="{ 'sidebar-collapsed': !sidebarOpen && !isMobile }">
     <header class="editor-header">
-      <span class="header-brand-title">{{ headerTitle }}</span>
+      <div class="header-left">
+        <!-- Avatar = current user's site icon (diseño > icono del sitio), falling
+             back to the brand mark. Clicking it opens the admin screen. -->
+        <UserAvatar :src="state.config?.theme?.icon" @click="view = 'admin'" />
+        <span class="header-brand-title">{{ headerTitle }}</span>
+      </div>
       <div class="header-actions">
         <button
           class="header-icon-btn save-indicator-btn"
@@ -203,14 +213,6 @@ async function onLogout() {
           @click="onSave"
         >
           <PeIcon :name="saveIcon" :size="20" />
-        </button>
-        <button
-          class="header-icon-btn header-logout-btn"
-          @click="onLogout"
-          title="Cerrar sesión"
-          aria-label="Cerrar sesión"
-        >
-          <PeIcon name="arrow-right-on-rectangle" :size="20" type="solid" />
         </button>
       </div>
     </header>
@@ -277,6 +279,12 @@ async function onLogout() {
   position: relative;
   z-index: 30; /* stay above the mobile backdrop so buttons remain clickable */
 }
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
 .header-brand-title {
   font-weight: 700;
   font-size: 14px;
@@ -314,10 +322,6 @@ async function onLogout() {
 }
 .save-indicator-btn.saving {
   color: var(--pe-accent);
-}
-.header-logout-btn:hover {
-  background: var(--pe-danger-soft);
-  color: var(--pe-danger);
 }
 
 .editor-body {
