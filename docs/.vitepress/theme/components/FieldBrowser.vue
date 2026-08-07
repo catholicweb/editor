@@ -1,7 +1,6 @@
 <script setup>
 import { computed } from 'vue';
 import { state, openEntry } from '../lib/store.js';
-import { onNavigate } from '../lib/ui.js';
 import PeIcon from './PeIcon.vue';
 
 // Show all entries from fileIndex (not grouped)
@@ -21,7 +20,6 @@ async function selectEntry(entry) {
   // openEntry() switches tabs; dirty state is tracked against the whole config,
   // so switching away never drops pending changes (they stay until saved).
   await openEntry(entry);
-  onNavigate();
 }
 </script>
 
@@ -63,10 +61,14 @@ async function selectEntry(entry) {
   flex-shrink: 0;
 }
 
-/* Mobile: horizontal layout for bottom toolbar */
-@media (max-width: 768px) {
+/* Portrait: horizontal layout for the bottom nav bar (bar reorients with screen
+   orientation — vertical strip on the side in landscape, bottom bar in portrait). */
+@media (orientation: portrait) {
   .field-browser {
     flex-direction: row;
+    height: auto;
+    min-height: 0;
+    flex: none;
     gap: 4px;
     padding: 8px 12px;
     overflow-x: auto;
