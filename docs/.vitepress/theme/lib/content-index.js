@@ -62,16 +62,13 @@ export function mediaOutputPrefix(schema) {
 // List every image-ish file under the media prefix, from the media token list.
 // Tokens are now flat filenames (e.g., "media-photo.jpg"), not encoded paths.
 export function listMediaFiles(schema, mediaTokens) {
-  const prefix = mediaPrefix(schema);
   const out = [];
   for (const tok of mediaTokens || []) {
     // Validate the token is a safe filename
     const filename = safeRelPath(tok);
     if (!filename) continue;
-    // Check if it's under the media prefix (flat format: "media-" not "media/")
-    if (!filename.startsWith(prefix)) continue;
-    // Extract display name (remove prefix)
-    const displayName = filename.slice(prefix.length);
+    if (filename.endsWith('.json')) continue;
+    const displayName = filename
     out.push({ token: tok, filename, displayName });
   }
   out.sort((a, b) => a.filename.localeCompare(b.filename, 'es'));

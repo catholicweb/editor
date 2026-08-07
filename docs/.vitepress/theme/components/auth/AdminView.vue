@@ -171,8 +171,8 @@ function handleLogout() {
         <PeIcon name="arrow-left" :size="18" />
         <span>Volver al editor</span>
       </button>
-      <span class="admin-title">Administración</span>
-      <UserAvatar :src="state.config?.theme?.icon" />
+      <!--<span class="admin-title">Administración</span>
+      <UserAvatar :src="state.config?.theme?.icon" />-->
     </header>
 
     <main class="admin-body">

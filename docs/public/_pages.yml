@@ -49,7 +49,11 @@ components:
       multiple: true
       creatable: true
       values: ["Español:es", "Català:ca", "Galego:gl", "Euskara:eu", "English:en", "Français:fr", "Deutsch:de", "Italiano:it", "Português:pt", "Română:ro", "العربية:ar", "中文:zh", "Български:bg", "Polski:pl"]
-
+  navigationBar:
+    label: "Formato barra navegación"
+    type: select
+    options:
+      values: ["default","47herri"]
   font:
     label: Tipo letra
     type: select
@@ -99,7 +103,7 @@ components:
           { value: "th", label: "Jueves" },
           { value: "fr", label: "Viernes" },
           { value: "sa", label: "Sábado" },
-          { value: "su", label: "Domingos y festivos" },
+          { value: "su", label: "Domingos" },
           { value: "ve", label: "Visperas" },
           { value: "mo,tu,we,th,fr", label: "Lunes a viernes" },
           { value: "yearly", label: "Anualmente" },
@@ -171,10 +175,11 @@ components:
     label: Página
     type: object
     fields:
+        - { name: name, label: Identificador, type: uuid, hidden: true }
         - { name: title, label: Título, type: string }
         - { name: description, label: Subtitulo, type: string }
         - { name: image, label: Imagen, type: image }
-        - { name: protected, label: 'Elemento protegido/imborrable (dev only, ira escondido)', type: text }
+        #- { name: protected, label: 'Elemento protegido/imborrable (dev only, ira escondido)', type: text }
         #- { name: hideHero, label: Esconder cabezera por defecto, type: boolean, default: false }
         - name: sections
           label: Secciones de la página
@@ -293,15 +298,14 @@ components:
               fields:
                 - { name: title, type: string, label: Titulo sección }
                 - name: links
-                  label: Enlaces internos
-                  type: reference
-                  options: { collection: pages.list, multiple: true, label: "{title}" }
+                  type: select
+                  options: { source: "pages.list", multiple: true, label: "{title}" }
                 - { name: tags, label: Opciones avanzadas de estilo, component: tags }
 
 
 media:
-  input: docs/public/media
-  output: /media
+  input: ''
+  output: ''
   categories: ["image", "document"]
 content:
   - name: calendar
@@ -339,7 +343,7 @@ content:
           - { name: label, label: "Tipo de evento (ej: Eucaristía)", type: string }
           - { name: icon, label: Icono (se mostrará unicamente en este editor), type: icon }
           - { name: defaults, component: event }
-          - { name: protected, label: 'Elemento protegido/imborrable (dev only, ira escondido)', type: text }
+          #- { name: protected, label: 'Elemento protegido/imborrable (dev only, ira escondido)', type: text }
 
   - name: info
     icon: identification
@@ -405,8 +409,8 @@ content:
           - { name: title, label: Titulo sección, type: string }
           - name: links
             label: Enlaces
-            type: reference
-            options: { collection: pages.list, multiple: true, label: "{title}" }
+            type: select
+            options: { source: "pages.list", multiple: true, label: "{title}" }
       - { name: pageperlocatoin, label: Crear una página automaticamente para cada templo, type: boolean, default: true }  
 
   - name: theme
@@ -432,7 +436,7 @@ content:
         label: "Tipo de letra del cuerpo (cualquiera de https://fonts.google.com/)"
         component: font
         options: { themeRole: body }
-      - { name: navStyle, label: Estilo de la barrra de navegación, type: string }
+      - { name: navStyle, label: Estilo de la barrra de navegación, component: navigationBar }
       - name: styles
         label: Estilos avanzados
         type: object

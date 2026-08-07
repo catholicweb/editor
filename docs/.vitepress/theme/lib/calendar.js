@@ -326,7 +326,7 @@ function normalizeRRule(rrule) {
 const INITIALS = { mo: 'L', tu: 'M', we: 'X', th: 'J', fr: 'V', sa: 'S' };
 const DAY_ORDER = ['mo', 'tu', 'we', 'th', 'fr', 'sa']; // su handled separately
 const SPECIAL_LABEL = {
-  su: 'D+fest',
+  su: 'D',
   ve: 'Víspera',
   yearly: 'Anual',
   monthly: 'Mensual',
@@ -344,13 +344,17 @@ export function recurrenceLabel(rrule) {
 
   let dayStr = '';
   if (allDays) {
-    dayStr = 'Diario';
+    dayStr = 'L-D';
   } else {
     const monFri =
       has.has('mo') && has.has('tu') && has.has('we') &&
       has.has('th') && has.has('fr') && !has.has('sa');
+    const monSat =
+      has.has('mo') && has.has('tu') && has.has('we') &&
+      has.has('th') && has.has('fr') && has.has('sa');
     dayStr = monFri ? 'L–V' : initials.join(' ');
-    if (has.has('su')) dayStr = dayStr ? `${dayStr} · D+fest` : 'D+fest';
+    if (monSat) dayStr = 'L-S'
+    if (has.has('su')) dayStr = dayStr ? `${dayStr} D` : 'D';
   }
 
   const specials = tokens
@@ -358,10 +362,10 @@ export function recurrenceLabel(rrule) {
     .map((t) => SPECIAL_LABEL[t]);
 
   const parts = [];
-  if (weekMod) parts.push(`${weekMod.slice(4)}ª sem`);
+  if (weekMod) parts.push(`${weekMod.slice(4)}º `);
   parts.push(...specials);
   if (dayStr) parts.push(dayStr);
-  return parts.join(' · ');
+  return parts.join(' ');
 }
 
 // Returns the Date[] within [weekStart, weekStart+7) on which the rule fires.

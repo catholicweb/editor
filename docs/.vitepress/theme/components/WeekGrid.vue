@@ -348,8 +348,8 @@ function onAlldayClick(dayIndex, occs) {
   display: flex;
   flex-wrap: wrap;
   align-content: flex-start;
-  gap: 2px;
-  padding: 2px;
+  gap: 1px;
+  padding: 1px;
   transition: background var(--pe-transition);
   overflow: visible;
 }
@@ -536,9 +536,9 @@ function onAlldayClick(dayIndex, occs) {
   flex-shrink: 0;
   font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.3px;
   color: var(--pe-accent);
-  background: var(--pe-accent-soft);
+  /*letter-spacing: 0.3px;
+  /*background: var(--pe-accent-soft);*/
   padding: 2px 6px;
   border-radius: 999px;
   white-space: nowrap;
