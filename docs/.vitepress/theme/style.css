@@ -14,6 +14,7 @@
   --pe-danger: #d1453a;
   --pe-danger-soft: rgba(209, 69, 58, 0.1);
   --pe-success: #1f9d6b;
+  --pe-success-soft: rgba(31, 157, 107, 0.1);
 
   /* Font variables - will be dynamically updated */
   --pe-body-font: system-ui, -apple-system, sans-serif;
@@ -47,6 +48,7 @@
   --pe-danger: #ff6b62;
   --pe-danger-soft: rgba(255, 107, 98, 0.15);
   --pe-success: #4dd39a;
+  --pe-success-soft: rgba(77, 211, 154, 0.15);
 
   --pe-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --pe-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.25);

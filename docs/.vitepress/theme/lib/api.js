@@ -72,6 +72,38 @@ export async function listFiles(apiBase, slug) {
   return res.json(); // { slug, files: [token, ...] }
 }
 
+// ---- worker: editor roster (who can edit this slug) ------------------------
+// Gated by any valid editor token for the slug (Bearer editor | admin secret).
+// The contract is canonical in config-api/README.md.
+
+export async function listEditors(apiBase, slug, token) {
+  const res = await fetch(`${trimBase(apiBase)}/sites/${encodeURIComponent(slug)}/editors`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`No se pudieron listar los editores: ${await errText(res)}`);
+  return res.json(); // { ok, slug, editors: [email, ...] }
+}
+
+export async function addEditor(apiBase, slug, token, email) {
+  const res = await fetch(`${trimBase(apiBase)}/sites/${encodeURIComponent(slug)}/editors`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) throw new Error(`No se pudo añadir el editor: ${await errText(res)}`);
+  return res.json(); // { ok, slug, sent, email }
+}
+
+export async function removeEditor(apiBase, slug, token, email) {
+  const res = await fetch(`${trimBase(apiBase)}/sites/${encodeURIComponent(slug)}/editors`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) throw new Error(`No se pudo eliminar el editor: ${await errText(res)}`);
+  return res.json(); // { ok, slug, email }
+}
+
 export async function putFile(apiBase, slug, token, fileToken, body, contentType, { keepalive = false } = {}) {
   const res = await fetch(
     `${trimBase(apiBase)}/sites/${encodeURIComponent(slug)}/${encodeURIComponent(fileToken)}`,
