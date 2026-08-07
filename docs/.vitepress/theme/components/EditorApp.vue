@@ -95,10 +95,12 @@ onMounted(async () => {
   if (code) {
     booting.value = true;
     try {
+      // Connection values are fixed deployment config (DEFAULTS), never taken
+      // from a saved session.
       await redeemMagic({
-        apiBase: saved?.apiBase || DEFAULTS.apiBase,
-        dataBase: saved?.dataBase || DEFAULTS.dataBase,
-        schemaUrl: saved?.schemaUrl || DEFAULTS.schemaUrl,
+        apiBase: DEFAULTS.apiBase,
+        dataBase: DEFAULTS.dataBase,
+        schemaUrl: DEFAULTS.schemaUrl,
         code,
       });
     } catch {
@@ -117,7 +119,14 @@ onMounted(async () => {
     // we fall through to the login form, prefilled and showing the error.
     booting.value = true;
     try {
-      await login(saved);
+      // Keep the saved token/slug for auto-login, but connection values are
+      // always the fixed deployment config (DEFAULTS), never the saved ones.
+      await login({
+        ...saved,
+        apiBase: DEFAULTS.apiBase,
+        dataBase: DEFAULTS.dataBase,
+        schemaUrl: DEFAULTS.schemaUrl,
+      });
     } catch {
       // error already surfaced in state.error
     } finally {

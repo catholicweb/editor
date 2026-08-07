@@ -11,12 +11,14 @@ const AUTOSAVE_DELAY = 60_000; // (long time, we rely on autosave on visibility 
 
 const LS_PREFIX = 'parroquiaEditor';
 
-// Connection defaults. Used by the /magic landing (first visit has no saved
-// session to inherit from) and by the login form.
+// Connection defaults. Fixed deployment config, not user-editable — these are
+// the only source of connection values (a saved session is never trusted for
+// them). Each falls back to the hardcoded default unless overridden at build
+// time via a VITE_PE_* env var (export it or set it in .env, see .env.example).
 export const DEFAULTS = {
-  apiBase: 'https://api.parroquia.app',
-  dataBase: 'https://data.parroquia.app',
-  schemaUrl: '_pages.yml',
+  apiBase: import.meta.env.VITE_PE_API_BASE || 'https://api.parroquia.app',
+  dataBase: import.meta.env.VITE_PE_DATA_BASE || 'https://data.parroquia.app',
+  schemaUrl: import.meta.env.VITE_PE_SCHEMA_URL || '_pages.yml',
 };
 
 // No module-level cache needed - config is stored in state.config

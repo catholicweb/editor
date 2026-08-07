@@ -1,15 +1,9 @@
 <script setup>
 import { reactive, ref } from 'vue';
-import { state, requestMagicLink, loadSavedSession, DEFAULTS } from '../../lib/store.js';
+import { state, requestMagicLink, DEFAULTS } from '../../lib/store.js';
 import SessionScreen from './SessionScreen.vue';
 
-const saved = loadSavedSession() || {};
-const form = reactive({
-  apiBase: saved.apiBase || DEFAULTS.apiBase,
-  dataBase: saved.dataBase || DEFAULTS.dataBase,
-  schemaUrl: saved.schemaUrl || DEFAULTS.schemaUrl,
-  email: '',
-});
+const form = reactive({ email: '' });
 
 // True once a link has been requested: show the "revisa tu correo" panel.
 const sent = ref(false);
@@ -24,7 +18,7 @@ async function submit() {
   }
   state.error = '';
   try {
-    await requestMagicLink({ apiBase: form.apiBase, email });
+    await requestMagicLink({ apiBase: DEFAULTS.apiBase, email });
     sent.value = true;
   } catch {
     // error already set in the store
@@ -51,22 +45,6 @@ async function submit() {
           required
         />
       </label>
-
-      <details class="advanced">
-        <summary>Opciones avanzadas de conexión</summary>
-        <label>
-          API (worker) base URL
-          <input v-model="form.apiBase" type="text" placeholder="https://..." />
-        </label>
-        <label>
-          URL pública de datos (lectura de ficheros)
-          <input v-model="form.dataBase" type="text" placeholder="https://data.parroquia.app" />
-        </label>
-        <label>
-          URL del esquema (pages.yml)
-          <input v-model="form.schemaUrl" type="text" placeholder="https://.../_pages.yml" />
-        </label>
-      </details>
 
       <button type="submit" :disabled="state.loading">
         {{ state.loading ? 'Enviando…' : 'Enviarme el enlace de acceso' }}
@@ -136,33 +114,6 @@ input:focus-visible {
   outline: none;
   border-color: var(--pe-accent);
   box-shadow: var(--pe-ring);
-}
-.advanced {
-  border-top: 1px solid var(--pe-border);
-  padding-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.advanced > summary {
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--pe-muted);
-  list-style: none;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.advanced > summary::before {
-  content: '▸';
-  font-size: 10px;
-  transition: transform var(--pe-transition);
-}
-.advanced[open] > summary::before {
-  transform: rotate(90deg);
-}
-.advanced > summary::-webkit-details-marker {
-  display: none;
 }
 button {
   margin-top: 8px;
