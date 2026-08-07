@@ -4,6 +4,7 @@ import { state } from '../lib/store.js';
 import { publicFileUrl } from '../lib/api.js';
 import { mediaRelPathFromPublic } from '../lib/content-index.js';
 import { encodePath } from '../lib/codec.js';
+import PeIcon from './PeIcon.vue';
 
 // Rounded button/avatar for the current user (the site's icon from
 // diseño > icono del sitio = config.theme.icon). Used in the editor header
@@ -12,7 +13,7 @@ import { encodePath } from '../lib/codec.js';
 // `src` is the stored field value: a full URL (passed through) or a public
 // media path like `/media/foo.webp` (converted to a renderable URL via the
 // public data host, same pipeline as ScalarInput.imagePreviewUrl). Falls back
-// to the editor brand mark (✚) when there's no icon or it can't be resolved.
+// to a parish icon when there's no icon or it can't be resolved.
 
 const props = defineProps({
   src: { type: String, default: '' },
@@ -42,7 +43,7 @@ const imgUrl = computed(() => {
     @click="emit('click')"
   >
     <img v-if="imgUrl" :src="imgUrl" alt="" class="avatar-img" />
-    <span v-else class="avatar-fallback">✚</span>
+    <PeIcon v-else name="material-symbols:church-rounded" :size="Math.round(size * 0.6)" />
   </button>
 </template>
 
@@ -70,10 +71,5 @@ const imgUrl = computed(() => {
   height: 100%;
   object-fit: cover;
   display: block;
-}
-.avatar-fallback {
-  font-weight: 700;
-  font-size: 14px;
-  line-height: 1;
 }
 </style>

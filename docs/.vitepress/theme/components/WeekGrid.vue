@@ -235,7 +235,7 @@ function onAlldayClick(dayIndex, occs) {
         <h4 v-if="dayOccs.length" class="day-header">
           {{ WEEKDAY_NAMES[dayIdx] }} {{ weekDays[dayIdx]?.getDate() }}
         </h4>
-        <div v-for="(o, oi) in dayOccs" :key="`${o.eventIndex}-${oi}`" class="event-row" :class="{ dimmed: o.recurring }" @click="emit('edit-occurrence', o)">
+        <div v-for="(o, oi) in dayOccs" :key="`${o.eventIndex}-${oi}`" class="event-row" :class="{ specific: !o.recurring }" @click="emit('edit-occurrence', o)">
           <span class="event-time" v-if="o.time">{{ o.time }}</span>
           <span class="event-time" v-else>—</span>
           <span class="event-icon" v-if="o.style.icon" :class="[o.warn ? `ev ev-small warn-${o.warn}` : null]" :style="{ color: o.style.color || '#9aa0a6' }">
@@ -495,13 +495,17 @@ function onAlldayClick(dayIndex, occs) {
   font-size: 12px;
   transition: background var(--pe-transition);
 }
+/* Specific (non-recurring) items stand out with an accent edge; recurring items
+   keep full contrast (opacity was dropped so all text, incl. the recurrence
+   chip, stays readable). No full-row tint, so the hover background and the
+   recurrence chip's own accent-soft background aren't washed out. */
+.event-row.specific {
+  border-left: 3px solid var(--pe-accent);
+  padding-left: 5px; /* offset the added 3px edge so text stays aligned */
+}
 .event-row:hover {
   background: var(--pe-hover);
   cursor: pointer;
-}
-.event-row.dimmed {
-  opacity: 0.5;
-  filter: saturate(0.6);
 }
 .event-time {
   font-family: 'SF Mono', 'Fira Code', monospace;
@@ -538,9 +542,6 @@ function onAlldayClick(dayIndex, occs) {
   padding: 2px 6px;
   border-radius: 999px;
   white-space: nowrap;
-}
-.event-row.dimmed .event-rec {
-  opacity: 0.85;
 }
 .event-warn {
   margin-left: auto;

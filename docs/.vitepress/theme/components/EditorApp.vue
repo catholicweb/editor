@@ -5,7 +5,6 @@ import AdminView from './auth/AdminView.vue';
 import FieldBrowser from './FieldBrowser.vue';
 import FieldsGroup from './FieldsGroup.vue';
 import { state, isLoggedIn, isDirty, login, redeemMagic, loadSavedSession, initBeforeUnloadHandler, openEntry, saveCurrent, restoreConfig, DEFAULTS } from '../lib/store.js';
-import { ui, initUi, toggleSidebar } from '../lib/ui.js';
 import UserAvatar from './UserAvatar.vue';
 import PeIcon from './PeIcon.vue';
 import VersionHistoryModal from './VersionHistoryModal.vue';
@@ -80,7 +79,6 @@ function focusField(fieldName) {
 const booting = ref(false);
 
 onMounted(async () => {
-  initUi();
   initBeforeUnloadHandler(); // Auto-flush unsaved changes (keepalive) on leave
 
   // Listen for browser back/forward navigation
@@ -159,9 +157,6 @@ function handlePopState() {
   parseDeepLink();
 }
 
-const sidebarOpen = computed(() => ui.sidebarOpen);
-const isMobile = computed(() => ui.mobile);
-
 // Header title: '{site.title} - Editor', falling back to the site slug.
 const headerTitle = computed(() =>
   (state.config?.info?.title || state.slug) + ' - Editor'
@@ -215,7 +210,7 @@ const isCalendarDoc = computed(() =>
 
   <AdminView v-else-if="view === 'admin'" @back="view = 'editor'" />
 
-  <div v-else class="editor-shell" :class="{ 'sidebar-collapsed': !sidebarOpen && !isMobile }">
+  <div v-else class="editor-shell">
     <header class="editor-header">
       <div class="header-left">
         <!-- Avatar = current user's site icon (diseño > icono del sitio), falling
@@ -246,15 +241,7 @@ const isCalendarDoc = computed(() =>
     </header>
 
     <div class="editor-body">
-    <!-- Mobile backdrop -->
-    <transition name="fade">
-      <div v-if="isMobile && sidebarOpen" class="backdrop" @click="toggleSidebar" />
-    </transition>
-
-    <aside
-      class="sidebar"
-      :class="{ open: sidebarOpen, mobile: isMobile }"
-    >
+    <aside class="sidebar">
       <FieldBrowser />
     </aside>
 
@@ -272,8 +259,7 @@ const isCalendarDoc = computed(() =>
       </div>
       <div v-else class="empty-state">
         <div class="empty-icon">📄</div>
-        <p>Selecciona un fichero en el panel lateral para empezar a editar.</p>
-        <button v-if="isMobile && !sidebarOpen" class="empty-cta" @click="toggleSidebar">Abrir panel</button>
+        <p>Selecciona una sección para empezar a editar.</p>
       </div>
     </main>
 
@@ -374,88 +360,7 @@ const isCalendarDoc = computed(() =>
   display: flex;
   flex-direction: column;
   background: var(--pe-panel);
-  transition: width var(--pe-transition), transform var(--pe-transition), margin var(--pe-transition);
   z-index: 20;
-}
-.sidebar-footer {
-  margin-top: auto;
-  padding: 12px 14px;
-  border-top: 1px solid var(--pe-border);
-}
-.sidebar-logout-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 10px;
-  border-radius: var(--pe-radius-sm);
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--pe-muted);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background var(--pe-transition), color var(--pe-transition);
-}
-.sidebar-logout-btn:hover {
-  background: var(--pe-danger-soft);
-  color: var(--pe-danger);
-}
-.logout-icon {
-  font-size: 15px;
-  line-height: 1;
-}
-.editor-shell.sidebar-collapsed .sidebar {
-  width: 0;
-  border-right-color: transparent;
-  overflow: hidden;
-}
-
-.sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--pe-border);
-  min-height: 56px;
-  box-sizing: border-box;
-}
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-.brand-mark {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--pe-accent-soft);
-  color: var(--pe-accent);
-  font-weight: 700;
-  font-size: 15px;
-  flex-shrink: 0;
-}
-.brand-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.brand-title {
-  font-weight: 700;
-  font-size: 13px;
-  line-height: 1.1;
-}
-.slug {
-  font-size: 11px;
-  color: var(--pe-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* ---------- Main panel ---------- */
@@ -503,82 +408,24 @@ const isCalendarDoc = computed(() =>
   font-size: 40px;
   opacity: 0.6;
 }
-.empty-cta {
-  margin-top: 4px;
-  padding: 9px 18px;
-  border-radius: var(--pe-radius);
-  border: 1px solid var(--pe-accent);
-  background: var(--pe-accent-soft);
-  color: var(--pe-accent);
-  font-weight: 600;
-  cursor: pointer;
-}
-.empty-cta:hover {
-  background: var(--pe-accent-soft-hover);
-}
-
-/* ---------- Mobile drawer ---------- */
-.backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 17, 21, 0.45);
-  z-index: 15;
-  backdrop-filter: blur(1px);
-}
-.sidebar.mobile {
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 84vw;
-  max-width: 320px;
-  transform: translateX(-100%);
-  box-shadow: var(--pe-shadow-lg);
-}
-.sidebar.mobile.open {
-  transform: translateX(0);
-}
-
-/* ---------- Mobile bottom toolbar (replaces drawer at 768px and below) ---------- */
-@media (max-width: 768px) {
+/* ---------- Portrait bottom bar (single nav bar reoriented by aspect ratio) ---------- */
+/* The base layout (editor-body row, sidebar on the left) is the landscape view.
+   In portrait the same bar flows to the bottom as a horizontal toolbar. */
+@media (orientation: portrait) {
+  .editor-body {
+    flex-direction: column;
+  }
+  .main-panel {
+    order: 1;
+    padding-bottom: 96px; /* Space for the bottom bar */
+  }
   .sidebar {
+    order: 2;
     width: 100%;
+    height: auto;
+    flex: none;
     border-right: none;
     border-top: 1px solid var(--pe-border);
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    top: auto;
-    height: auto;
-    z-index: 20;
-    background: var(--pe-panel);
-  }
-
-  .sidebar-header,
-  .sidebar-footer {
-    display: none;
-  }
-
-  .sidebar.mobile {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    top: auto;
-    width: 100%;
-    max-width: 100%;
-    height: auto;
-    transform: translateY(0);
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-  }
-
-  .main-panel {
-    padding-bottom: 80px; /* Space for bottom toolbar */
-  }
-
-  .backdrop {
-    display: none;
   }
 }
 
@@ -586,16 +433,6 @@ const isCalendarDoc = computed(() =>
 @media (max-width: 860px) {
   .main-panel {
     padding: 18px 18px 96px;
-  }
-  .sidebar-footer {
-    padding: 10px;
-  }
-  .sidebar-logout-btn {
-    font-size: 12px;
-    padding: 7px 8px;
-  }
-  .logout-label {
-    display: none;
   }
 }
 
