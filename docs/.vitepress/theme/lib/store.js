@@ -457,6 +457,12 @@ export async function removeEditor(email) {
   await loadEditors();
 }
 
+// Create a brand-new site/slug owned by `email` (they receive an invite magic
+// link). The creator stays on the current slug, so no state changes here.
+export async function createSite(slug, email) {
+  return api.createSite(state.apiBase, state.editorToken, slug, email);
+}
+
 // ---------------------------------------------------------------------------
 // Opening / editing a document
 // ---------------------------------------------------------------------------
