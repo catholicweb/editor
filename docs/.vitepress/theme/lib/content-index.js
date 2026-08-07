@@ -101,26 +101,32 @@ export function mediaRelPathFromPublic(schema, publicPath) {
 }
 
 // Generate a safe filename for new media uploads.
-// The filename will be: <prefix><safe-name>.<ext>
-// where prefix is like "media-" and ext is validated/normalized.
-export function relPathForNewMedia(schema, filename) {
+// The filename will be: <prefix><safe-name>[<hashSuffix>].<ext>
+// where prefix is like "media-", ext is always webp, and hashSuffix (optional)
+// is a brief content hash appended before the extension for cache-busting
+// (e.g. "media-foto-a1b2c3d4.webp"). When hashSuffix is omitted, behavior is
+// identical to the previous 2-arg version.
+export function relPathForNewMedia(schema, filename, hashSuffix) {
   const prefix = mediaPrefix(schema);
   // Extract name and extension
   const lastDot = filename.lastIndexOf('.');
   let name = lastDot === -1 ? filename : filename.slice(0, lastDot);
-  let ext = lastDot === -1 ? '' : filename.slice(lastDot + 1).toLowerCase();
 
   // Sanitize name: replace any char outside [A-Za-z0-9_-] with -
   name = name.replace(/[^A-Za-z0-9_-]/g, '-');
 
   // Always use .webp for media uploads (current behavior)
-  ext = 'webp';
+  const ext = 'webp';
 
-  const result = `${prefix}${name}.${ext}`;
-  if (!validateFilename(result)) {
-    // Fallback: generate a safe name with timestamp
-    const timestamp = Date.now();
-    return `${prefix}image-${timestamp}.webp`;
-  }
-  return result;
+  // Splice the optional content hash in before the extension.
+  const withHash = (base) =>
+    hashSuffix ? `${prefix}${base}-${hashSuffix}.${ext}` : `${prefix}${base}.${ext}`;
+
+  // Validate the final (hashed) candidate; fall back to a timestamped name
+  // carrying the hash too, so the result stays consistent.
+  const result = withHash(name);
+  if (validateFilename(result)) return result;
+
+  const timestamp = Date.now();
+  return withHash(`image-${timestamp}`);
 }
