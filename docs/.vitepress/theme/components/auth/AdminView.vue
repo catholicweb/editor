@@ -1,13 +1,22 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import { state, loadEditors, addEditor, removeEditor, logout } from '../../lib/store.js';
+import { ref, watch, onMounted, onUnmounted } from 'vue';
+import {
+  state,
+  loadEditors,
+  addEditor,
+  removeEditor,
+  logout,
+  createSite,
+} from '../../lib/store.js';
+import { listAllSlugs } from '../../lib/api.js';
 import SessionScreen from './SessionScreen.vue';
 import UserAvatar from '../UserAvatar.vue';
 import PeIcon from '../PeIcon.vue';
 
 // Full-screen admin view: shows the current slug, lets the user manage who has
-// edit access (the /editors roster) and log out. Reached by clicking the header
-// avatar; emits `back` so the parent can return to the editor.
+// edit access (the /editors roster), create a brand-new site/slug (inviting its
+// owner by email) and log out. Reached by clicking the header avatar; emits
+// `back` so the parent can return to the editor.
 
 const emit = defineEmits(['back']);
 
@@ -16,7 +25,99 @@ const removing = ref(false);
 const newEmail = ref('');
 const info = ref(''); // transient success feedback (e.g. "enlace enviado a ...")
 
+const createEmail = ref('');
+const newSlug = ref('');
+const creating = ref(false);
+const createError = ref('');
+// Availability of the proposed slug: 'unknown' | 'checking' | 'available' |
+// 'taken' | 'invalid'. Mirrors the server-side slug rules.
+const slugStatus = ref('unknown');
+let checkTimer = null;
+let checkSeq = 0;
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SLUG_RE = /^[a-z0-9][a-z0-9_-]*$/;
+const RESERVED_SLUGS = ['api', 'editor', 'www', 'data'];
+
+function normalizeSlug(raw) {
+  return (raw || '').trim().toLowerCase();
+}
+
+function validateSlug(slug) {
+  return SLUG_RE.test(slug) && !RESERVED_SLUGS.includes(slug);
+}
+
+// Live availability check: re-run (debounced) on every change of the slug field.
+watch(newSlug, () => {
+  clearTimeout(checkTimer);
+  checkSeq++; // invalidate any in-flight check (e.g. after clearing the field)
+  const slug = normalizeSlug(newSlug.value);
+  if (!slug) {
+    slugStatus.value = 'unknown';
+    return;
+  }
+  if (!validateSlug(slug)) {
+    slugStatus.value = 'invalid';
+    return;
+  }
+  checkTimer = setTimeout(() => checkAvailability(slug), 300);
+});
+
+onUnmounted(() => clearTimeout(checkTimer));
+
+async function checkAvailability(slug) {
+  const seq = ++checkSeq;
+  slugStatus.value = 'checking';
+  try {
+    const slugs = await listAllSlugs(state.dataBase);
+    if (seq !== checkSeq) return; // a newer check has superseded this one
+    slugStatus.value = slugs.includes(slug) ? 'taken' : 'available';
+  } catch {
+    if (seq !== checkSeq) return;
+    // Could not verify availability; leave status unknown and let the server
+    // decide on submit (it returns 409 if the slug already exists).
+    slugStatus.value = 'unknown';
+  }
+}
+
+async function handleCreate() {
+  createError.value = '';
+  const email = createEmail.value.trim();
+  const slug = normalizeSlug(newSlug.value);
+
+  if (!EMAIL_RE.test(email)) {
+    createError.value = 'Introduce un correo válido.';
+    return;
+  }
+  if (!validateSlug(slug)) {
+    createError.value = 'Ese nombre de sitio no es válido.';
+    return;
+  }
+
+  // Final availability re-check to guard against races while typing.
+  const slugs = await listAllSlugs(state.dataBase).catch(() => []);
+  if (slugs.includes(slug)) {
+    slugStatus.value = 'taken';
+    createError.value = 'Ese nombre de sitio ya está en uso.';
+    return;
+  }
+  slugStatus.value = 'available';
+
+  state.error = '';
+  info.value = '';
+  creating.value = true;
+  try {
+    await createSite(slug, email);
+    info.value = `Sitio ${slug} creado. Enlace de acceso enviado a ${email}.`;
+    newSlug.value = '';
+    createEmail.value = '';
+    slugStatus.value = 'unknown';
+  } catch (err) {
+    createError.value = err.message || String(err);
+  } finally {
+    creating.value = false;
+  }
+}
 
 onMounted(() => {
   loadEditors().catch((err) => {
@@ -83,6 +184,50 @@ function handleLogout() {
         <p class="slug-row">
           Slug actual: <code class="slug-value">{{ state.slug }}</code>
         </p>
+      </section>
+
+      <section class="panel">
+        <h2>Crear un sitio nuevo</h2>
+        <p class="hint">
+          Puedes crear un sitio nuevo para que otra persona lo edite. Indica el
+          correo de quien lo va a gestionar y el nombre (slug) que quieres para el
+          sitio. Se comprobará si el nombre está disponible y se enviará un enlace
+          de acceso al correo indicado. Tú permaneces en este sitio.
+        </p>
+
+        <form class="create-form" novalidate @submit.prevent="handleCreate">
+          <label class="field">
+            <span class="field-label">Correo de la persona invitada</span>
+            <input
+              v-model="createEmail"
+              type="email"
+              autocomplete="email"
+              placeholder="correo@ejemplo.com"
+            />
+          </label>
+
+          <label class="field">
+            <span class="field-label">Nombre del sitio (slug)</span>
+            <input
+              v-model="newSlug"
+              type="text"
+              autocomplete="off"
+              autocapitalize="none"
+              spellcheck="false"
+              placeholder="mi-sitio"
+            />
+          </label>
+          <p v-if="slugStatus === 'available'" class="avail avail-ok">Disponible</p>
+          <p v-else-if="slugStatus === 'taken'" class="avail avail-bad">Ya en uso</p>
+          <p v-else-if="slugStatus === 'invalid'" class="avail avail-bad">Nombre no válido</p>
+          <p v-else-if="slugStatus === 'checking'" class="avail">Comprobando…</p>
+
+          <p v-if="createError" class="create-error">{{ createError }}</p>
+
+          <button type="submit" class="create-btn" :disabled="creating">
+            {{ creating ? 'Creando…' : 'Crear sitio y enviar invitación' }}
+          </button>
+        </form>
       </section>
 
       <section class="panel">
@@ -250,6 +395,73 @@ function handleLogout() {
   background: var(--pe-accent-hover);
 }
 .add-row button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field-label {
+  font-size: 13px;
+  color: var(--pe-muted);
+}
+.field input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 14px;
+  padding: 10px 12px;
+  border-radius: var(--pe-radius);
+  border: 1px solid var(--pe-border);
+  background: var(--pe-input-bg);
+  color: var(--pe-text);
+}
+.field input:focus,
+.field input:focus-visible {
+  outline: none;
+  border-color: var(--pe-accent);
+  box-shadow: var(--pe-ring);
+}
+.avail {
+  margin: 0;
+  font-size: 13px;
+  color: var(--pe-muted);
+}
+.avail-ok {
+  color: var(--pe-success);
+}
+.avail-bad {
+  color: var(--pe-danger);
+}
+.create-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--pe-danger);
+}
+.create-btn {
+  align-self: flex-start;
+  padding: 10px 16px;
+  border-radius: var(--pe-radius);
+  border: none;
+  background: var(--pe-accent);
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background var(--pe-transition), box-shadow var(--pe-transition);
+}
+.create-btn:hover:not(:disabled) {
+  background: var(--pe-accent-hover);
+}
+.create-btn:disabled {
   opacity: 0.6;
   cursor: default;
 }

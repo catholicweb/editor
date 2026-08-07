@@ -104,6 +104,19 @@ export async function removeEditor(apiBase, slug, token, email) {
   return res.json(); // { ok, slug, email }
 }
 
+// Create a brand-new site/slug, grant the given email edit access and email them
+// an invite magic link. POST /sites/:slug — sends the caller's bearer token (the
+// API is expected to authorize editors, not just admin, for creation).
+export async function createSite(apiBase, token, slug, email) {
+  const res = await fetch(`${trimBase(apiBase)}/sites/${encodeURIComponent(slug)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) throw new Error(`No se pudo crear el sitio: ${await errText(res)}`);
+  return res.json(); // { ok, slug, sent, email }
+}
+
 export async function putFile(apiBase, slug, token, fileToken, body, contentType, { keepalive = false } = {}) {
   const res = await fetch(
     `${trimBase(apiBase)}/sites/${encodeURIComponent(slug)}/${encodeURIComponent(fileToken)}`,
@@ -145,4 +158,15 @@ export async function getFileText(dataBase, slug, fileToken) {
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`No se pudo leer el fichero: ${await errText(res)}`);
   return res.text();
+}
+
+// List every existing site slug, for availability checks before creating a new
+// one. Read from the public host (slugs.json is `{ "slugs": [...] }`); cache is
+// bypassed the same way as file reads so availability is never stale.
+export async function listAllSlugs(dataBase) {
+  const url = nocacheUrl(`${trimBase(dataBase)}/slugs.json`);
+  const res = await fetch(url, { cache: 'no-cache' });
+  if (!res.ok) throw new Error(`No se pudieron listar los slugs: ${await errText(res)}`);
+  const data = await res.json();
+  return data.slugs || [];
 }
