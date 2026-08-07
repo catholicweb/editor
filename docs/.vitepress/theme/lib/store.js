@@ -1,9 +1,10 @@
-import { reactive, computed, watch } from 'vue';
+import { reactive, computed, watch, nextTick } from 'vue';
 import yaml from 'js-yaml';
 import * as api from './api.js';
 import { encodePath, safeRelPath } from './codec.js';
 import { normalizeSchema, applyDefaults } from './schema.js';
 import { buildFileIndex, listMediaFiles } from './content-index.js';
+import * as versions from './versions.js';
 
 // Autosave: debounce timer per file
 let autosaveTimer = null;
@@ -83,6 +84,24 @@ export const isDirty = computed(() => {
   if (!state.config || state.draft == null) return false;
   return fullConfigText() !== state.savedText;
 });
+
+// ---------------------------------------------------------------------------
+// Local version snapshots (undo/restore). See lib/versions.js for storage.
+// ---------------------------------------------------------------------------
+
+// Serialize the current WHOLE config into a version snapshot. Uses
+// fullConfigText() so an unsaved tab draft is captured too. Best-effort: a
+// failure (quota, unsupported CompressionStream) must never break a save.
+export async function snapshotCurrent(label = '') {
+  if (!state.slug || !state.config) return;
+  await versions.pushSnapshot(lsKey('versions', state.slug), fullConfigText(), label);
+}
+
+// Local snapshots the modal lists. Chronological order; the modal sorts.
+export async function listLocalSnapshots() {
+  if (!state.slug) return [];
+  return versions.getSnapshots(lsKey('versions', state.slug));
+}
 
 // ---------------------------------------------------------------------------
 // Session persistence (just the connection settings, never trusted beyond
@@ -537,12 +556,73 @@ export async function saveCurrent({ keepalive = false } = {}) {
     state.savedText = text;
     state.status = 'Guardado.';
 
+    // Snapshot the saved config as a version (fire-and-forget). Deliberately NOT
+    // awaited: on the keepalive on-leave flush we must not block the page unload
+    // on an async gzip that may be torn down mid-flight — the PUT already
+    // succeeded, losing only the local snapshot is acceptable.
+    snapshotCurrent().catch(() => {});
+
   } catch (err) {
     state.error = err.message || String(err);
     throw err;
   } finally {
     state.loading = false;
     state.saving = false;
+  }
+}
+
+// Restore the editor to a past version of the whole config. Applied as a
+// PENDING change: `savedText` is left untouched so `isDirty` turns true and the
+// config is not written to the server until the user clicks save. Before
+// mutating, the CURRENT config is snapshotted so the pre-restore state stays
+// recoverable (the user's explicit "nothing may be lost" requirement).
+export async function restoreConfig(newConfig) {
+  if (!state.config) return;
+
+  // Preserve the current state BEFORE replacing it, so the undo is itself
+  // undoable.
+  await snapshotCurrent('Antes de restaurar').catch(() => {});
+
+  // Cancel any pending autosave so we don't race the swap with an in-flight save.
+  if (autosaveTimer) {
+    clearTimeout(autosaveTimer);
+    autosaveTimer = null;
+  }
+
+  // Swap in the restored config and re-alias the open tab's draft (mirrors the
+  // tail of openEntry) so the form edits the new data, not the old object tree.
+  state.config = reactive(newConfig || {});
+  const entry = state.currentEntry;
+  if (entry && state.draft != null) {
+    let data = state.config[entry.tabPath];
+    if (!data) {
+      data = {};
+      state.config[entry.tabPath] = data;
+    }
+    applyDefaults(entry.fields, data);
+    state.currentBody = '';
+    state.draft = reactive(data);
+  }
+
+  // Restored config may carry different theme values; re-apply them now (the
+  // theme watches would also fire, but calling directly is immediate and safe).
+  applyAccentColorFromConfig();
+  applyFontsFromConfig();
+
+  state.error = '';
+  state.status = 'Versión restaurada. Revisa y guarda.';
+
+  // `savedText` is intentionally NOT advanced — the restore must read as a
+  // pending change against the server's last-known serialization.
+
+  // Swapping state.draft fires the deep autosave watch, which would otherwise
+  // schedule an unprompted write of the restore within AUTOSAVE_DELAY. The
+  // watcher (flush: 'pre') runs before nextTick's post-flush callback, so await
+  // it and clear the timer it just scheduled.
+  await nextTick();
+  if (autosaveTimer) {
+    clearTimeout(autosaveTimer);
+    autosaveTimer = null;
   }
 }
 
