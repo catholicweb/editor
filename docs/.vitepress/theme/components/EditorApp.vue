@@ -4,10 +4,11 @@ import LoginView from './auth/LoginView.vue';
 import AdminView from './auth/AdminView.vue';
 import FieldBrowser from './FieldBrowser.vue';
 import FieldsGroup from './FieldsGroup.vue';
-import { state, isLoggedIn, isDirty, login, redeemMagic, loadSavedSession, initBeforeUnloadHandler, openEntry, saveCurrent, DEFAULTS } from '../lib/store.js';
+import { state, isLoggedIn, isDirty, login, redeemMagic, loadSavedSession, initBeforeUnloadHandler, openEntry, saveCurrent, restoreConfig, DEFAULTS } from '../lib/store.js';
 import { ui, initUi, toggleSidebar } from '../lib/ui.js';
 import UserAvatar from './UserAvatar.vue';
 import PeIcon from './PeIcon.vue';
+import VersionHistoryModal from './VersionHistoryModal.vue';
 
 // Parse deep link from URL parameter (e.g., ?edit=site.collaborators)
 async function parseDeepLink(retryCount = 0) {
@@ -185,6 +186,16 @@ function onSave() {
   });
 }
 
+// Version/undo modal state.
+const versionsOpen = ref(false);
+
+function onRestore({ config }) {
+  restoreConfig(config).catch(() => {
+    // Error already surfaced in state.error
+  });
+  versionsOpen.value = false;
+}
+
 // Calendar documents use a full-width editor instead of the 760px form.
 const isCalendarDoc = computed(() =>
   (state.currentEntry?.fields || []).some((f) => f.type === 'calendario')
@@ -213,6 +224,14 @@ const isCalendarDoc = computed(() =>
         <span class="header-brand-title">{{ headerTitle }}</span>
       </div>
       <div class="header-actions">
+        <button
+          class="header-icon-btn"
+          title="Historial de versiones"
+          aria-label="Historial de versiones"
+          @click="versionsOpen = true"
+        >
+          <PeIcon name="heroicons-solid:clock" :size="20" />
+        </button>
         <button
           class="header-icon-btn save-indicator-btn"
           :class="saveState"
@@ -259,6 +278,12 @@ const isCalendarDoc = computed(() =>
     </main>
 
     </div><!-- /editor-body -->
+
+    <VersionHistoryModal
+      v-if="versionsOpen"
+      @close="versionsOpen = false"
+      @restore="onRestore"
+    />
   </div>
 </template>
 

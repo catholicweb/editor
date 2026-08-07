@@ -146,3 +146,36 @@ export async function getFileText(dataBase, slug, fileToken) {
   if (!res.ok) throw new Error(`No se pudo leer el fichero: ${await errText(res)}`);
   return res.text();
 }
+
+// ---- GitHub backup repo (version history / undo) ---------------------------
+// The public `catholicweb/backup` repo stores a per-slug daily backup at
+// `config/<slug>/config.json`. These let the editor list past versions and fetch
+// a specific one. No Authorization header: the repo is public and CORS is open
+// to any origin on both hosts.
+//
+// The commit LIST uses the REST API (api.github.com) which counts against the
+// unauthenticated 60 req/hr IP quota — we hit it only once per modal open. The
+// CONTENT fetch uses raw.githubusercontent.com, a separate CDN NOT subject to
+// that REST quota, so restoring backups never burns the REST budget.
+
+export async function githubListVersions(slug) {
+  const q = encodeURIComponent(`config/${slug}/config.json`);
+  const res = await fetch(
+    `https://api.github.com/repos/catholicweb/backup/commits?path=${q}&per_page=100`
+  );
+  if (!res.ok) return [];
+  const items = await res.json();
+  return (items || []).map((it) => ({
+    sha: it.sha,
+    date: it.commit?.author?.date,
+    message: String(it.commit?.message || '').split('\n')[0],
+  }));
+}
+
+export async function githubFetchVersion(slug, sha) {
+  const res = await fetch(
+    `https://raw.githubusercontent.com/catholicweb/backup/${encodeURIComponent(sha)}/config/${encodeURIComponent(slug)}/config.json`
+  );
+  if (!res.ok) throw new Error(`No se pudo descargar la versión: HTTP ${res.status}`);
+  return JSON.parse(await res.text());
+}
