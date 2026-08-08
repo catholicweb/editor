@@ -113,14 +113,57 @@ const hasRedWarnings = computed(() => occurrences.value.some((o) => o.warn === '
 const hasOrangeWarnings = computed(() => occurrences.value.some((o) => o.warn === 'orange'));
 const hasPurpleWarnings = computed(() => occurrences.value.some((o) => o.warn === 'purple'));
 
-// Group occurrences by day for the event list below the grid
-const WEEKDAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+// Occurrence date -> ISO "YYYY-MM-DD" key, used to bucket the list window.
+function isoOf(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+function startOfDay(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+// Spanish weekday name for a Date, keyed by getDay() (0=Sun..6=Sat).
+const DAY_NAME_BY_GETDAY = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+// The event list below the grid is a rolling 7-day window that starts on the
+// real current date and shows the week ahead (today .. today+6), spilling into
+// the next week when today is late in the current week. Past days of the shown
+// week (before today) are intentionally excluded. When the user navigates the
+// grid (‹ › / Hoy) to a week that does not contain today, the list falls back
+// to that shown week (its Monday first). The Mon–Sun grid columns are unchanged.
+const listStart = computed(() => {
+  const ws = startOfDay(props.weekStart); // shown week's Monday
+  const wsEnd = addDaysReal(ws, 6);       // .. Sunday
+  const now = startOfDay(new Date());
+  const showsToday = now >= ws && now <= wsEnd;
+  return showsToday ? now : ws;
+});
+const listDays = computed(() =>
+  Array.from({ length: 7 }, (_, i) => addDaysReal(listStart.value, i))
+);
+// Occurrences across the (≤2) calendar weeks intersecting the list window,
+// filtered to the 7 window dates.
+const listOccurrences = computed(() => {
+  const inWindow = new Set(listDays.value.map(isoOf));
+  const first = startOfWeek(listDays.value[0]);
+  const last = startOfWeek(listDays.value[6]);
+  const weekStarts = first.getTime() === last.getTime() ? [first] : [first, last];
+  const all = [];
+  for (const ws of weekStarts) {
+    all.push(...expandAllEvents(props.events, ws, props.defaults, props.celebrants, props.eventTypes));
+  }
+  return all.filter((o) => inWindow.has(o.date));
+});
+// Group the list window's occurrences by day offset (0..6) from listStart.
 const occurrencesByDay = computed(() => {
+  const dayISO = listDays.value.map(isoOf);
   const byDay = Array.from({ length: 7 }, () => []);
-  for (const o of occurrences.value) {
-    if (o.dayIndex >= 0 && o.dayIndex < 7) {
-      byDay[o.dayIndex].push(o);
-    }
+  for (const o of listOccurrences.value) {
+    const idx = dayISO.indexOf(o.date);
+    if (idx >= 0) byDay[idx].push(o);
   }
   // Sort each day's occurrences by time
   for (const day of byDay) {
@@ -233,7 +276,7 @@ function onAlldayClick(dayIndex, occs) {
     <div v-if="occurrences.length" class="event-list">
       <div v-for="(dayOccs, dayIdx) in occurrencesByDay" :key="dayIdx" class="event-day">
         <h4 v-if="dayOccs.length" class="day-header">
-          {{ WEEKDAY_NAMES[dayIdx] }} {{ weekDays[dayIdx]?.getDate() }}
+          {{ DAY_NAME_BY_GETDAY[listDays[dayIdx].getDay()] }} {{ listDays[dayIdx].getDate() }}
         </h4>
         <div v-for="(o, oi) in dayOccs" :key="`${o.eventIndex}-${oi}`" class="event-row" :class="{ specific: !o.recurring }" @click="emit('edit-occurrence', o)">
           <span class="event-time" v-if="o.time">{{ o.time }}</span>
