@@ -96,11 +96,34 @@ function apiDate(d) {
   return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
-// Stable identity of a mass, for de-duping across the date probes: two probes
-// return the same daily Mass whenever time and recurrence days match.
-function massKey(m) {
-  const days = [...(m.days || [])].sort((a, b) => a - b).join(',');
-  return `${m.time}|${days}`;
+// Sort key for a mass time string (e.g. "09:30"). Falls back to a large
+// value for anything unparseable so it sorts to the end instead of erroring.
+function timeSortValue(time) {
+  const match = /^(\d{1,2}):(\d{2})/.exec(time || '');
+  if (!match) return Infinity;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+function sortMassesByTime(masses) {
+  return [...masses].sort((a, b) => timeSortValue(a.time) - timeSortValue(b.time));
+}
+
+// Merge a batch of newly-probed Masses into an existing list, keyed by time:
+// two probes returning a Mass at the same time are treated as the same daily
+// Mass, so instead of adding a duplicate we union their recurrence `days`
+// (deduped via a Set, since the same day code shouldn't appear twice).
+function mergeMassesByTime(existingMasses, newMasses) {
+  const byTime = new Map(existingMasses.map((m) => [m.time, m]));
+  for (const m of newMasses) {
+    const existing = byTime.get(m.time);
+    if (existing) {
+      existing.days = [...new Set([...(existing.days || []), ...(m.days || [])])].sort((a, b) => a - b);
+    } else {
+      const clone = { ...m, days: [...new Set(m.days || [])].sort((a, b) => a - b) };
+      existingMasses.push(clone);
+      byTime.set(m.time, clone);
+    }
+  }
+  return existingMasses;
 }
 
 // Call overpass-api.de to find nearby places of worship
@@ -114,16 +137,15 @@ async function discoverPlaces(lat, lon) {
       node["building"="church"](around:15000,${lat},${lon});
       way["building"="church"](around:15000,${lat},${lon});
     );
-    out body;
-    >;
-    out skel qt;
+    out center;
   `;
 
   const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
 
-  const response = await fetchWithTimeout(url, 5000);
+  const response = await fetchWithTimeout(url, 10000);
   if (!response.ok) {
-    throw new Error('No se pudo conectar con Overpass API');
+    return []
+    //throw new Error('No se pudo conectar con Overpass API');
   }
 
   const data = await response.json();
@@ -145,6 +167,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 
 
 function mapMassDays(days) {
+  if (!days) return []
   const DAY_CODE_MAP = {
     0: "su", // Domingo
     1: "mo", // Lunes
@@ -153,8 +176,8 @@ function mapMassDays(days) {
     4: "th", // Jueves
     5: "fr", // Viernes
     6: "sa", // Sábado
-    7: "ve", // Vísperas (sábado tarde / vigilia)
-    8: "ve", // Vísperas de festivo
+    7: "sa", // Vísperas (sábado tarde / vigilia)
+    8: "sa", // Vísperas de festivo
     9: "su", // Festivo -> agrupado con "Domingos y festivos"
   };
   return [...new Set(days.map((d) => DAY_CODE_MAP[d]))];
@@ -263,17 +286,13 @@ async function searchMisasAPI(lat, lon) {
         .catch(() => ({ morg: { data: [] } }))
     ));
 
-    // Merge per parish id, unioning Masses and de-duping by time+days so a daily
-    // Mass present on all three probes is imported once, not three times.
+    // Merge per parish id, unioning Masses by time so a Mass at the same time
+    // on multiple probes is imported once with its recurrence days combined.
     const merged = new Map();
     for (const data of responses) {
       for (const parish of data?.morg?.data || []) {
         const entry = merged.get(parish.id) || { ...parish, mass: [] };
-        const seen = new Set(entry.mass.map(massKey));
-        for (const m of parish.mass || []) {
-          const k = massKey(m);
-          if (!seen.has(k)) { seen.add(k); entry.mass.push(m); }
-        }
+        mergeMassesByTime(entry.mass, parish.mass || []);
         merged.set(parish.id, entry);
       }
     }
@@ -286,7 +305,7 @@ async function searchMisasAPI(lat, lon) {
       lon: parish.long,
       type: 'catholic', // misas.org only has Catholic parishes
       distance: userLocation.value ? calculateDistance(userLocation.value.lat, userLocation.value.lon, parish.lat, parish.long) : null,
-      events: parish.mass || [], // Events from the parish API
+      events: sortMassesByTime(parish.mass || []), // Events from the parish API, sorted by hour
       source: 'misas.org', // Mark source for merging
       image: parish.pic ? [`https://misas.org/images/${parish.pic}`] : undefined
     }));
