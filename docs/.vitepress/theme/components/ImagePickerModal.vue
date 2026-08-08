@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { state, uploadMedia, refreshFileList } from '../lib/store.js';
 import { publicFileUrl } from '../lib/api.js';
 import { relPathForNewMedia, mediaPublicPath } from '../lib/content-index.js';
@@ -17,8 +17,18 @@ function urlFor(entry) {
 }
 
 function choose(entry) {
-  emit('select', mediaPublicPath(state.schema, entry.relPath));
+  emit('select', mediaPublicPath(state.schema, entry.filename));
 }
+
+const search = ref('');
+
+const filtered = computed(() => {
+  const q = search.value.trim().toLowerCase();
+  if (!q) return state.mediaFiles;
+  return state.mediaFiles.filter((entry) =>
+    entry.displayName.toLowerCase().includes(q)
+  );
+});
 
 function triggerUpload() {
   fileInput.value?.click();
@@ -69,12 +79,13 @@ async function onFileChosen(e) {
           {{ uploading ? 'Subiendo…' : '+ Subir nueva imagen' }}
         </button>
         <input ref="fileInput" type="file" accept="image/*" hidden @change="onFileChosen" />
+        <input v-model="search" type="text" class="search" placeholder="Buscar imagen…" />
       </div>
       <p v-if="uploadError" class="error">{{ uploadError }}</p>
 
       <div class="grid">
         <button
-          v-for="entry in state.mediaFiles"
+          v-for="entry in filtered"
           :key="entry.token"
           class="thumb"
           :title="entry.displayName"
@@ -85,6 +96,9 @@ async function onFileChosen(e) {
         </button>
         <p v-if="!state.mediaFiles.length" class="empty">
           Todavía no hay imágenes subidas para este sitio.
+        </p>
+        <p v-else-if="!filtered.length" class="empty">
+          Sin resultados para «{{ search }}».
         </p>
       </div>
     </div>
@@ -146,6 +160,26 @@ header h2 {
 }
 .toolbar {
   padding: 12px 18px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.search {
+  flex: 1;
+  font: inherit;
+  min-width: 0;
+  padding: 8px 11px;
+  border-radius: var(--pe-radius);
+  border: 1px solid var(--pe-border);
+  background: var(--pe-input-bg);
+  color: var(--pe-text);
+  transition: border-color var(--pe-transition), box-shadow var(--pe-transition);
+}
+.search:focus,
+.search:focus-visible {
+  outline: none;
+  border-color: var(--pe-accent);
+  box-shadow: var(--pe-ring);
 }
 .upload-btn {
   padding: 8px 12px;
