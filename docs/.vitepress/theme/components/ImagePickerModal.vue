@@ -1,8 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { state, uploadMedia, refreshFileList } from '../lib/store.js';
-import { publicFileUrl } from '../lib/api.js';
-import { relPathForNewMedia, mediaPublicPath } from '../lib/content-index.js';
+import { relPathForNewMedia } from '../lib/content-index.js';
 import { compressToWebP } from '../lib/image-compression.js';
 import { sha256Hex } from '../lib/hash.js';
 
@@ -13,11 +12,11 @@ const uploadError = ref('');
 const fileInput = ref(null);
 
 function urlFor(entry) {
-  return publicFileUrl(state.dataBase, state.slug, entry.token);
+  return entry.url; // media entries are absolute URLs
 }
 
 function choose(entry) {
-  emit('select', mediaPublicPath(state.schema, entry.filename));
+  emit('select', entry.url); // the absolute URL is the stored field value
 }
 
 const search = ref('');
@@ -26,7 +25,7 @@ const filtered = computed(() => {
   const q = search.value.trim().toLowerCase();
   if (!q) return state.mediaFiles;
   return state.mediaFiles.filter((entry) =>
-    entry.displayName.toLowerCase().includes(q)
+    entry.name.toLowerCase().includes(q)
   );
 });
 
@@ -55,9 +54,9 @@ async function onFileChosen(e) {
     const hashSuffix = (await sha256Hex(bytes)).slice(0, 8);
 
     const relPath = relPathForNewMedia(state.schema, compressedFile.name, hashSuffix);
-    await uploadMedia(compressedFile, relPath);
+    const url = await uploadMedia(compressedFile, relPath);
     await refreshFileList();
-    emit('select', mediaPublicPath(state.schema, relPath));
+    emit('select', url);
   } catch (err) {
     uploadError.value = err.message || String(err);
   } finally {
@@ -86,13 +85,13 @@ async function onFileChosen(e) {
       <div class="grid">
         <button
           v-for="entry in filtered"
-          :key="entry.token"
+          :key="entry.url"
           class="thumb"
-          :title="entry.displayName"
+          :title="entry.name"
           @click="choose(entry)"
         >
-          <img :src="urlFor(entry)" :alt="entry.displayName" loading="lazy" />
-          <span class="caption">{{ entry.displayName }}</span>
+          <img :src="urlFor(entry)" :alt="entry.name" loading="lazy" />
+          <span class="caption">{{ entry.name }}</span>
         </button>
         <p v-if="!state.mediaFiles.length" class="empty">
           Todavía no hay imágenes subidas para este sitio.

@@ -68,8 +68,3 @@ export function encodePath(relPath) {
   return result;
 }
 
-// Validate a filename and return it if valid, null otherwise.
-// Used to filter tokens when building the file index.
-export function safeRelPath(filename) {
-  return validateFilename(filename) ? filename : null;
-}

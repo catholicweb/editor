@@ -1,4 +1,4 @@
-import { safeRelPath, validateFilename } from './codec.js';
+import { validateFilename } from './codec.js';
 import { stripLocalRoot } from './schema.js';
 
 // Build the ordered "which files can be edited" list, following pages.yml's
@@ -48,53 +48,28 @@ export function buildFileIndex(schema) {
 
 // Media helpers -------------------------------------------------------------
 
+// Upload prefix for new media filenames: "media-" by default, or derived from
+// schema.media.input. Only used to NAME new uploads (the R2 object key) — the
+// field value stored is the absolute URL the server returns, not this filename.
 export function mediaPrefix(schema) {
   if (!schema.media || !schema.media.input) return 'media-';
   const input = stripLocalRoot(schema.media.input).replace(/\/?$/, '');
   return input + '-';
 }
 
-export function mediaOutputPrefix(schema) {
-  if (!schema.media || !schema.media.output) return '/media/';
-  return schema.media.output.replace(/\/?$/, '/');
-}
-
-// List every image-ish file under the media prefix, from the media token list.
-// Tokens are now flat filenames (e.g., "media-photo.jpg"), not encoded paths.
-export function listMediaFiles(schema, mediaTokens) {
+// List every media file from the absolute URL listing the worker returns.
+// Each entry is { url, name } (name = last path segment, for display/search).
+// No token validation: values are opaque absolute URLs.
+export function listMediaFiles(schema, mediaUrls) {
   const out = [];
-  for (const tok of mediaTokens || []) {
-    // Validate the token is a safe filename
-    const filename = safeRelPath(tok);
-    if (!filename) continue;
-    if (filename.endsWith('.json')) continue;
-    const displayName = filename
-    out.push({ token: tok, filename, displayName });
+  for (const url of mediaUrls || []) {
+    if (!url || typeof url !== 'string') continue;
+    const name = decodeURIComponent(url.split('/').pop() || '');
+    if (!name || name === 'config.json') continue;
+    out.push({ url, name });
   }
-  out.sort((a, b) => a.filename.localeCompare(b.filename, 'es'));
+  out.sort((a, b) => a.name.localeCompare(b.name, 'es'));
   return out;
-}
-
-// Public URL a browser/site visitor (and the site's own build) would use to
-// reference this media file — this is the string stored as the field value.
-export function mediaPublicPath(schema, filename) {
-  const out = mediaOutputPrefix(schema);
-  // filename is already the full token (e.g., "media-photo.jpg")
-  return out + filename;
-}
-
-// Reverse of mediaPublicPath: given a stored field value like "/media/photo.jpg",
-// recover the token ("media-photo.jpg") so we can preview it directly.
-export function mediaRelPathFromPublic(schema, publicPath) {
-  if (!publicPath) return null;
-  const out = mediaOutputPrefix(schema);
-  if (publicPath.startsWith(out)) {
-    // Convert from path format to flat filename format
-    const pathPart = publicPath.slice(out.length);
-    return pathPart.replace(/\//g, '-');
-  }
-  // already looks like a filename (e.g. hand-entered) — use as-is
-  return publicPath.replace(/^\/+/, '');
 }
 
 // Generate a safe filename for new media uploads.

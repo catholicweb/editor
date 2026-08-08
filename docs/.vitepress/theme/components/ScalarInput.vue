@@ -5,10 +5,7 @@ import ImagePickerModal from './ImagePickerModal.vue';
 import PeIcon from './PeIcon.vue';
 import IconPicker from './fields/IconPicker.vue';
 import { state } from '../lib/store.js';
-import { publicFileUrl } from '../lib/api.js';
-import { encodePath } from '../lib/codec.js';
 import { resolvePath } from '../lib/schema.js';
-import { mediaRelPathFromPublic } from '../lib/content-index.js';
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -102,14 +99,14 @@ function openPicker(index = null) {
   pickerTargetIndex.value = index;
   pickerOpen.value = true;
 }
-function onPicked(publicPath) {
+function onPicked(url) {
   if (multiple.value) {
     const arr = Array.isArray(props.modelValue) ? props.modelValue.slice() : [];
-    if (pickerTargetIndex.value == null) arr.push(publicPath);
-    else arr[pickerTargetIndex.value] = publicPath;
+    if (pickerTargetIndex.value == null) arr.push(url);
+    else arr[pickerTargetIndex.value] = url;
     set(arr);
   } else {
-    set(publicPath);
+    set(url);
   }
   pickerOpen.value = false;
 }
@@ -118,12 +115,9 @@ function removeImageAt(i) {
   arr.splice(i, 1);
   set(arr);
 }
-function imagePreviewUrl(publicPath) {
-  if (!publicPath) return '';
-  if (publicPath.startsWith('http')) return publicPath;
-  const relPath = mediaRelPathFromPublic(state.schema, publicPath);
-  if (!relPath) return '';
-  return publicFileUrl(state.dataBase, state.slug, encodePath(relPath));
+function imagePreviewUrl(value) {
+  // Field values are absolute URLs — used directly (no token decoding).
+  return value || '';
 }
 
 // ---- reference ----------------------------------------------------------
