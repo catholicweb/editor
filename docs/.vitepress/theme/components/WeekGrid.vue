@@ -223,7 +223,7 @@ function onAlldayClick(dayIndex, occs) {
             v-for="o in alldayFor(dayIdx - 1)"
             :key="o.eventIndex"
             class="ev"
-            :class="[o.warn ? `warn-${o.warn}` : null, { dimmed: o.recurring }]"
+            :class="[o.warn ? `warn-${o.warn}` : null, { highlighted: !o.recurring }]"
             :style="{ '--ev': o.style.color || '#9aa0a6' }"
             :title="chipTitle(o)"
             @click.stop="emit('edit-occurrence', o)"
@@ -245,7 +245,7 @@ function onAlldayClick(dayIndex, occs) {
               v-for="(o, idx) in cellFor(dayIdx - 1, t).slice(0, MAX_PER_CELL)"
               :key="`${o.eventIndex}-${idx}`"
               class="ev ev-small"
-              :class="[o.warn ? `warn-${o.warn}` : null, { dimmed: o.recurring }]"
+              :class="[o.warn ? `warn-${o.warn}` : null, { highlighted: !o.recurring }]"
               :style="{ color: o.style.color || '#9aa0a6' }"
               :title="chipTitle(o)"
               @click.stop="emit('edit-occurrence', o)"
@@ -460,17 +460,11 @@ function onAlldayClick(dayIndex, occs) {
 }
 /* Dim events that are routine weekly/monthly recurrences so that one-off,
    exception, and yearly events stand out as "specific to this week". */
-.ev.dimmed {
-  opacity: 0.5;
-  filter: saturate(0.6);
+.ev.highlighted {
+  border-left: 3px solid var(--pe-accent) !important;
+  border: 1px solid var(--pe-accent) !important;
+  background: var(--pe-accent-soft) !important;
 }
-/* Warnings always render at full intensity even on dimmed events.
-.ev.dimmed.warn-purple,
-.ev.dimmed.warn-red,
-.ev.dimmed.warn-orange {
-  opacity: 1;
-  filter: none;
-}*/
 .more {
   font-size: 9px;
   color: var(--pe-muted);
@@ -543,7 +537,9 @@ function onAlldayClick(dayIndex, occs) {
    chip, stays readable). No full-row tint, so the hover background and the
    recurrence chip's own accent-soft background aren't washed out. */
 .event-row.specific {
-  border-left: 3px solid var(--pe-accent);
+  border: 1px solid var(--pe-accent);
+  background: var(--pe-accent-soft);
+  /*border-left: 3px solid var(--pe-accent);
   padding-left: 5px; /* offset the added 3px edge so text stays aligned */
 }
 .event-row:hover {
