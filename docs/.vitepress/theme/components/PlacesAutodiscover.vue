@@ -18,6 +18,13 @@ const opts = props.field.options || {};
 const listPath = opts.listPath || 'list';
 const eventsPath = opts.eventsPath || 'calendar.events.list';
 
+// Our AWS Lambda quick-find proxy for misas.org parishsearch. The direct
+// misas.org endpoint sends no CORS headers, so the browser blocks it; this
+// lambda echoes Access-Control-Allow-Origin and returns the same data under
+// { morg: { data: [...] } }.
+const LAMBDA_QUICK_FIND_URL = 'https://5ejmibz3st5c2bwdloszdeck3u0qauwt.lambda-url.eu-west-1.on.aws/quick-find';
+const SEARCH_RADIUS_M = 30000;
+
 const showAutodiscover = ref(false);
 const isLoading = ref(false);
 const error = ref('');
@@ -51,7 +58,7 @@ async function getUserLocation() {
 }
 
 // Fetch with a client-side timeout (AbortController) so a slow/ungovernable
-// upstream (Overpass, misas.org) can never leave the modal stuck on the spinner.
+// upstream (Overpass, quick-find lambda) can never leave the modal stuck on the spinner.
 function fetchWithTimeout(url, ms) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
@@ -82,11 +89,11 @@ function nextWeekday() {
 function nextSaturday() { return nextDayWithDow(6); }
 function nextSunday() { return nextDayWithDow(0); }
 
-// Format a Date as the parishsearch API expects: YYYY/MM/DD.
+// Format a Date as the quick-find lambda expects: YYYY-MM-DD.
 function apiDate(d) {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}/${mm}/${dd}`;
+  return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
 // Stable identity of a mass, for de-duping across the date probes: two probes
@@ -238,34 +245,29 @@ function formatPlaces(elements) {
   return places;
 }
 
-// Search misas.org (parishsearch) for nearby parishes. The API returns only the
-// Masses that HAPPEN on the requested `date` (each still tagged with its full
-// recurrence `days`), so probing one date would miss the rest of the week. Probe
-// a weekday, a Saturday and a Sunday, then merge the results per parish so the
-// discovered schedule covers the whole week. Endpoint shape comes from the
-// commented URL in importEventsForPlace: sortbypos=[lon,lat,4784]&country=es&
-// date=YYYY/MM/DD&masses=1&pos=[lon,lat,47840].
+// Search nearby parishes through our quick-find lambda, which proxies misas.org
+// parishsearch (the direct endpoint sends no CORS headers, so the browser blocks
+// it). The lambda returns the same data under { morg: { data: [...] } } and, like
+// misas.org, only includes the Masses that HAPPEN on the requested `date` (each
+// still tagged with its full recurrence `days`), so probing one date would miss
+// the rest of the week. Probe a weekday, a Saturday and a Sunday, then merge the
+// results per parish so the discovered schedule covers the whole week.
 async function searchMisasAPI(lat, lon) {
   try {
-    const params = new URLSearchParams();
-    params.set('sortbypos', `[${lon},${lat},4784]`);
-    params.set('country', 'es');
-    params.set('masses', '1');
-    params.set('pos', `[${lon},${lat},47840]`);
-    const base = `https://misas.org/api/parishsearch?${params}`;
+    const base = `${LAMBDA_QUICK_FIND_URL}?lat=${lat}&lon=${lon}&radius=${SEARCH_RADIUS_M}`;
 
     const probeDates = [nextWeekday(), nextSaturday(), nextSunday()];
     const responses = await Promise.all(probeDates.map((date) =>
       fetchWithTimeout(`${base}&date=${encodeURIComponent(apiDate(date))}`, 5000)
-        .then(async (res) => (res.ok ? res.json() : { pars: [] }))
-        .catch(() => ({ pars: [] }))
+        .then(async (res) => (res.ok ? res.json() : { morg: { data: [] } }))
+        .catch(() => ({ morg: { data: [] } }))
     ));
 
     // Merge per parish id, unioning Masses and de-duping by time+days so a daily
     // Mass present on all three probes is imported once, not three times.
     const merged = new Map();
     for (const data of responses) {
-      for (const parish of data?.pars || []) {
+      for (const parish of data?.morg?.data || []) {
         const entry = merged.get(parish.id) || { ...parish, mass: [] };
         const seen = new Set(entry.mass.map(massKey));
         for (const m of parish.mass || []) {
@@ -276,7 +278,7 @@ async function searchMisasAPI(lat, lon) {
       }
     }
 
-    // Format places with events (parishsearch uses parish.lat / parish.long)
+    // Format places with events (parishes use parish.lat / parish.long)
     return [...merged.values()].map((parish) => ({
       name: cleanPlaceName(parish.name) || 'Sin nombre',
       geo: `${parish.lat}, ${parish.long}`,
@@ -284,12 +286,12 @@ async function searchMisasAPI(lat, lon) {
       lon: parish.long,
       type: 'catholic', // misas.org only has Catholic parishes
       distance: userLocation.value ? calculateDistance(userLocation.value.lat, userLocation.value.lon, parish.lat, parish.long) : null,
-      events: parish.mass || [], // Events from misas.org
+      events: parish.mass || [], // Events from the parish API
       source: 'misas.org', // Mark source for merging
       image: parish.pic ? [`https://misas.org/images/${parish.pic}`] : undefined
     }));
   } catch (err) {
-    console.error('Failed to search misas.org API:', err);
+    console.error('Failed to search parish API:', err);
     return []; // Return empty array on error, don't fail the whole discovery
   }
 }
@@ -333,31 +335,6 @@ function mergePlaces(osmPlaces, misasPlaces) {
   merged.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
 
   return merged;
-}
-
-// Import events from the parish API
-async function importEventsForPlace(place) {
-  try {
-    // https://misas.org/api/parishsearch?sortbypos=%5B-1.8956,42.7452,4784%5D&country=es&date=2026%2F08%2F01&masses=1&pos=%5B-1.8956,42.7452,47840%5D (another option)
-    const url = `https://5ejmibz3st5c2bwdloszdeck3u0qauwt.lambda-url.eu-west-1.on.aws/quick-find?lat=${place.lat}&lon=${place.lon}&radius=100`;
-
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error('No se pudieron importar los eventos de la API parroquial');
-    }
-
-    const data = await response.json();
-
-
-
-    // Extract events from the response (usually under 'mass' key)
-    const events = data?.morg?.data?.[0]?.mass || [];
-
-    return events;
-  } catch (err) {
-    console.error('Failed to import events:', err);
-    return [];
-  }
 }
 
 // Map API event to our event structure
