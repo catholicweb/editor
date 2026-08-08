@@ -1,19 +1,13 @@
 <script setup>
 import { computed } from 'vue';
-import { state } from '../lib/store.js';
-import { publicFileUrl } from '../lib/api.js';
-import { mediaRelPathFromPublic } from '../lib/content-index.js';
-import { encodePath } from '../lib/codec.js';
 import PeIcon from './PeIcon.vue';
 
 // Rounded button/avatar for the current user (the site's icon from
 // diseño > icono del sitio = config.theme.icon). Used in the editor header
 // (where it navigates to the admin screen) and in the admin screen itself.
 //
-// `src` is the stored field value: a full URL (passed through) or a public
-// media path like `/media/foo.webp` (converted to a renderable URL via the
-// public data host, same pipeline as ScalarInput.imagePreviewUrl). Falls back
-// to a parish icon when there's no icon or it can't be resolved.
+// `src` is the stored field value: an absolute URL used directly. Falls back
+// to a parish icon when there's no icon.
 
 const props = defineProps({
   src: { type: String, default: '' },
@@ -22,14 +16,7 @@ const props = defineProps({
 
 const emit = defineEmits(['click']);
 
-const imgUrl = computed(() => {
-  const src = props.src;
-  if (!src) return '';
-  if (src.startsWith('http')) return src;
-  const relPath = mediaRelPathFromPublic(state.schema, src);
-  if (!relPath) return '';
-  return publicFileUrl(state.dataBase, state.slug, encodePath(relPath));
-});
+const imgUrl = computed(() => props.src || '');
 </script>
 
 <template>

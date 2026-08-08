@@ -69,7 +69,7 @@ export async function whoami(apiBase, token) {
 export async function listFiles(apiBase, slug) {
   const res = await fetch(`${trimBase(apiBase)}/sites/${encodeURIComponent(slug)}/list`);
   if (!res.ok) throw new Error(`No se pudo listar los ficheros: ${await errText(res)}`);
-  return res.json(); // { slug, files: [token, ...] }
+  return res.json(); // { slug, files: [url, ...] } — absolute public URLs (no tokens)
 }
 
 // ---- worker: editor roster (who can edit this slug) ------------------------
@@ -133,7 +133,7 @@ export async function putFile(apiBase, slug, token, fileToken, body, contentType
     }
   );
   if (!res.ok) throw new Error(`No se pudo guardar el fichero: ${await errText(res)}`);
-  return res.json();
+  return res.json(); // { ok, slug, key, url } — `url` is the absolute public URL of the file
 }
 
 // ---- public data host (read) calls ----------------------------------------
@@ -148,13 +148,14 @@ function nocacheUrl(url) {
   return `${url}${sep}_=${Date.now()}`;
 }
 
-export function publicFileUrl(dataBase, slug, fileToken) {
-  if (fileToken.startsWith('http')) return fileToken
-  /*if (fileToken.startsWith('/media/')){
-    return `${trimBase(dataBase)}/${slug}/${encodeURIComponent(fileToken).replace('/media/','')}`;
-  }*/
-  if (fileToken.includes('/')) return `${trimBase(dataBase)}/${encodeURIComponent(fileToken)}`;
-  return `${trimBase(dataBase)}/${slug}/${encodeURIComponent(fileToken)}`;
+// Resolve a value to an absolute URL. Media field values are plain absolute URLs
+// now (no token decoding) — those pass through untouched. Kept as the internal
+// builder for non-media reads (e.g. config.json bytes at
+// data.parroquia.app/<slug>/config.json).
+export function publicFileUrl(dataBase, slug, value) {
+  if (/^(https?:)?\/\//.test(value || '')) return value; // absolute -> as-is
+  if (value.includes('/')) return `${trimBase(dataBase)}/${encodeURIComponent(value)}`;
+  return `${trimBase(dataBase)}/${slug}/${encodeURIComponent(value)}`;
 }
 
 export async function getFileText(dataBase, slug, fileToken) {

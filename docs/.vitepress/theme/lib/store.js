@@ -1,7 +1,7 @@
 import { reactive, computed, watch, nextTick } from 'vue';
 import yaml from 'js-yaml';
 import * as api from './api.js';
-import { encodePath, safeRelPath } from './codec.js';
+import { encodePath } from './codec.js';
 import { normalizeSchema, applyDefaults } from './schema.js';
 import { buildFileIndex, listMediaFiles } from './content-index.js';
 import * as versions from './versions.js';
@@ -38,8 +38,8 @@ export const state = reactive({
   // resolved after login
   slug: '',
   schema: null,
-  configToken: null,    // Token for config.json
-  mediaTokens: [],      // Tokens for media files
+  configToken: null,    // Filename for config.json
+  mediaUrls: [],        // Absolute public URLs for media files (no tokens)
   config: null,         // Config data (reactive, single source of truth)
 
   // ui
@@ -174,13 +174,14 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug })
 
     const rawSchema = yaml.load(schemaText);
 
-    // The config file is always 'config.json'; the rest of the listing is media.
+    // The config file is always 'config.json'; the rest of the listing is media
+    // (absolute URLs). Config's URL ends with /config.json.
     const configToken = 'config.json';
 
     state.slug = resolvedSlug;
     state.schema = null;
     state.configToken = configToken;
-    state.mediaTokens = files.filter((f) => f !== configToken);
+    state.mediaUrls = files.filter((u) => !u.endsWith('/config.json'));
 
     // Fetch config.json during login
     let config = null;
@@ -215,7 +216,7 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug })
     state.schema = schema;
     state.config = config || {}; // Store config in reactive state
     state.fileIndex = buildFileIndex(schema); // No longer needs rawTokens
-    state.mediaFiles = listMediaFiles(schema, state.mediaTokens); // Use mediaTokens
+    state.mediaFiles = listMediaFiles(schema, state.mediaUrls);
 
     // Pre-apply schema defaults to every editable tab so that simply opening a
     // tab (which re-applies the same defaults) never counts as a change. This
@@ -423,13 +424,9 @@ export async function refreshFileList() {
   if (!state.slug) return;
   const { files } = await api.listFiles(state.apiBase, state.slug);
 
-  // Update media tokens (config token stays the same)
-  // Config file is 'config.json'
-  const configToken = files?.find(f => f === 'config.json') || null;
-
-  state.configToken = configToken;
-  state.mediaTokens = files?.filter(f => f !== configToken) || [];
-  state.mediaFiles = listMediaFiles(state.schema, state.mediaTokens);
+  // Rebuild the media URL list (exclude config.json; its URL ends with it).
+  state.mediaUrls = (files || []).filter((u) => !u.endsWith('/config.json'));
+  state.mediaFiles = listMediaFiles(state.schema, state.mediaUrls);
 }
 
 export function logout() {
@@ -441,7 +438,7 @@ export function logout() {
   state.slug = '';
   state.schema = null;
   state.configToken = null;
-  state.mediaTokens = [];
+  state.mediaUrls = [];
   state.config = null;
   state.fileIndex = [];
   state.mediaFiles = [];
@@ -655,8 +652,8 @@ export function scheduleAutosave() {
 // ---------------------------------------------------------------------------
 
 export async function uploadMedia(file, relPath) {
-  const fileToken = encodePath(relPath);
-  await api.putFile(
+  const fileToken = encodePath(relPath); // flat object key (R2 filename)
+  const { url } = await api.putFile(
     state.apiBase,
     state.slug,
     state.editorToken,
@@ -664,11 +661,11 @@ export async function uploadMedia(file, relPath) {
     file,
     file.type || 'application/octet-stream'
   );
-  if (!state.mediaTokens.includes(fileToken)) {
-    state.mediaTokens.push(fileToken);
-    state.mediaFiles = listMediaFiles(state.schema, state.mediaTokens);
+  if (url && !state.mediaUrls.includes(url)) {
+    state.mediaUrls.push(url);
+    state.mediaFiles = listMediaFiles(state.schema, state.mediaUrls);
   }
-  return fileToken;
+  return url;
 }
 
 // Autosave: watch for changes and trigger autosave
