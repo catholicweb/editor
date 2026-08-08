@@ -369,7 +369,7 @@ content:
         list: { collapsible: { collapsed: true, summary: "{fields.name}" }, sort: "alphabetical", modal: false }
         fields:
           - { name: name, type: string, label: Nombre }
-          - { name: image, type: image, label: Imagen, options: { multiple: true } }
+          - { name: image, type: image, label: Imagenes, options: { multiple: true } }
           - { name: geo, type: string, label: "Coordenadas (ej: 42.801941, -1.645660)" }
       - name: autodiscover
         label: Encontrar templos

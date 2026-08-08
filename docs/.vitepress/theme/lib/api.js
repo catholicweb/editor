@@ -149,7 +149,12 @@ function nocacheUrl(url) {
 }
 
 export function publicFileUrl(dataBase, slug, fileToken) {
-  return `${trimBase(dataBase)}/${encodeURIComponent(slug)}/${encodeURIComponent(fileToken)}`;
+  if (fileToken.startsWith('http')) return fileToken
+  /*if (fileToken.startsWith('/media/')){
+    return `${trimBase(dataBase)}/${slug}/${encodeURIComponent(fileToken).replace('/media/','')}`;
+  }*/
+  if (fileToken.includes('/')) return `${trimBase(dataBase)}/${encodeURIComponent(fileToken)}`;
+  return `${trimBase(dataBase)}/${slug}/${encodeURIComponent(fileToken)}`;
 }
 
 export async function getFileText(dataBase, slug, fileToken) {

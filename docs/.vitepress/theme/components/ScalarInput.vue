@@ -329,7 +329,7 @@ function updateRefDropdownPosition() {
   <div v-else-if="field.type === 'image'" class="image-field">
     <template v-if="multiple">
       <div class="image-grid">
-        <div v-for="(p, i) in (modelValue || [])" :key="i" class="image-thumb">
+        <div v-for="(p, i) in (Array.isArray(modelValue)? modelValue : [modelValue].filter(Boolean))" :key="i" class="image-thumb">
           <img v-if="imagePreviewUrl(p)" :src="imagePreviewUrl(p)" />
           <div class="image-actions">
             <button type="button" @click="openPicker(i)">Cambiar</button>
