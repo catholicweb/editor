@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { state } from '../lib/store.js';
 import { ensurePath } from '../lib/schema.js';
+import { recurrenceLabel } from '../lib/calendar.js';
 import PeIcon from './PeIcon.vue';
 
 const props = defineProps({
@@ -49,6 +50,52 @@ async function getUserLocation() {
   });
 }
 
+// Fetch with a client-side timeout (AbortController) so a slow/ungovernable
+// upstream (Overpass, misas.org) can never leave the modal stuck on the spinner.
+function fetchWithTimeout(url, ms) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
+// Upcoming representative days probed by searchMisasAPI: the next weekday, the
+// next Saturday (vigils) and the next Sunday (holy-day masses), all > today.
+function nextDayWithDow(dow) {
+  const today = new Date();
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    if (d.getDay() === dow) return d;
+  }
+  return new Date(today); // unreachable
+}
+function nextWeekday() {
+  const today = new Date();
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const day = d.getDay(); // 0 Sun .. 6 Sat
+    if (day >= 1 && day <= 5) return d;
+  }
+  return new Date(today);
+}
+function nextSaturday() { return nextDayWithDow(6); }
+function nextSunday() { return nextDayWithDow(0); }
+
+// Format a Date as the parishsearch API expects: YYYY/MM/DD.
+function apiDate(d) {
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}/${mm}/${dd}`;
+}
+
+// Stable identity of a mass, for de-duping across the date probes: two probes
+// return the same daily Mass whenever time and recurrence days match.
+function massKey(m) {
+  const days = [...(m.days || [])].sort((a, b) => a - b).join(',');
+  return `${m.time}|${days}`;
+}
+
 // Call overpass-api.de to find nearby places of worship
 async function discoverPlaces(lat, lon) {
   // Overpass API query to find places of worship AND church buildings within 15km
@@ -67,7 +114,7 @@ async function discoverPlaces(lat, lon) {
 
   const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
 
-  const response = await fetch(url);
+  const response = await fetchWithTimeout(url, 5000);
   if (!response.ok) {
     throw new Error('No se pudo conectar con Overpass API');
   }
@@ -191,40 +238,56 @@ function formatPlaces(elements) {
   return places;
 }
 
-// Search misas.org API for nearby parishes (called during discovery)
+// Search misas.org (parishsearch) for nearby parishes. The API returns only the
+// Masses that HAPPEN on the requested `date` (each still tagged with its full
+// recurrence `days`), so probing one date would miss the rest of the week. Probe
+// a weekday, a Saturday and a Sunday, then merge the results per parish so the
+// discovered schedule covers the whole week. Endpoint shape comes from the
+// commented URL in importEventsForPlace: sortbypos=[lon,lat,4784]&country=es&
+// date=YYYY/MM/DD&masses=1&pos=[lon,lat,47840].
 async function searchMisasAPI(lat, lon) {
   try {
-    const url = `https://5ejmibz3st5c2bwdloszdeck3u0qauwt.lambda-url.eu-west-1.on.aws/quick-find?lat=${lat}&lon=${lon}&radius=15000`;
+    const params = new URLSearchParams();
+    params.set('sortbypos', `[${lon},${lat},4784]`);
+    params.set('country', 'es');
+    params.set('masses', '1');
+    params.set('pos', `[${lon},${lat},47840]`);
+    const base = `https://misas.org/api/parishsearch?${params}`;
 
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error('No se pudo conectar con misas.org API');
+    const probeDates = [nextWeekday(), nextSaturday(), nextSunday()];
+    const responses = await Promise.all(probeDates.map((date) =>
+      fetchWithTimeout(`${base}&date=${encodeURIComponent(apiDate(date))}`, 5000)
+        .then(async (res) => (res.ok ? res.json() : { pars: [] }))
+        .catch(() => ({ pars: [] }))
+    ));
+
+    // Merge per parish id, unioning Masses and de-duping by time+days so a daily
+    // Mass present on all three probes is imported once, not three times.
+    const merged = new Map();
+    for (const data of responses) {
+      for (const parish of data?.pars || []) {
+        const entry = merged.get(parish.id) || { ...parish, mass: [] };
+        const seen = new Set(entry.mass.map(massKey));
+        for (const m of parish.mass || []) {
+          const k = massKey(m);
+          if (!seen.has(k)) { seen.add(k); entry.mass.push(m); }
+        }
+        merged.set(parish.id, entry);
+      }
     }
 
-    const data = await response.json();
-
-    // Extract parishes from response (under morg.data path)
-    const parishes = data?.morg?.data || [];
-
-    // Format places with events
-    const places = parishes.map(parish => {
-      const placeLat = parish.location?.coordinates?.[1] || parish.lat;
-      const placeLon = parish.location?.coordinates?.[0] || parish.lon;
-
-      return {
-        name: cleanPlaceName(parish.name) || 'Sin nombre',
-        geo: `${placeLat}, ${placeLon}`,
-        lat: placeLat,
-        lon: placeLon,
-        type: 'catholic', // misas.org only has Catholic parishes
-        distance: userLocation.value ? calculateDistance(userLocation.value.lat, userLocation.value.lon, placeLat, placeLon) : null,
-        events: parish.mass || parish.events || [], // Events from misas.org
-        source: 'misas.org', // Mark source for merging
-        image: parish.pic? [`https://misas.org/images/${parish.pic}`] : undefined
-      };
-    });
-
-    return places;
+    // Format places with events (parishsearch uses parish.lat / parish.long)
+    return [...merged.values()].map((parish) => ({
+      name: cleanPlaceName(parish.name) || 'Sin nombre',
+      geo: `${parish.lat}, ${parish.long}`,
+      lat: parish.lat,
+      lon: parish.long,
+      type: 'catholic', // misas.org only has Catholic parishes
+      distance: userLocation.value ? calculateDistance(userLocation.value.lat, userLocation.value.lon, parish.lat, parish.long) : null,
+      events: parish.mass || [], // Events from misas.org
+      source: 'misas.org', // Mark source for merging
+      image: parish.pic ? [`https://misas.org/images/${parish.pic}`] : undefined
+    }));
   } catch (err) {
     console.error('Failed to search misas.org API:', err);
     return []; // Return empty array on error, don't fail the whole discovery
@@ -426,28 +489,35 @@ function closeModal() {
           </div>
 
           <div v-else class="places-list">
-            <!-- Import events checkbox -->
+            <!-- Import events toggle -->
             <div class="import-events-option">
-              <label>
-                <input type="checkbox" v-model="importEvents" />
-                Importar también eventos 
+              <label class="toggle-row">
+                <button
+                  type="button"
+                  class="toggle-switch"
+                  :class="{ active: importEvents }"
+                  @click="importEvents = !importEvents"
+                  role="switch"
+                  :aria-checked="importEvents"
+                >
+                  <span class="toggle-thumb"></span>
+                </button>
+                <span>Importar también eventos</span>
               </label>
             </div>
 
             <div v-for="(place, idx) in discoveredPlaces" :key="idx" class="place-item">
               <div class="place-info">
                 <strong>{{ place.name }} - <span class="place-distance">{{ formatDistance(place.distance) }}</span></strong>
-                <!-- Show events if available -->
+                <!-- Show every event, labelled like the weekly list (recurrenceLabel) -->
                 <div v-if="place.events && place.events.length > 0" class="place-events">
                   <small class="events-title">Eventos conocidos:</small>
                   <ul>
-                    <li v-for="(event, i) in place.events.slice(0, 3)" :key="i">
-                      {{ event.time }} - {{ mapMassDays(event.days).join(', ')}}
+                    <li v-for="(event, i) in place.events" :key="i">
+                      <span>{{ event.time }}</span>
+                      <span class="event-rec">{{ recurrenceLabel(mapMassDays(event.days)) }}</span>
                     </li>
                   </ul>
-                  <small v-if="place.events.length > 3" class="events-more">
-                    +{{ place.events.length - 3 }} eventos más...
-                  </small>
                 </div>
               </div>
               <button type="button" class="select-btn" @click="selectPlace(place)">
@@ -635,10 +705,43 @@ function closeModal() {
   color: var(--pe-text);
 }
 
-.import-events-option input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
+/* ---- toggle switch (same control as ScalarInput boolean fields) ---- */
+.toggle-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 400;
   cursor: pointer;
+}
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  border: 1px solid var(--pe-border-strong);
+  background: var(--pe-border);
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--pe-transition), border-color var(--pe-transition);
+  flex-shrink: 0;
+}
+.toggle-switch.active {
+  background: var(--pe-accent);
+  border-color: var(--pe-accent);
+}
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform var(--pe-transition);
+}
+.toggle-switch.active .toggle-thumb {
+  transform: translateX(20px);
 }
 
 .place-events {
@@ -660,14 +763,21 @@ function closeModal() {
 }
 
 .place-events li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   line-height: 1.4;
   margin-bottom: 1px;
 }
 
-.events-more {
+/* Recurrence badge, same look as the weekly grid's `.event-rec` */
+.event-rec {
+  font-size: 10px;
+  font-weight: 600;
   color: var(--pe-accent);
-  font-style: italic;
-  display: block;
-  margin-top: 2px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--pe-accent-soft);
+  white-space: nowrap;
 }
 </style>
