@@ -3,6 +3,7 @@ import yaml from 'js-yaml';
 import * as api from './api.js';
 import { encodePath, safeRelPath } from './codec.js';
 import { normalizeSchema, applyDefaults } from './schema.js';
+import { diff } from './patch.js';
 import { buildFileIndex, listMediaFiles } from './content-index.js';
 import * as versions from './versions.js';
 
@@ -60,6 +61,13 @@ export const state = reactive({
   draft: null, // reactive parsed data object
   currentBody: '', // markdown body text (preserved but not edited), for round-trip
   savedText: '', // whole-config serialization last confirmed on the server (dirty baseline)
+
+  // Patch-save state (see lib/patch.js). `baselineConfig` is a plain deep clone
+  // of the last server-confirmed config (the diff baseline). `fullPutDone` records
+  // whether the schema-backfilled uuids have been persisted server-side via a
+  // full PUT, so later saves can key patches by `{ uuid }` and resolve.
+  baselineConfig: null,
+  fullPutDone: false,
 });
 
 export const isLoggedIn = computed(() => !!state.slug && !!state.schema);
@@ -78,6 +86,13 @@ function fullConfigText() {
     ) + '\n';
   }
   return JSON.stringify(base, null, 2) + '\n';
+}
+
+// A non-reactive plain-object snapshot of the config. The diff (lib/patch.js)
+// must never receive reactive proxies (they'd leak into op `value`s); JSON
+// round-trip yields a plain, deep, editable clone.
+function plainSnapshot(raw) {
+  return raw == null ? {} : JSON.parse(JSON.stringify(raw));
 }
 
 export const isDirty = computed(() => {
@@ -239,6 +254,12 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug })
     // Baseline the dirty check against the loaded (defaulted) config, so a
     // fresh login shows "Guardado." rather than spurious "Sin guardar".
     state.savedText = fullConfigText();
+
+    // Patch-save baseline: remember the loaded config and force the first save
+    // to be a full PUT, which persists the schema-backfilled uuids server-side
+    // so subsequent { uuid } patch ops can resolve.
+    state.baselineConfig = plainSnapshot(state.config);
+    state.fullPutDone = false;
 
     saveSession();
     state.status = ''; // Removed connection banner
@@ -450,6 +471,8 @@ export function logout() {
   state.draft = null;
   state.currentBody = '';
   state.savedText = '';
+  state.baselineConfig = null;
+  state.fullPutDone = false;
   state.status = '';
   state.error = '';
 }
@@ -533,14 +556,12 @@ export async function saveCurrent({ keepalive = false } = {}) {
   try {
     const entry = state.currentEntry;
 
-    // Serialize and save the entire config. `state.draft` aliases
-    // `state.config[tabPath]` (see openEntry), so every edit already lives in
-    // the whole config — no need to copy the tab here. Deliberately NOT
-    // replacing `config[tabPath]` with a copy: that used to sever the alias,
-    // letting edits made after a save escape the config until the next save.
+    // `state.draft` aliases `state.config[tabPath]` (see openEntry), so every
+    // edit already lives in the whole config — no need to copy the tab here.
+    // Deliberately NOT replacing `config[tabPath]` with a copy: that used to
+    // sever the alias, letting edits made after a save escape the config until
+    // the next save. After a confirm we re-alias the draft to the adopted tree.
     state.config = state.config || {};
-    const text = JSON.stringify(state.config, null, 2) + '\n';
-    const contentType = 'application/json; charset=utf-8';
 
     let fileToken = entry.fileToken || state.configToken;
     if (!fileToken) {
@@ -549,16 +570,63 @@ export async function saveCurrent({ keepalive = false } = {}) {
       state.configToken = fileToken;
     }
 
-    await api.putFile(state.apiBase, state.slug, state.editorToken, fileToken, text, contentType, { keepalive });
+    let mergedData; // config to adopt once the save is confirmed (for PATCH: server's merged result)
+
+    if (!state.fullPutDone) {
+      // First save since load: a full PUT. This persists the schema-backfilled
+      // uuids server-side so later { uuid } patch ops can resolve. The local
+      // config IS the merged result (nothing concurrent to adopt mid-hydration).
+      const text = JSON.stringify(state.config, null, 2) + '\n';
+      await api.putFile(
+        state.apiBase, state.slug, state.editorToken, fileToken, text,
+        'application/json; charset=utf-8', { keepalive }
+      );
+      mergedData = state.config;
+      state.fullPutDone = true;
+    } else {
+      // Later saves: compute a small diff against the last confirmed baseline
+      // and send only the ops (absolute new values) that the server applies onto
+      // its CURRENT stored doc — per-field last-edit-wins, and small enough for
+      // the keepalive flush. If nothing changed, skip the network entirely.
+      const snapshot = plainSnapshot(state.config);
+      const ops = diff(state.baselineConfig, snapshot);
+      if (ops.length === 0) {
+        state.status = 'Guardado.';
+        return;
+      }
+      const res = await api.patchFile(state.apiBase, state.slug, state.editorToken, ops, { keepalive });
+      mergedData = res && res.data;
+    }
 
     // Only advance the whole-config dirty baseline after a CONFIRMED save, so a
-    // transient failure never looks like the data was persisted.
-    state.savedText = text;
+    // transient failure never looks like the data was persisted. Adopt the
+    // merged config (a PATCH may include other editors' changes), re-alias the
+    // open tab's draft to the new tree (mirrors openEntry), and resnapshot the
+    // patch baseline against it.
+    if (mergedData) {
+      if (mergedData !== state.config) state.config = reactive(mergedData);
+      let data = state.config[entry.tabPath];
+      if (!data) {
+        data = {};
+        state.config[entry.tabPath] = data;
+      }
+      applyDefaults(entry.fields, data);
+      state.draft = reactive(data);
+      state.currentBody = '';
+      // Adopted config may carry different theme values (e.g. from another
+      // editor); re-apply them now (the theme watches would also fire, but
+      // calling directly is immediate and safe).
+      applyAccentColorFromConfig();
+      applyFontsFromConfig();
+      state.baselineConfig = plainSnapshot(state.config);
+    }
+
+    state.savedText = fullConfigText();
     state.status = 'Guardado.';
 
     // Snapshot the saved config as a version (fire-and-forget). Deliberately NOT
     // awaited: on the keepalive on-leave flush we must not block the page unload
-    // on an async gzip that may be torn down mid-flight — the PUT already
+    // on an async gzip that may be torn down mid-flight — the save already
     // succeeded, losing only the local snapshot is acceptable.
     snapshotCurrent().catch(() => {});
 

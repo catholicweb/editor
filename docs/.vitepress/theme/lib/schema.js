@@ -10,6 +10,12 @@
 // place this convention is encoded.
 const BLOCK_TYPE_KEY = 'type';
 
+// The canonical key each object-list/block-list item stores its stable uuid
+// under, so the patch layer (lib/patch.js) can diff and address items by a
+// stable identity (unlike content hashes, a uuid survives field edits). MUST
+// equal UUID_KEY in lib/patch.js and config-api/src/patch.js.
+const UUID_KEY = 'uuid';
+
 const LOCAL_ROOT_PREFIXES = ['docs/public/', 'docs/public']; // strip to get relPath
 
 export function stripLocalRoot(p) {
@@ -86,7 +92,35 @@ export function resolveFieldDef(raw, components) {
     if (out.fields) out.type = 'object';
     else if (out.blocks) out.type = 'block';
   }
+  // Key every "list of objects" (a repeatable object, or a polymorphic block
+  // whose variants are objects) with a hidden uuid, so lib/patch.js can address
+  // items by a stable id and persist per-field last-edit-wins edits. Injected
+  // at runtime here (not editing every list in pages.yml) so there's one source
+  // of truth; lists that already declare a `uuid` field are left untouched.
+  if ((out.type === 'object' && isRepeatable(out)) || out.type === 'block') {
+    injectUuid(out);
+  }
   return out;
+}
+
+// Add a hidden `uuid` field to every keyed item so each list index has a stable
+// identity. For a block list, each variant carries its own `fields`; for an
+// object-list, the item's `fields` live on the field itself.
+function injectUuid(field) {
+  if (field.type === 'block') {
+    for (const b of field.blocks || []) addUuidField(b);
+  } else {
+    addUuidField(field);
+  }
+}
+
+function addUuidField(holder) {
+  if (!holder) return;
+  if ((holder.fields || []).some((f) => f.name === UUID_KEY && f.type === 'uuid')) return; // already declared
+  holder.fields = [
+    { name: UUID_KEY, label: 'Identificador', type: 'uuid', hidden: true },
+    ...(holder.fields || []),
+  ];
 }
 
 export async function normalizeSchema(raw, configLoader) {
