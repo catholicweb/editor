@@ -79,7 +79,7 @@ function fullConfigText() {
       2
     ) + '\n';
   }
-  return JSON.stringify(base, null, 2) + '\n';
+  return JSON.stringify(base) + '\n';
 }
 
 export const isDirty = computed(() => {
@@ -608,7 +608,7 @@ export async function saveCurrent({ keepalive = false } = {}) {
     // replacing `config[tabPath]` with a copy: that used to sever the alias,
     // letting edits made after a save escape the config until the next save.
     state.config = state.config || {};
-    const text = JSON.stringify(state.config, null, 2) + '\n';
+    const text = JSON.stringify(state.config) + '\n';
     const contentType = 'application/json; charset=utf-8';
 
     let fileToken = entry.fileToken || state.configToken;
