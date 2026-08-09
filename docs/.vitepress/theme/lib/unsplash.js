@@ -4,14 +4,16 @@
 // bucket — Unsplash exige ese enlazado directo.
 //
 // La API de Unsplash está pensada para usarse desde el navegador: se autentica
-// con la *access key* pública (client_id) que Vite inyecta en el bundle en
-// build time desde `VITE_UNSPLASH_ACCESS_KEY`. No es un secreto de acceso (sirve
-// para límites de ratio y atribución, no para control de acceso). Si la variable
-// no está definida, `unsplashEnabled === false` y el selector se comporta como
-// siempre. Ningún fetch ocurre a nivel de módulo (seguro para el SSG de
+// con la *access key* pública vía `client_id`. La clave va integrada en el
+// código a propósito — es pública por diseño y acaba siendo visible en el
+// bundle estático de todos modos; la access key NO es la secret key (esa solo
+// sirve para el intercambio OAuth en servidor y nunca debe ir al cliente).
+// `VITE_UNSPLASH_ACCESS_KEY` solo existe como sobrescritura opcional en build
+// time. Ningún fetch ocurre a nivel de módulo (seguro para el SSG de
 // VitePress).
 
-const ACCESS_KEY = import.meta.env.VITE_UNSPLASH_ACCESS_KEY;
+const ACCESS_KEY =
+  import.meta.env.VITE_UNSPLASH_ACCESS_KEY || '8aQ6j_ulLd6kmKMbS_XfZrMG_rXGxM7_JsJ7DJyjtT0';
 
 export const unsplashEnabled = Boolean(ACCESS_KEY);
 
