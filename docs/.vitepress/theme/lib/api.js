@@ -51,19 +51,21 @@ export async function exchangeMagic(apiBase, code) {
     body: JSON.stringify({ code }),
   });
   if (!res.ok) throw new Error(`No se pudo validar el enlace: ${await errText(res)}`);
-  return res.json(); // { ok, slug, token }
+  return res.json(); // { ok, slug, token, email, slugs } (multisession: email + full slug roster)
 }
 
 // ---- worker (auth) calls ---------------------------------------------------
 
-// Resolve a bearer token to its slug. login() only calls this as a fallback for
-// legacy saved sessions that predate storing the slug alongside the token.
+// Resolve a bearer token to its identity: the token's slug, its bound email and
+// the full roster of slugs that email can edit (multisession). login() uses it
+// to refresh the identity on every load and as a fallback for legacy saved
+// sessions that predate storing the slug alongside the token.
 export async function whoami(apiBase, token) {
   const res = await fetch(`${trimBase(apiBase)}/whoami`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error(`No se pudo resolver el token: ${await errText(res)}`);
-  return res.json(); // { slug }
+  return res.json(); // { slug, email, slugs }
 }
 
 export async function listFiles(apiBase, slug) {
