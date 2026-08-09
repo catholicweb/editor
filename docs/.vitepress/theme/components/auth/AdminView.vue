@@ -7,6 +7,7 @@ import {
   removeEditor,
   logout,
   createSite,
+  switchSlug,
 } from '../../lib/store.js';
 import { listAllSlugs } from '../../lib/api.js';
 import SessionScreen from './SessionScreen.vue';
@@ -22,6 +23,7 @@ const emit = defineEmits(['back']);
 
 const adding = ref(false);
 const removing = ref(false);
+const switching = ref(false); // site switcher in-flight (multisession)
 const newEmail = ref('');
 const info = ref(''); // transient success feedback (e.g. "enlace enviado a ...")
 
@@ -162,6 +164,25 @@ async function handleRemove(email) {
 function handleLogout() {
   logout();
 }
+
+// Multisession: switch the active site without logging out. switchSlug flushes
+// pending edits, re-bootstraps the target slug with the same token and throws
+// only if the bootstrap itself fails (a failed pre-switch save aborts internally
+// and surfaces via state.error). The roster is per-slug, so reload it after.
+async function handleSwitch(event) {
+  const target = event.target.value;
+  if (!target || target === state.slug || switching.value) return;
+  switching.value = true;
+  state.error = '';
+  try {
+    await switchSlug(target);
+    await loadEditors();
+  } catch (err) {
+    state.error = err.message || String(err);
+  } finally {
+    switching.value = false;
+  }
+}
 </script>
 
 <template>
@@ -181,7 +202,25 @@ function handleLogout() {
 
       <section class="panel">
         <h2>Estas editando</h2>
-        <p class="slug-row">
+        <template v-if="state.slugs.length > 1">
+          <p class="hint">
+            Cambia de sitio sin cerrar sesión. Cuenta:
+            <span class="account-email">{{ state.email || state.slug }}</span>
+          </p>
+          <select
+            class="slug-select"
+            :value="state.slug"
+            :disabled="switching"
+            aria-label="Cambiar de sitio"
+            @change="handleSwitch"
+          >
+            <option v-for="s in state.slugs" :key="s" :value="s">
+              {{ s }}.parroquia.app
+            </option>
+          </select>
+          <p v-if="switching" class="hint">Cambiando de sitio…</p>
+        </template>
+        <p v-else class="slug-row">
           <code class="slug-value">{{ state.slug }}</code>.parroquia.app
         </p>
       </section>
@@ -359,6 +398,31 @@ function handleLogout() {
   border-radius: var(--pe-radius-sm);
   padding: 2px 8px;
   font-weight: 700;
+}
+.account-email {
+  font-weight: 600;
+  color: var(--pe-text);
+}
+.slug-select {
+  font: inherit;
+  font-size: 14px;
+  padding: 10px 12px;
+  border-radius: var(--pe-radius);
+  border: 1px solid var(--pe-border);
+  background: var(--pe-input-bg);
+  color: var(--pe-text);
+  cursor: pointer;
+  max-width: 100%;
+}
+.slug-select:focus,
+.slug-select:focus-visible {
+  outline: none;
+  border-color: var(--pe-accent);
+  box-shadow: var(--pe-ring);
+}
+.slug-select:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .add-row {

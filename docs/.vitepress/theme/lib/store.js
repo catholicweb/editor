@@ -37,6 +37,8 @@ export const state = reactive({
 
   // resolved after login
   slug: '',
+  email: '', // editor identity (normalized address), from /whoami or the magic exchange
+  slugs: [], // full roster of slugs this email can edit (the admin switcher options)
   schema: null,
   configToken: null,    // Filename for config.json
   mediaUrls: [],        // Absolute public URLs for media files (no tokens)
@@ -128,6 +130,8 @@ function saveSession() {
         schemaUrl: state.schemaUrl,
         editorToken: state.editorToken,
         slug: state.slug,
+        email: state.email,
+        slugs: state.slugs,
       })
     );
   } catch {
@@ -147,7 +151,7 @@ function clearSavedSession() {
 // Login / bootstrap
 // ---------------------------------------------------------------------------
 
-export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug }) {
+export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug, email = '', slugs = [], fetchSchema = true }) {
   state.error = '';
   state.loading = true;
   try {
@@ -156,30 +160,48 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug })
     state.schemaUrl = schemaUrl;
     state.editorToken = editorToken;
 
-    // The slug comes from the caller (saved session or the magic-link exchange),
-    // so we no longer need whoami. It is only resolved here as a fallback for a
-    // legacy saved session that predates storing the slug.
-    const resolvedSlug = slug || (await api.whoami(apiBase, editorToken)).slug;
+    // Multisession identity: whoami is the single source of truth for the email
+    // and the full slug roster (it rides in the parallel batch below); the caller
+    // params (saved session / magic exchange) are only a fallback for when whoami
+    // is unreachable or the token was just minted.
+    const whoamiP = api.whoami(apiBase, editorToken).catch(() => null);
 
-    // Fetch the schema, config.json (directly — it is always named config.json,
-    // so there is no file-listing dependency) and the media listing in parallel.
-    const [schemaText, configText, { files } = { files: [] }] = await Promise.all([
-      fetchSchemaText(schemaUrl),
+    // If the caller supplied a roster that no longer includes the requested slug
+    // (e.g. the email was revoked from it since the session was saved), hop to
+    // the first still-managed slug BEFORE fetching its config — never bootstrap
+    // slug A's config while the UI claims slug B.
+    let targetSlug = slug;
+    if (slugs.length && targetSlug && !slugs.includes(targetSlug)) targetSlug = slugs[0];
+    const resolvedSlug = targetSlug || (await whoamiP)?.slug || '';
+    if (!resolvedSlug) throw new Error('No se pudo resolver el token');
+
+    // Fetch the schema (unless a switch reuses the shared one), config.json
+    // (directly — it is always named config.json, so there is no file-listing
+    // dependency), the media listing and the identity in parallel.
+    const [schemaText, configText, { files } = { files: [] }, who] = await Promise.all([
+      fetchSchema ? fetchSchemaText(schemaUrl) : Promise.resolve(null),
       api.getFileText(state.dataBase, resolvedSlug, 'config.json').catch((err) => {
         console.error('Failed to fetch config during login:', err);
         return null;
       }),
       api.listFiles(apiBase, resolvedSlug).catch(() => ({ files: [] })),
+      whoamiP,
     ]);
-
-    const rawSchema = yaml.load(schemaText);
 
     // The config file is always 'config.json'; the rest of the listing is media
     // (absolute URLs). Config's URL ends with /config.json.
     const configToken = 'config.json';
 
+    // Identity: whoami is authoritative; the caller params are the fallback. The
+    // active slug is always ensured to be in the roster so the switcher shows it.
+    const identityEmail = who?.email ?? email;
+    let identitySlugs = who?.slugs?.length ? who.slugs : (slugs.length ? slugs : null);
+    if (!identitySlugs) identitySlugs = identityEmail ? [] : [resolvedSlug];
+    if (!identitySlugs.includes(resolvedSlug)) identitySlugs.push(resolvedSlug);
+
     state.slug = resolvedSlug;
-    state.schema = null;
+    state.email = identityEmail || '';
+    state.slugs = identitySlugs;
     state.configToken = configToken;
     state.mediaUrls = files.filter((u) => !u.endsWith('/config.json'));
 
@@ -211,7 +233,12 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug })
       }
     };
 
-    const schema = await normalizeSchema(rawSchema || {}, configLoader);
+    // The schema is shared across slugs (a fixed build-time URL, not per-slug):
+    // a switch reuses the already-normalized one instead of refetching — this
+    // also keeps state.schema non-null so isLoggedIn never flickers mid-switch.
+    const schema = !fetchSchema && state.schema
+      ? state.schema
+      : await normalizeSchema(yaml.load(schemaText) || {}, configLoader);
 
     state.schema = schema;
     state.config = config || {}; // Store config in reactive state
@@ -272,8 +299,8 @@ export async function redeemMagic({ apiBase, dataBase, schemaUrl, code }) {
   state.error = '';
   state.loading = true;
   try {
-    const { slug, token } = await api.exchangeMagic(apiBase, code);
-    await login({ apiBase, dataBase, schemaUrl, editorToken: token, slug });
+    const { slug, token, email, slugs } = await api.exchangeMagic(apiBase, code);
+    await login({ apiBase, dataBase, schemaUrl, editorToken: token, slug, email, slugs });
   } catch (err) {
     state.error = err.message || String(err);
     throw err;
@@ -436,6 +463,8 @@ export function logout() {
   // link.
   clearSavedSession();
   state.slug = '';
+  state.email = '';
+  state.slugs = [];
   state.schema = null;
   state.configToken = null;
   state.mediaUrls = [];
@@ -449,6 +478,49 @@ export function logout() {
   state.savedText = '';
   state.status = '';
   state.error = '';
+}
+
+// Switch the active slug to another site the SAME email can edit (multisession).
+// The token is valid across all granted slugs, so no re-auth is needed: flush
+// pending edits against the old slug, then re-run the per-slug bootstrap. Login
+// keeps the already-loaded shared schema (fetchSchema: false).
+export async function switchSlug(slug) {
+  if (!slug || slug === state.slug || !Array.isArray(state.slugs) || !state.slugs.includes(slug)) return;
+
+  state.error = '';
+  // Kill any pending autosave timer so it can never fire mid-switch with a stale
+  // draft (the deep watch below would schedule a fresh one for the new slug).
+  if (autosaveTimer) {
+    clearTimeout(autosaveTimer);
+    autosaveTimer = null;
+  }
+
+  // Flush pending edits (auto-save-then-switch). If the save fails, ABORT before
+  // touching any state — the current slug and draft stay exactly as they were.
+  try {
+    await saveCurrent();
+  } catch (err) {
+    state.error = `No se pudo guardar antes de cambiar de sitio: ${err.message || String(err)}`;
+    return;
+  }
+
+  // Reset the slug-scoped leftovers login() won't clear so its auto-open picks
+  // the new slug's first tab and the editor roster is re-loaded by the caller.
+  state.currentEntry = null;
+  state.draft = null;
+  state.currentBody = '';
+  state.editors = [];
+
+  await login({
+    apiBase: state.apiBase,
+    dataBase: state.dataBase,
+    schemaUrl: state.schemaUrl,
+    editorToken: state.editorToken, // SAME token — valid for every granted slug
+    slug,
+    email: state.email,
+    slugs: state.slugs,
+    fetchSchema: false,
+  });
 }
 
 // ---------------------------------------------------------------------------
