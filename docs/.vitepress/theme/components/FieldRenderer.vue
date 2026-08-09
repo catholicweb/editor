@@ -107,9 +107,6 @@ function addBlock(blockDef) {
   showBlockPicker.value = false;
 }
 
-// ---- rich-text expand (full-viewport overlay) --------------------------------
-const richExpanded = ref(false);
-
 // ---- modal editing for object lists -------------------------------------------
 const editingIndex = ref(null);
 const editingItem = computed(() =>
@@ -123,6 +120,28 @@ function editInModal(item, index) {
 function closeModal() {
   editingIndex.value = null;
 }
+
+// Modal body: block fields come from the clicked item's block variant; object
+// lists use field.fields. `editingFields === null` means an unknown block type.
+const editingDef = computed(() =>
+  editingIndex.value !== null && isBlock.value
+    ? blockDefFor(scalarValue.value[editingIndex.value]) || null
+    : null
+);
+const editingFields = computed(() => {
+  if (editingIndex.value === null) return null;
+  if (isBlock.value) return editingDef.value ? editingDef.value.fields || [] : null;
+  return props.field.fields || [];
+});
+const editingTitle = computed(() => {
+  const item = editingItem.value;
+  if (!item) return 'elemento';
+  if (isBlock.value) {
+    const def = editingDef.value;
+    return def?.label || def?.name || item.type || 'bloque';
+  }
+  return collapsible.value?.summary ? renderSummary(collapsible.value.summary, item) : 'elemento';
+});
 </script>
 
 <template>
@@ -132,8 +151,8 @@ function closeModal() {
   <div v-else-if="isBlock" class="field block-field" :data-field-name="field.name">
     <label class="field-label">{{ field.label || field.name }}</label>
     <div class="block-list">
-      <div v-for="(item, i) in scalarValue" :key="i" class="block-item">
-        <details :open="isOpen(i)" @toggle="toggleOpen(i)">
+      <div v-for="(item, i) in scalarValue" :key="i" class="block-item" @click="listConfig?.modal ? editInModal(item, i) : null">
+        <details v-if="!listConfig?.modal" :open="isOpen(i)" @toggle="toggleOpen(i)">
           <summary>
             <span class="block-type-badge">{{ blockDefFor(item)?.label || item.type }}</span>
             <span class="summary-text" v-if="collapsible?.summary">{{ renderSummary(collapsible.summary, item) }}</span>
@@ -145,6 +164,14 @@ function closeModal() {
           <FieldsGroup v-if="blockDefFor(item)" :fields="blockDefFor(item).fields" :container="item" />
           <p v-else class="hint">Tipo de bloque desconocido: {{ item.type }}</p>
         </details>
+        <div v-else class="object-item-modal-preview">
+          <span class="block-type-badge">{{ blockDefFor(item)?.label || item.type }}</span>
+          <span class="summary-text" v-if="collapsible?.summary">{{ renderSummary(collapsible.summary, item) }}</span>
+          <span class="spacer" />
+          <button type="button" class="move" @click.stop.prevent="moveUp(i)">↑</button>
+          <button type="button" class="move" @click.stop.prevent="moveDown(i)">↓</button>
+          <button type="button" class="del" @click.stop.prevent="removeAt(i)" :aria-label="'Eliminar'" title="Eliminar"><PeIcon name="trash" :size="14" /></button>
+        </div>
       </div>
     </div>
 
@@ -229,34 +256,25 @@ function closeModal() {
         <span v-if="field.options?.source" class="source-link" @click="navigateToSource(field.options.source)">
           Editar opciones
         </span>
-        <button
-          v-if="field.type === 'rich-text'"
-          type="button"
-          class="field-expand"
-          :class="{ active: richExpanded }"
-          :title="richExpanded ? 'Cerrar editor grande' : 'Editar en grande'"
-          @click="richExpanded = !richExpanded"
-        >⛶</button>
       </span>
     </label>
 
     <ScalarInput
       :field="field"
       v-model="scalarValue"
-      :expanded="richExpanded"
-      @update:expanded="richExpanded = $event"
     />
   </div>
 
-  <!-- MODAL OVERLAY FOR OBJECT LIST EDITING -->
+  <!-- MODAL OVERLAY FOR OBJECT LIST / BLOCK EDITING -->
   <div v-if="editingIndex !== null" class="modal-overlay" @click="closeModal">
     <div class="modal-content fullscreen" @click.stop>
       <div class="modal-header">
-        <h3>{{ collapsible?.summary ? renderSummary(collapsible.summary, scalarValue[editingIndex]) : 'Editar elemento' }}</h3>
+        <h3>Editando "{{ editingTitle }}"</h3>
         <button type="button" class="modal-close-btn" @click="closeModal">✕</button>
       </div>
       <div class="modal-body">
-        <FieldsGroup v-if="editingItem" :fields="field.fields" :container="scalarValue[editingIndex]" />
+        <FieldsGroup v-if="editingFields" :fields="editingFields" :container="scalarValue[editingIndex]" />
+        <p v-else-if="editingFields === null" class="hint">Tipo de bloque desconocido: {{ scalarValue[editingIndex].type }}</p>
       </div>
     </div>
   </div>
@@ -293,30 +311,6 @@ function closeModal() {
 .source-link:hover {
   color: var(--pe-accent-hover);
   text-decoration: underline;
-}
-.field-expand {
-  border: 1px solid var(--pe-border);
-  background: var(--pe-panel);
-  color: var(--pe-muted);
-  border-radius: var(--pe-radius-sm);
-  width: 26px;
-  height: 22px;
-  line-height: 1;
-  font-size: 13px;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  transition: background var(--pe-transition), border-color var(--pe-transition), color var(--pe-transition);
-}
-.field-expand:hover {
-  background: var(--pe-hover);
-  border-color: var(--pe-border-strong);
-  color: var(--pe-text);
-}
-.field-expand.active {
-  background: var(--pe-accent-soft);
-  border-color: var(--pe-accent);
-  color: var(--pe-accent);
 }
 fieldset.object-field {
   border: 1px solid var(--pe-border);

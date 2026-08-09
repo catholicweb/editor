@@ -11,9 +11,8 @@ import { resolvePath } from '../lib/schema.js';
 const props = defineProps({
   field: { type: Object, required: true },
   modelValue: { default: null },
-  expanded: { type: Boolean, default: false },
 });
-const emit = defineEmits(['update:modelValue', 'update:expanded']);
+const emit = defineEmits(['update:modelValue']);
 
 function set(v) {
   emit('update:modelValue', v);
@@ -214,9 +213,7 @@ function updateRefDropdownPosition() {
     v-else-if="field.type === 'rich-text'"
     :field="field"
     :model-value="modelValue"
-    :expanded="expanded"
     @update:model-value="set"
-    @update:expanded="emit('update:expanded', $event)"
   />
 
   <!-- number -->

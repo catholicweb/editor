@@ -184,7 +184,7 @@ components:
         - name: sections
           label: Secciones de la página
           type: block
-          list: { collapsible: { collapsed: true, summary: "{fields.title}" } }
+          list: { collapsible: { collapsed: true, summary: "{fields.title}" },  modal: true }
           blocks:
             - name: accordion
               label: FAQ
@@ -261,7 +261,7 @@ components:
                 - { name: filters, label: Filtros a mostrar, type: select, options: { multiple: true, creatable: true } }
                 - { name: tags, label: Opciones avanzadas de estilo, component: tags }
             - name: video
-              label: Lista de videos/audios (Youtube/Spotify/...)
+              label: Lista de videos/audios
               fields:
                 - { name: title, type: string, label: Titulo sección }
                 - { name: links, label: Enlaces externos, type: string, list: { collapsible: { collapsed: true } } }
@@ -371,6 +371,19 @@ content:
           - { name: name, type: string, label: Nombre }
           - { name: image, type: image, label: Imagenes, options: { multiple: true } }
           - { name: geo, type: string, label: "Coordenadas (ej: 42.801941, -1.645660)" }
+          - name: tags
+            label: Otros valores (se substituiran en Páginas > "Plantilla pueblos")
+            type: object
+            list: { collapsible: { collapsed: true, summary: "{{fields.key}} => {fields.value}" }, sort: "alphabetical" }
+            fields:
+              - name: key
+                label: Clave
+                type: select
+                options:
+                  multiple: false
+                  creatable: true
+                  values: ["video", "dates"]
+              - { name: value, label: Valor, type: string }
       - name: autodiscover
         label: Encontrar templos
         type: places-autodiscover

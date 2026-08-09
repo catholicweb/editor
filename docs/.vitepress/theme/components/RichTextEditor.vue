@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, watchEffect, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import MarkdownIt from 'markdown-it';
 import TurndownService from 'turndown';
 import ImagePickerModal from './ImagePickerModal.vue';
@@ -9,9 +9,8 @@ import { resolvePath } from '../lib/schema.js';
 const props = defineProps({
   field: { type: Object, required: true },
   modelValue: { default: null },
-  expanded: { type: Boolean, default: false },
 });
-const emit = defineEmits(['update:modelValue', 'update:expanded']);
+const emit = defineEmits(['update:modelValue']);
 
 // Module-scope singletons (markdown-it/turndown are stateless per call). The
 // markdown-it config MUST mirror web-template/docs/.vitepress/createFiles.js
@@ -227,57 +226,14 @@ function onInternalLinkPicked(page) {
   syncFromEditor();
 }
 
-// ---- expand overlay --------------------------------------------------------
-// Two mutually-exclusive branches (v-if/v-else): only one editable is mounted,
-// so `richEl` is a single node reference that rebinds on toggle; the component
-// instance persists, and state lives in `modelValue`.
-watch(expanded, async (val) => {
-  if (val) {
-    await nextTick();
-    if (richEl.value) {
-      renderInto(renderHtml(props.modelValue));
-      richEl.value.focus();
-    }
-  } else {
-    await nextTick();
-    if (richEl.value) renderInto(renderHtml(props.modelValue));
-  }
-});
-
-// Esc closes the link picker first, then the image picker, then the overlay.
-// Capture on window so it works regardless of what holds focus while expanded.
-watchEffect(() => {
-  if (!expanded.value) return;
-  document.body.style.overflow = 'hidden';
-  const onKey = (e) => {
-    if (e.key !== 'Escape') return;
-    if (linkPickerOpen.value) { linkPickerOpen.value = false; savedRange = null; return; }
-    if (pickerOpen.value) { pickerOpen.value = false; return; }
-    requestClose();
-  };
-  window.addEventListener('keydown', onKey, true);
-  return () => {
-    document.body.style.overflow = '';
-    window.removeEventListener('keydown', onKey, true);
-  };
-});
-
-function requestClose() {
-  syncFromEditor(); // flush any pending DOM -> markdown before collapsing
-  emit('update:expanded', false);
-}
-
 onMounted(() => {
   renderInto(renderHtml(props.modelValue));
-});
-onUnmounted(() => {
-  document.body.style.overflow = '';
 });
 </script>
 
 <template>
-  <!-- inline editor (collapsed) -->
-  <div v-if="!expanded" class="rich-text">
+  <!-- inline editor -->
+  <div class="rich-text">
     <div class="toolbar">
       <button
         v-for="t in toolbar"
@@ -304,46 +260,7 @@ onUnmounted(() => {
     />
   </div>
 
-  <!-- full-viewport overlay (expanded) -->
-  <Teleport to="body">
-    <div v-if="expanded" class="rich-expand-overlay" role="dialog" aria-modal="true">
-      <div class="rich-expand-header">
-        <span class="title">{{ field.label || field.name || 'Texto enriquecido' }}</span>
-        <button
-          type="button"
-          class="rich-expand-close"
-          title="Cerrar editor grande"
-          @click="requestClose"
-        >✕</button>
-      </div>
-      <div class="toolbar">
-        <button
-          v-for="t in toolbar"
-          :key="t.id"
-          type="button"
-          :title="t.tip"
-          @mousedown.prevent
-          @click="t.id === 'link-internal' ? openInternalLinkPicker($event) : onToolbar(t.id)"
-          v-html="t.label"
-        ></button>
-      </div>
-      <div
-        ref="richEl"
-        dir="ltr"
-        class="rich-editable rich-editable-expanded"
-        contenteditable="true"
-        @input="onRichInput"
-        @blur="onBlur"
-      ></div>
-      <ImagePickerModal
-        v-if="pickerOpen"
-        @select="onImagePicked"
-        @close="pickerOpen = false"
-      />
-    </div>
-  </Teleport>
-
-  <!-- internal-link picker: teleported to body, above the expand overlay -->
+  <!-- internal-link picker: teleported to body, above the object-list modal + image picker -->
   <Teleport to="body">
     <div
       v-if="linkPickerOpen"
@@ -418,10 +335,6 @@ onUnmounted(() => {
   text-align: left;
   unicode-bidi: isolate;
 }
-.rich-editable-expanded {
-  flex: 1;
-  overflow-y: auto;
-}
 .rich-editable :deep(ul) {
   padding-left: 20px;
 }
@@ -429,57 +342,10 @@ onUnmounted(() => {
   color: var(--pe-accent);
 }
 
-/* ---- expand overlay ---- */
-.rich-expand-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1400; /* above FieldRenderer's object-list modal + ImagePickerModal (1000) */
-  background: var(--pe-bg);
-  display: flex;
-  flex-direction: column;
-  padding: 16px;
-  gap: 10px;
-}
-.rich-expand-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.rich-expand-header .title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--pe-text);
-}
-.rich-expand-close {
-  border: 1px solid var(--pe-border);
-  background: var(--pe-panel);
-  border-radius: var(--pe-radius-sm);
-  width: 32px;
-  height: 32px;
-  font-size: 15px;
-  cursor: pointer;
-  color: var(--pe-text);
-  transition: background var(--pe-transition), border-color var(--pe-transition);
-}
-.rich-expand-close:hover {
-  background: var(--pe-hover);
-  border-color: var(--pe-border-strong);
-}
-.rich-expand-overlay .toolbar {
-  border: 1px solid var(--pe-border);
-  border-radius: var(--pe-radius-sm);
-}
-.rich-expand-overlay .rich-editable-expanded {
-  min-height: 0;
-  padding: 14px 16px;
-  font-size: 15px;
-}
-
 /* ---- internal-link picker ---- */
 .rich-internal-picker {
   position: fixed;
-  z-index: 3000; /* above the expand overlay (1400) */
+  z-index: 3000; /* above the object-list modal + image picker (1000) */
   background: var(--pe-panel);
   border: 1px solid var(--pe-border);
   border-radius: var(--pe-radius);
