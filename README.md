@@ -30,6 +30,23 @@ de build** exportando variables `VITE_PE_API_BASE`, `VITE_PE_DATA_BASE` y
 VITE_PE_API_BASE=https://api.parroquia.app VITE_PE_DATA_BASE=https://data.parroquia.app npm run build
 ```
 
+### Búsqueda de imágenes de Unsplash
+
+El selector de imágenes puede mostrar, además del medio subido al sitio,
+resultados en vivo de **Unsplash** (API pública, hotlink: la URL elegida se
+guarda tal cual, sin descargarla ni subirla). Incluye una *access key* pública
+integrada en `lib/unsplash.js` (flujo `client_id` para navegador; la clave es
+pública por diseño y queda visible en el bundle estático). Se puede sobrescribir
+en build time si algún día hace falta:
+
+```bash
+VITE_UNSPLASH_ACCESS_KEY=otra-clave npm run build
+```
+
+Las búsquedas se sesgan hacia contenido católico (prefijo «catholic» salvo que
+la consulta ya incluya términos religiosos) y cada resultado muestra la
+atribución de su autor, tal como pide Unsplash.
+
 ## Cambios necesarios en el Worker
 
 El worker original (`worker/index.js` en tu proyecto) no tenía forma de
