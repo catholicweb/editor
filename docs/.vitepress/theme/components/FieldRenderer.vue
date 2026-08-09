@@ -107,6 +107,9 @@ function addBlock(blockDef) {
   showBlockPicker.value = false;
 }
 
+// ---- rich-text expand (full-viewport overlay) --------------------------------
+const richExpanded = ref(false);
+
 // ---- modal editing for object lists -------------------------------------------
 const editingIndex = ref(null);
 const editingItem = computed(() =>
@@ -221,13 +224,28 @@ function closeModal() {
   <!-- LEAF -->
   <div v-else class="field leaf-field" :data-field-name="field.name">
     <label class="field-label">
-      {{ field.label || field.name }}
-      <span v-if="field.options?.source" class="source-link" @click="navigateToSource(field.options.source)">
-        Editar opciones
+      <span class="label-text">{{ field.label || field.name }}</span>
+      <span class="label-actions">
+        <span v-if="field.options?.source" class="source-link" @click="navigateToSource(field.options.source)">
+          Editar opciones
+        </span>
+        <button
+          v-if="field.type === 'rich-text'"
+          type="button"
+          class="field-expand"
+          :class="{ active: richExpanded }"
+          :title="richExpanded ? 'Cerrar editor grande' : 'Editar en grande'"
+          @click="richExpanded = !richExpanded"
+        >⛶</button>
       </span>
     </label>
 
-    <ScalarInput :field="field" v-model="scalarValue" />
+    <ScalarInput
+      :field="field"
+      v-model="scalarValue"
+      :expanded="richExpanded"
+      @update:expanded="richExpanded = $event"
+    />
   </div>
 
   <!-- MODAL OVERLAY FOR OBJECT LIST EDITING -->
@@ -251,9 +269,19 @@ function closeModal() {
   gap: 6px;
 }
 .field-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
   font-size: 13px;
   font-weight: 600;
   color: var(--pe-text);
+}
+.label-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 .source-link {
   font-size: 12px;
@@ -261,11 +289,34 @@ function closeModal() {
   color: var(--pe-accent);
   cursor: pointer;
   transition: color var(--pe-transition);
-  margin-left: 4px;
 }
 .source-link:hover {
   color: var(--pe-accent-hover);
   text-decoration: underline;
+}
+.field-expand {
+  border: 1px solid var(--pe-border);
+  background: var(--pe-panel);
+  color: var(--pe-muted);
+  border-radius: var(--pe-radius-sm);
+  width: 26px;
+  height: 22px;
+  line-height: 1;
+  font-size: 13px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background var(--pe-transition), border-color var(--pe-transition), color var(--pe-transition);
+}
+.field-expand:hover {
+  background: var(--pe-hover);
+  border-color: var(--pe-border-strong);
+  color: var(--pe-text);
+}
+.field-expand.active {
+  background: var(--pe-accent-soft);
+  border-color: var(--pe-accent);
+  color: var(--pe-accent);
 }
 fieldset.object-field {
   border: 1px solid var(--pe-border);

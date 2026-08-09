@@ -4,14 +4,16 @@ import SelectField from './SelectField.vue';
 import ImagePickerModal from './ImagePickerModal.vue';
 import PeIcon from './PeIcon.vue';
 import IconPicker from './fields/IconPicker.vue';
+import RichTextEditor from './RichTextEditor.vue';
 import { state } from '../lib/store.js';
 import { resolvePath } from '../lib/schema.js';
 
 const props = defineProps({
   field: { type: Object, required: true },
   modelValue: { default: null },
+  expanded: { type: Boolean, default: false },
 });
-const emit = defineEmits(['update:modelValue']);
+const emit = defineEmits(['update:modelValue', 'update:expanded']);
 
 function set(v) {
   emit('update:modelValue', v);
@@ -51,44 +53,6 @@ onUnmounted(() => {
 });
 watch(() => props.modelValue, () => nextTick(autoSizeText));
 
-
-// ---- rich text (lightweight contenteditable + toolbar) --------------------
-const richEl = ref(null);
-function exec(cmd, val = null) {
-  richEl.value?.focus();
-  document.execCommand(cmd, false, val);
-  set(richEl.value?.innerHTML || '');
-}
-function onRichInput(e) {
-  set(e.target.innerHTML);
-}
-const ALLOWED_LINK_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'tel:']);
-
-// Only allow safe link schemes. A raw `javascript:`/`data:`/`vbscript:` URL
-// would otherwise be stored in the content and re-rendered via v-html (and
-// later on the public site), so reject anything outside the allowlist instead
-// of passing it to execCommand.
-function isSafeLinkUrl(url) {
-  if (!url || typeof url !== 'string') return false;
-  try {
-    // Relative URLs resolve against the page origin (http/https) and are fine;
-    // anything else must be on the allowlist.
-    const parsed = new URL(url, location.href);
-    return ALLOWED_LINK_PROTOCOLS.has(parsed.protocol);
-  } catch {
-    return false;
-  }
-}
-
-function insertLink() {
-  const url = prompt('URL del enlace:');
-  if (!url) return;
-  if (!isSafeLinkUrl(url)) {
-    alert('Solo se permiten enlaces http, https, mailto o tel.');
-    return;
-  }
-  exec('createLink', url);
-}
 
 // ---- image ------------------------------------------------------------
 const multiple = computed(() => props.field.type === 'image' && props.field.options?.multiple);
@@ -245,24 +209,15 @@ function updateRefDropdownPosition() {
     @input="onTextInput"
   />
 
-  <!-- rich-text -->
-  <div v-else-if="field.type === 'rich-text'" class="rich-text">
-    <div class="toolbar">
-      <button type="button" @mousedown.prevent="exec('bold')"><b>B</b></button>
-      <button type="button" @mousedown.prevent="exec('italic')"><i>I</i></button>
-      <button type="button" @mousedown.prevent="exec('insertUnorderedList')">• Lista</button>
-      <button type="button" @mousedown.prevent="exec('insertOrderedList')">1. Lista</button>
-      <button type="button" @mousedown.prevent="insertLink">Enlace</button>
-      <button type="button" @mousedown.prevent="exec('removeFormat')">Limpiar</button>
-    </div>
-    <div
-      ref="richEl"
-      class="rich-editable"
-      contenteditable="true"
-      v-html="modelValue ?? ''"
-      @input="onRichInput"
-    />
-  </div>
+  <!-- rich-text (markdown-backed WYSIWYG; see RichTextEditor.vue) -->
+  <RichTextEditor
+    v-else-if="field.type === 'rich-text'"
+    :field="field"
+    :model-value="modelValue"
+    :expanded="expanded"
+    @update:model-value="set"
+    @update:expanded="emit('update:expanded', $event)"
+  />
 
   <!-- number -->
   <input
@@ -501,50 +456,6 @@ textarea.auto-grow {
   width: 100px;
   font-family: 'SF Mono', 'Fira Code', monospace;
   text-transform: lowercase;
-}
-.rich-text {
-  border: 1px solid var(--pe-border);
-  border-radius: var(--pe-radius);
-  overflow: hidden;
-  transition: border-color var(--pe-transition), box-shadow var(--pe-transition);
-}
-.rich-text:focus-within {
-  border-color: var(--pe-accent);
-  box-shadow: var(--pe-ring);
-}
-.toolbar {
-  display: flex;
-  gap: 4px;
-  padding: 6px;
-  border-bottom: 1px solid var(--pe-border);
-  background: var(--pe-bg);
-  flex-wrap: wrap;
-}
-.toolbar button {
-  border: 1px solid var(--pe-border);
-  background: var(--pe-panel);
-  border-radius: var(--pe-radius-sm);
-  padding: 4px 9px;
-  font-size: 12px;
-  cursor: pointer;
-  color: var(--pe-text);
-  transition: background var(--pe-transition), border-color var(--pe-transition);
-}
-.toolbar button:hover {
-  background: var(--pe-hover);
-  border-color: var(--pe-border-strong);
-}
-.rich-editable {
-  min-height: 90px;
-  padding: 10px 12px;
-  outline: none;
-  line-height: 1.5;
-}
-.rich-editable :deep(ul) {
-  padding-left: 20px;
-}
-.rich-editable :deep(a) {
-  color: var(--pe-accent);
 }
 .image-grid {
   display: flex;

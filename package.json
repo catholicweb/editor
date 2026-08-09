@@ -11,6 +11,8 @@
   "dependencies": {
     "@iconify/vue": "^5.0.1",
     "js-yaml": "^4.1.0",
+    "markdown-it": "^14.3.0",
+    "turndown": "^7.2.4",
     "vue": "^3.4.0"
   },
   "devDependencies": {
