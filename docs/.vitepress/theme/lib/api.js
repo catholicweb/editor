@@ -138,6 +138,29 @@ export async function putFile(apiBase, slug, token, fileToken, body, contentType
   return res.json(); // { ok, slug, key, url } — `url` is the absolute public URL of the file
 }
 
+// Patch `config.json` with a small diff (see lib/patch.js). The server applies
+// the absolute ops onto its *current* stored document and returns the merged
+// result, which the editor adopts back (so multi-editor freshness is preserved).
+// Scoped to config.json — the only file the editor edits concurrently.
+export async function patchFile(apiBase, slug, token, ops, { keepalive = false } = {}) {
+  const res = await fetch(
+    `${trimBase(apiBase)}/sites/${encodeURIComponent(slug)}/config.json`,
+    {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ops }),
+      // keepalive lets the request survive page unload (used for the on-leave
+      // flush), same as putFile; patches stay small enough to fit the cap.
+      keepalive,
+    }
+  );
+  if (!res.ok) throw new Error(`No se pudo guardar el fichero: ${await errText(res)}`);
+  return res.json(); // { ok, slug, key, data, skipped }
+}
+
 // ---- public data host (read) calls ----------------------------------------
 // No Authorization header here on purpose: content is served publicly.
 //
