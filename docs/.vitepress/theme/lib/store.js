@@ -66,8 +66,8 @@ export const state = reactive({
 
   // Patch-save state (see lib/patch.js). `baselineConfig` is a plain deep clone
   // of the last server-confirmed config (the diff baseline). `fullPutDone` records
-  // whether the schema-backfilled uuids have been persisted server-side via a
-  // full PUT, so later saves can key patches by `{ uuid }` and resolve.
+  // whether the schema-backfilled ids have been persisted server-side via a
+  // full PUT, so later saves can key patches by `{ id }` and resolve.
   baselineConfig: null,
   fullPutDone: false,
 });
@@ -284,8 +284,8 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug, e
     state.savedText = fullConfigText();
 
     // Patch-save baseline: remember the loaded config and force the first save
-    // to be a full PUT, which persists the schema-backfilled uuids server-side
-    // so subsequent { uuid } patch ops can resolve.
+    // to be a full PUT, which persists the schema-backfilled ids server-side
+    // so subsequent { id } patch ops can resolve.
     state.baselineConfig = plainSnapshot(state.config);
     state.fullPutDone = false;
 
@@ -653,7 +653,7 @@ export async function saveCurrent({ keepalive = false } = {}) {
 
     if (!state.fullPutDone) {
       // First save since load: a full PUT. This persists the schema-backfilled
-      // uuids server-side so later { uuid } patch ops can resolve. The local
+      // ids server-side so later { id } patch ops can resolve. The local
       // config IS the merged result (nothing concurrent to adopt mid-hydration).
       const text = JSON.stringify(state.config, null, 2) + '\n';
       await api.putFile(
@@ -861,10 +861,10 @@ export async function refreshConfig() {
   if (Date.now() - lastSavedAt < 1000) return; // just saved -> already current
   if (isDirty.value) return; // user's unsaved edits win, never clobber them
   // Until the first full PUT, the schema-backfilled uuids exist only locally:
-  // adopting a fresh server config would drop the hidden uuid fields from the
+  // adopting a fresh server config would drop the hidden id fields from the
   // un-opened tabs (the tail below only re-applies defaults to the open tab),
   // making later patch diffs emit unsafe keyless list ops. Once fullPutDone the
-  // remote config already carries the uuids, so adoption is uuid-consistent.
+  // remote config already carries the ids, so adoption is id-consistent.
   if (!state.fullPutDone) return;
 
   const entry = state.currentEntry;
