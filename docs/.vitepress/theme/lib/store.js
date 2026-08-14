@@ -534,6 +534,16 @@ export async function switchSlug(slug) {
   state.currentBody = '';
   state.editors = [];
 
+  // Belt-and-braces: explicitly reset the patch-save / dirty baseline so we
+  // never depend on login() re-initializing these as an incidental side effect
+  // (login currently re-sets config / savedText / baselineConfig / fullPutDone).
+  // Current-slug edits were already flushed by saveCurrent() above, so dropping
+  // the references is safe. Mirrors logout()'s reset block.
+  state.savedText = '';
+  state.baselineConfig = null;
+  state.fullPutDone = false;
+  state.config = null;
+
   await login({
     apiBase: state.apiBase,
     dataBase: state.dataBase,
@@ -691,6 +701,7 @@ export async function saveCurrent({ keepalive = false } = {}) {
     }
 
     state.savedText = fullConfigText();
+    lastSavedAt = Date.now();
     state.status = 'Guardado.';
 
     // Snapshot the saved config as a version (fire-and-forget). Deliberately NOT
@@ -828,6 +839,72 @@ watch(
 // on a confirmed save) make the extra events harmless no-ops.
 let unloadFlushInFlight = false;
 
+// Guards + timestamp for the refresh-on-visible path. `lastSavedAt` lets us
+// skip a refresh that immediately follows a just-completed save (the save's
+// adoption tail already aligned the config, so the fetch would be redundant).
+let configRefreshInFlight = false;
+let lastSavedAt = 0;
+
+// Re-fetch config.json (cache-bypassing) and adopt the fresh copy when the tab
+// becomes visible, so the user edits from the latest data in multi-editor /
+// multi-tab sessions (reduces patch-collision risk and stale edits). Only safe
+// with NO unsaved work and no save in flight — anything else skips entirely
+// (user edits must never be lost; a refresh mid-save would race the adoption).
+// Scoped to config.json only (media stays as-is).
+export async function refreshConfig() {
+  // Not logged in / nothing to refresh yet (also swallows the initial-page-load
+  // `visibilitychange:'visible'`, which can fire before login resolves).
+  if (!isLoggedIn.value || !state.config) return;
+  // Never race an in-flight save, an on-leave flush, or another refresh, and
+  // never clobber a config that a save just adopted.
+  if (state.saving || unloadFlushInFlight || configRefreshInFlight) return;
+  if (Date.now() - lastSavedAt < 1000) return; // just saved -> already current
+  if (isDirty.value) return; // user's unsaved edits win, never clobber them
+  // Until the first full PUT, the schema-backfilled uuids exist only locally:
+  // adopting a fresh server config would drop the hidden uuid fields from the
+  // un-opened tabs (the tail below only re-applies defaults to the open tab),
+  // making later patch diffs emit unsafe keyless list ops. Once fullPutDone the
+  // remote config already carries the uuids, so adoption is uuid-consistent.
+  if (!state.fullPutDone) return;
+
+  const entry = state.currentEntry;
+  configRefreshInFlight = true;
+  try {
+    const text = await api.getFileText(state.dataBase, state.slug, 'config.json');
+    if (!text) return; // 404 / transient: keep the current config
+    const fresh = JSON.parse(text);
+    if (!fresh || typeof fresh !== 'object') return;
+
+    // Adoption tail — mirrors saveCurrent/restoreConfig. Replacing state.config
+    // severs the draft alias, so re-alias the open tab's draft to the new tree.
+    state.config = reactive(fresh);
+    if (entry) {
+      let data = state.config[entry.tabPath];
+      if (!data) {
+        data = {};
+        state.config[entry.tabPath] = data;
+      }
+      applyDefaults(entry.fields, data);
+      state.draft = reactive(data);
+    }
+    state.currentBody = '';
+    applyAccentColorFromConfig();
+    applyFontsFromConfig();
+
+    // Resnapshot the patch baseline against the adopted tree and align the
+    // whole-config dirty baseline so isDirty stays false and "Guardado." shows.
+    state.baselineConfig = plainSnapshot(state.config);
+    state.savedText = fullConfigText();
+    state.status = 'Guardado.';
+  } catch (err) {
+    // Non-fatal: keep the current config and just log; the next visible event
+    // retries.
+    console.error('Failed to refresh config on visible:', err);
+  } finally {
+    configRefreshInFlight = false;
+  }
+}
+
 function flushIfDirty() {
   if (unloadFlushInFlight) return;
   if (!isDirty.value) return;
@@ -849,6 +926,13 @@ export function initBeforeUnloadHandler() {
   window.addEventListener('pagehide', flushIfDirty);
   window.addEventListener('beforeunload', flushIfDirty);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') flushIfDirty();
+    if (document.visibilityState === 'hidden') {
+      flushIfDirty();
+    } else if (document.visibilityState === 'visible') {
+      // Coming back to the tab: refresh config so edits start from the latest
+      // server copy (no-ops early if there's nothing safe to refresh; see
+      // refreshConfig's guards).
+      refreshConfig();
+    }
   });
 }
