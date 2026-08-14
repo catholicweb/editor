@@ -101,12 +101,14 @@ export function attributionUrl(photo) {
 }
 
 // Normaliza un foto del API al objeto que pinta/emite el selector. El campo
-// `url` es lo que se guarda al elegir (imagen desnuda, sin utm ni crédito).
+// `url` es lo que se guarda al elegir (imagen desnuda, sin utm). Lleva un param
+// `photographer` para que web-template muestre el nombre en la píldora de crédito.
 export function mapPhoto(photo) {
   const creditName = (photo.user && photo.user.name) || 'Unsplash';
+  const url = appendParams(storedUrl(photo), `photographer=${encodeURIComponent(creditName)}`);
   return {
     id: photo.id,
-    url: storedUrl(photo),
+    url,
     thumbUrl: thumbUrl(photo),
     alt: photo.alt_description || `Foto de ${creditName}`,
     creditName,
