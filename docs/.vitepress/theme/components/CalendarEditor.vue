@@ -130,7 +130,6 @@ function closeModal() {
     <EventEditorModal
       v-if="modalOpen && editingEvent"
       :event="editingEvent"
-      :event-index="editingIndex"
       :celebrants="value[celebrantsKey] || []"
       :defaults="value[defaultsKey] || {}"
       :event-types="eventTypes"
