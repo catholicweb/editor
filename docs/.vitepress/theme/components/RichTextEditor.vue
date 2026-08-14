@@ -168,11 +168,11 @@ function insertExternalLink() {
   }
 }
 
-// INTERNAL LINKS store `[Text](page:<name>)`, where <name> is the page's uuid
-// from state.config.pages.list. This is a deliberate, greppable convention:
-// web-template will resolve `page:` hrefs to final URLs at build time (follow-up
-// in the web-template repo). markdown-it renders it as an ordinary link because
-// `page:` is not in md.validateLink's BAD_PROTO_RE blocklist.
+// INTERNAL LINKS store `[Text](page:<id>)`, where <id> is the page's stable `id`
+// (its uuid) from state.config.pages.list. This is a deliberate, greppable
+// convention: web-template will resolve `page:` hrefs to final URLs at build time
+// (follow-up in the web-template repo). markdown-it renders it as an ordinary link
+// because `page:` is not in md.validateLink's BAD_PROTO_RE blocklist.
 const linkPickerOpen = ref(false);
 const linkSearch = ref('');
 const linkInputEl = ref(null);
@@ -180,7 +180,7 @@ const linkRect = ref(null); // { top, left, width } of the trigger button
 
 const pages = computed(() =>
   (resolvePath(state.config, 'pages.list') || []).map((p) => ({
-    id: p.name || p.title,
+    id: p.id || p.name || p.title,
     label: p.title || p.name || p.id || String(p),
   }))
 );

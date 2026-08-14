@@ -10,11 +10,11 @@
 // place this convention is encoded.
 const BLOCK_TYPE_KEY = 'type';
 
-// The canonical key each object-list/block-list item stores its stable uuid
+// The canonical key each object-list/block-list item stores its stable identity
 // under, so the patch layer (lib/patch.js) can diff and address items by a
 // stable identity (unlike content hashes, a uuid survives field edits). MUST
-// equal UUID_KEY in lib/patch.js and config-api/src/patch.js.
-const UUID_KEY = 'uuid';
+// equal ID_KEY in lib/patch.js and config-api/src/patch.js.
+const ID_KEY = 'id';
 
 const LOCAL_ROOT_PREFIXES = ['docs/public/', 'docs/public']; // strip to get relPath
 
@@ -93,17 +93,18 @@ export function resolveFieldDef(raw, components) {
     else if (out.blocks) out.type = 'block';
   }
   // Key every "list of objects" (a repeatable object, or a polymorphic block
-  // whose variants are objects) with a hidden uuid, so lib/patch.js can address
-  // items by a stable id and persist per-field last-edit-wins edits. Injected
-  // at runtime here (not editing every list in pages.yml) so there's one source
-  // of truth; lists that already declare a `uuid` field are left untouched.
+  // whose variants are objects) with a hidden `id`, so lib/patch.js can address
+  // items by a stable identity and persist per-field last-edit-wins edits.
+  // Injected at runtime here (not editing every list in pages.yml) so there's
+  // one source of truth; lists that already declare a field named `ID_KEY`
+  // (with type `uuid`) are left untouched.
   if ((out.type === 'object' && isRepeatable(out)) || out.type === 'block') {
     injectUuid(out);
   }
   return out;
 }
 
-// Add a hidden `uuid` field to every keyed item so each list index has a stable
+// Add a hidden `id` field to every keyed item so each list index has a stable
 // identity. For a block list, each variant carries its own `fields`; for an
 // object-list, the item's `fields` live on the field itself.
 function injectUuid(field) {
@@ -116,9 +117,9 @@ function injectUuid(field) {
 
 function addUuidField(holder) {
   if (!holder) return;
-  if ((holder.fields || []).some((f) => f.name === UUID_KEY && f.type === 'uuid')) return; // already declared
+  if ((holder.fields || []).some((f) => f.name === ID_KEY && f.type === 'uuid')) return; // already declared
   holder.fields = [
-    { name: UUID_KEY, label: 'Identificador', type: 'uuid', hidden: true },
+    { name: ID_KEY, label: 'Identificador', type: 'uuid', hidden: true },
     ...(holder.fields || []),
   ];
 }

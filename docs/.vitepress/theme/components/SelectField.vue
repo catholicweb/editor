@@ -22,7 +22,7 @@ const normalizedOptions = computed(() => {
 
     if (Array.isArray(data)) {
       return data.map((item) => ({
-        value: item.name || item.id || item,
+        value: item.id || item.name || item,
         label: item.title || item.label || item.name || item.id || item,
       }));
     }

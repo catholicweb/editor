@@ -25,7 +25,7 @@ export const CELEBRANT_COLORS = [
 // ---- Dynamic event-type helpers -------------------------------------------
 
 export function getEventType(typeName, eventTypes) {
-  return eventTypes?.find((t) => t.name === typeName) || null;
+  return eventTypes?.find((t) => t.id === typeName) || null;
 }
 
 export function getTypeConfig(type, eventTypes) {
@@ -35,7 +35,7 @@ export function getTypeConfig(type, eventTypes) {
     return { icon: et.icon, duration };
   }
   // Fallback: use 'custom' type defaults
-  const customType = eventTypes?.find(t => t.name === 'custom');
+  const customType = eventTypes?.find(t => t.id === 'custom');
   return { icon: customType?.icon || 'calendar', duration: customType?.duration || DEFAULT_DURATION };
 }
 

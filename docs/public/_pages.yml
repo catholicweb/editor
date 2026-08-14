@@ -195,7 +195,7 @@ components:
     label: Página
     type: object
     fields:
-        - { name: name, label: Identificador, type: uuid, hidden: true }
+        - { name: id, label: Identificador, type: uuid, hidden: true }
         - { name: title, label: Título, type: string }
         - { name: description, label: Subtitulo, type: string }
         - { name: image, label: Imagen, type: image }
@@ -359,7 +359,7 @@ content:
             summary: "{fields.label}"
           sort: 'alphabetical'
         fields:
-          - { name: name, label: Identificador, type: uuid, hidden: true }
+          - { name: id, label: Identificador, type: uuid, hidden: true }
           - { name: label, label: "Tipo de evento (ej: Eucaristía)", type: string }
           - { name: icon, label: Icono (se mostrará unicamente en este editor), type: icon }
           - { name: defaults, component: event }
