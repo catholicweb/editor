@@ -19,7 +19,7 @@ export const unsplashEnabled = Boolean(ACCESS_KEY);
 
 const API_BASE = 'https://api.unsplash.com';
 const SEARCH_PATH = '/search/photos';
-const PER_PAGE = 12;
+const PER_PAGE = 30;
 const TIMEOUT_MS = 10_000;
 
 // Params utm que piden las directrices de atribución de Unsplash. Solo van en
