@@ -20,7 +20,6 @@ import {
 
 const props = defineProps({
   event: { type: Object, required: true }, // reactive ref into events[]
-  eventIndex: { type: Number, required: true },
   celebrants: { type: Array, default: () => [] },
   weekStart: { type: Object, default: null }, // visible week, anchors the exception picker
   defaults: { type: Object, default: () => ({}) },
@@ -262,9 +261,14 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
             <PeIcon :name="headerIcon" :size="18" color="#fff" />
           </span>
           <h2>{{ event.title || 'Nuevo evento' }}</h2>
-          <span class="event-idx">#{{ eventIndex + 1 }}</span>
         </div>
         <div class="header-actions">
+          <button class="header-action" @click="emit('duplicate')" title="Duplicar evento" aria-label="Duplicar evento">
+            <PeIcon name="document-duplicate" :size="16" />
+          </button>
+          <button class="header-action del" @click="emit('remove')" title="Borrar evento" aria-label="Borrar evento">
+            <PeIcon name="trash" :size="16" />
+          </button>
           <button class="close" @click="emit('close')" title="Cerrar">✕</button>
         </div>
       </header>
@@ -333,11 +337,6 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
             </div>
           </div>
         </section>
-
-        <div class="modal-footer">
-          <button class="delete-event-btn" @click="emit('remove')">Borrar</button>
-          <button class="duplicate-event-btn" @click="emit('duplicate')">Duplicar</button>
-        </div>
       </div>
     </div>
   </div>
@@ -354,13 +353,6 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
   justify-content: stretch;
   z-index: 1000;
   padding: 0;
-}
-
-/* On mobile, leave space for the bottom toolbar */
-@media (max-width: 768px) {
-  .overlay {
-    bottom: 60px; /* Height of the bottom toolbar */
-  }
 }
 .modal {
   background: var(--pe-panel);
@@ -413,10 +405,6 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.event-idx {
-  font-size: 12px;
-  color: var(--pe-muted);
-}
 .header-actions {
   display: flex;
   align-items: center;
@@ -460,6 +448,21 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
   border-radius: var(--pe-radius-sm);
 }
 .close:hover { background: var(--pe-hover); color: var(--pe-text); }
+.header-action {
+  border: none;
+  background: transparent;
+  color: var(--pe-muted);
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--pe-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--pe-transition), color var(--pe-transition);
+}
+.header-action:hover { background: var(--pe-hover); color: var(--pe-text); }
+.header-action.del:hover { background: var(--pe-danger-soft); color: var(--pe-danger); }
 
 .modal-body {
   overflow-y: auto;
@@ -678,49 +681,6 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
   cursor: pointer;
 }
 .bool-row input { width: auto; }
-
-/* ---------- Modal footer (duplicate + delete buttons) ---------- */
-.modal-footer {
-  padding-top: 24px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-.duplicate-event-btn {
-  padding: 10px 20px;
-  border-radius: var(--pe-radius);
-  border: 1px solid var(--pe-border);
-  background: var(--pe-panel);
-  color: var(--pe-text);
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background var(--pe-transition), border-color var(--pe-transition);
-}
-.duplicate-event-btn:hover:not(:disabled) {
-  background: var(--pe-hover);
-  border-color: var(--pe-border-strong);
-}
-.delete-event-btn {
-  padding: 10px 20px;
-  border-radius: var(--pe-radius);
-  border: 1px solid var(--pe-danger);
-  background: var(--pe-danger);
-  color: #fff;
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
-  margin-right: auto;
-  transition: background var(--pe-transition), opacity var(--pe-transition);
-}
-.delete-event-btn:hover:not(:disabled) {
-  background: #c0392b;
-  border-color: #c0392b;
-}
-.delete-event-btn:disabled {
-  cursor: default;
-  opacity: 0.5;
-}
 
 /* ---------- Exception collapsible ---------- */
 .ex-details {
