@@ -5,6 +5,7 @@ import { relPathForNewMedia } from '../lib/content-index.js';
 import { compressToWebP } from '../lib/image-compression.js';
 import { sha256Hex } from '../lib/hash.js';
 import * as unsplash from '../lib/unsplash.js';
+import * as pexels from '../lib/pexels.js';
 
 const emit = defineEmits(['select', 'close']);
 
@@ -45,15 +46,35 @@ let unsplashTimer = null; // debounce
 let activeRequestId = 0; // descarta respuestas de búsquedas superadas
 let activeController = null; // aborta la petición en curso
 
+// --- Búsqueda en Pexels (segunda fuente externa) ---
+const pexelsEnabled = pexels.pexelsEnabled;
+
+const pexelsResults = ref([]); // fotos mapeadas (mapPhoto)
+const pexelsLoading = ref(false);
+const pexelsError = ref(''); // '' = sin error; si no, mensaje en español
+const pexelsSearched = ref(false); // true tras una respuesta de página 1 (para mostrar el vacío)
+const pexelsPage = ref(1);
+const pexelsTotalPages = ref(0);
+
+let pexelsTimer = null; // debounce
+let pexelsRequestId = 0; // descarta respuestas de búsquedas superadas
+let pexelsController = null; // aborta la petición en curso
+
 const unsplashActive = computed(() =>
   unsplashEnabled &&
   search.value.trim() !== '' &&
   (unsplashLoading.value || unsplashError.value !== '' || unsplashSearched.value)
 );
 
+const pexelsActive = computed(() =>
+  pexelsEnabled &&
+  search.value.trim() !== '' &&
+  (pexelsLoading.value || pexelsError.value !== '' || pexelsSearched.value)
+);
+
 watch(search, (q) => {
-  if (!unsplashEnabled) return;
   clearTimeout(unsplashTimer);
+  clearTimeout(pexelsTimer);
   const trimmed = (q || '').trim();
   if (!trimmed) {
     unsplashResults.value = [];
@@ -63,9 +84,21 @@ watch(search, (q) => {
     unsplashError.value = '';
     unsplashSearched.value = false;
     activeController?.abort();
+    pexelsResults.value = [];
+    pexelsLoading.value = false;
+    pexelsPage.value = 1;
+    pexelsTotalPages.value = 0;
+    pexelsError.value = '';
+    pexelsSearched.value = false;
+    pexelsController?.abort();
     return;
   }
-  unsplashTimer = setTimeout(() => runUnsplashSearch(trimmed), DEBOUNCE_MS);
+  if (unsplashEnabled) {
+    unsplashTimer = setTimeout(() => runUnsplashSearch(trimmed), DEBOUNCE_MS);
+  }
+  if (pexelsEnabled) {
+    pexelsTimer = setTimeout(() => runPexelsSearch(trimmed), DEBOUNCE_MS);
+  }
 });
 
 async function runUnsplashSearch(rawQuery, page = 1, append = false) {
@@ -109,9 +142,52 @@ async function loadMoreUnsplash() {
   await runUnsplashSearch(q, unsplashPage.value + 1, true);
 }
 
+async function runPexelsSearch(rawQuery, page = 1, append = false) {
+  const requestId = ++pexelsRequestId;
+  pexelsError.value = '';
+  pexelsLoading.value = true;
+  if (!append) {
+    pexelsController?.abort();
+    pexelsResults.value = [];
+    pexelsSearched.value = false;
+  }
+  const controller = new AbortController();
+  pexelsController = controller;
+  try {
+    const data = await pexels.searchPexels(rawQuery, page, { signal: controller.signal });
+    if (requestId !== pexelsRequestId) return; // respuesta de una búsqueda superada
+    if (page === 1) pexelsResults.value = data.results;
+    else pexelsResults.value = [...pexelsResults.value, ...data.results];
+    pexelsPage.value = page;
+    pexelsTotalPages.value = data.totalPages;
+    pexelsSearched.value = true;
+  } catch (err) {
+    if (requestId !== pexelsRequestId) return;
+    if (err.name === 'AbortError') return; // cancelada por una búsqueda nueva / cierre
+    if (err.code === 'rate_limit') {
+      pexelsError.value = 'Límite de búsquedas de Pexels alcanzado. Vuelve a intentarlo dentro de una hora.';
+    } else if (err.code === 'http') {
+      pexelsError.value = `Pexels respondió con un error (${err.message}). Prueba de nuevo.`;
+    } else {
+      pexelsError.value = 'No se pudo conectar con Pexels. Comprueba tu conexión.';
+    }
+    pexelsSearched.value = true;
+  } finally {
+    if (requestId === pexelsRequestId) pexelsLoading.value = false;
+  }
+}
+
+async function loadMorePexels() {
+  const q = search.value.trim();
+  if (!q || pexelsLoading.value) return;
+  await runPexelsSearch(q, pexelsPage.value + 1, true);
+}
+
 onUnmounted(() => {
   clearTimeout(unsplashTimer);
   activeController?.abort();
+  clearTimeout(pexelsTimer);
+  pexelsController?.abort();
 });
 
 function triggerUpload() {
@@ -219,6 +295,43 @@ async function onFileChosen(e) {
             <div v-else-if="unsplashPage < unsplashTotalPages" class="unsplash-more-wrap">
               <button class="unsplash-more" :disabled="unsplashLoading" @click="loadMoreUnsplash">
                 {{ unsplashLoading ? 'Buscando…' : 'Cargar más' }}
+              </button>
+            </div>
+          </template>
+        </section>
+
+        <section v-if="pexelsActive" class="unsplash-section">
+          <div class="unsplash-title">
+            <h3>Pexels</h3>
+            <span class="unsplash-subtitle">Fotos libres de derechos</span>
+          </div>
+
+          <div v-if="pexelsLoading && !pexelsResults.length" class="empty">
+            Buscando en Pexels…
+          </div>
+          <p v-else-if="pexelsError" class="unsplash-error">{{ pexelsError }}</p>
+          <template v-else>
+            <div class="grid">
+              <div v-for="photo in pexelsResults" :key="photo.id" class="unsplash-card">
+                <button class="thumb" :title="photo.alt" @click="choose(photo)">
+                  <img :src="photo.thumbUrl" :alt="photo.alt" loading="lazy" />
+                </button>
+                <a
+                  class="unsplash-credit"
+                  :href="photo.creditUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Foto: {{ photo.creditName }}
+                </a>
+              </div>
+            </div>
+            <p v-if="!pexelsResults.length" class="empty">
+              Sin resultados en Pexels para «{{ search }}».
+            </p>
+            <div v-else-if="pexelsPage < pexelsTotalPages" class="unsplash-more-wrap">
+              <button class="unsplash-more" :disabled="pexelsLoading" @click="loadMorePexels">
+                {{ pexelsLoading ? 'Buscando…' : 'Cargar más' }}
               </button>
             </div>
           </template>
