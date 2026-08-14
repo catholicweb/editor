@@ -53,7 +53,27 @@ components:
     label: "Formato barra navegación"
     type: select
     options:
-      values: ["default","47herri"]
+      values: ["default","47herri","centered","minimal","two-row","solid-dark"]
+  radiusSelect:
+    label: "Redondez de elementos"
+    type: select
+    options:
+      values: ["sharp","soft","rounded","pill"]
+  shadowSelect:
+    label: "Intensidad de sombras"
+    type: select
+    options:
+      values: ["none","light","medium","strong"]
+  buttonStyle:
+    label: "Estilo de botones"
+    type: select
+    options:
+      values: ["solid","outline","soft","pill"]
+  footerStyle:
+    label: "Estilo de pie de página"
+    type: select
+    options:
+      values: ["auto","standard","minimal","expanded"]
   font:
     label: Tipo letra
     type: select
@@ -450,6 +470,10 @@ content:
         component: font
         options: { themeRole: body }
       - { name: navStyle, label: Estilo de la barrra de navegación, component: navigationBar }
+      - { name: radius, label: "Redondez de elementos (sharp/soft/rounded/pill)", component: radiusSelect }
+      - { name: shadow, label: "Intensidad de sombras (none/light/medium/strong)", component: shadowSelect }
+      - { name: buttonStyle, label: "Estilo de botones (solid/outline/soft/pill)", component: buttonStyle }
+      - { name: footerStyle, label: "Estilo de pie de página (auto/standard/minimal/expanded)", component: footerStyle }
       - name: styles
         label: Estilos avanzados
         type: object
