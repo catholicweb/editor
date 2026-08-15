@@ -108,3 +108,28 @@ h1, h2, h3, h4, h5, h6 {
   animation: field-highlight-pulse 1.5s ease-out;
   border-radius: var(--pe-radius, 6px);
 }
+
+/* ---------------------------------------------------------------------------
+ * Live-preview of the site's `buttonStyle` on the editor's action buttons.
+ * Mirrors the web-template's `[data-theme-button=…]` rules (css.js), but keyed
+ * off `document.documentElement.dataset.themeButton` (set at runtime by store.js)
+ * and targeting the editor's accent action buttons (.add / .block-add > button).
+ * `solid` is the default look and needs no override. !important is used because
+ * the target classes are also matched by scoped component styles.
+ * ------------------------------------------------------------------------ */
+[data-theme-button="outline"] .add,
+[data-theme-button="outline"] .block-add > button {
+  background: transparent !important;
+  border: 1px solid var(--pe-accent) !important;
+  color: var(--pe-accent) !important;
+}
+[data-theme-button="soft"] .add,
+[data-theme-button="soft"] .block-add > button {
+  background: var(--pe-accent-soft) !important;
+  border: 1px solid transparent !important;
+  color: var(--pe-accent) !important;
+}
+[data-theme-button="pill"] .add,
+[data-theme-button="pill"] .block-add > button {
+  border-radius: 999px !important;
+}
