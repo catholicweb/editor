@@ -32,7 +32,7 @@ const filtered = computed(() => {
 });
 
 // --- Búsqueda en Unsplash (fuente externa) ---
-const DEBOUNCE_MS = 400;
+const DEBOUNCE_MS = 600;
 const unsplashEnabled = unsplash.unsplashEnabled;
 
 const unsplashResults = ref([]); // fotos mapeadas (mapPhoto)
@@ -256,49 +256,12 @@ async function onFileChosen(e) {
             <span class="caption">{{ entry.name }}</span>
           </button>
           <p v-if="!state.mediaFiles.length" class="empty">
-            Todavía no hay imágenes subidas para este sitio.
+            Sin resultados. Prueba a buscar algo :)
           </p>
           <p v-else-if="!filtered.length && (!unsplashActive || !unsplashResults.length)" class="empty">
             Sin resultados para «{{ search }}».
           </p>
         </div>
-
-        <section v-if="unsplashActive" class="unsplash-section">
-          <div class="unsplash-title">
-            <h3>Unsplash</h3>
-            <span class="unsplash-subtitle">Fotos libres de derechos</span>
-          </div>
-
-          <div v-if="unsplashLoading && !unsplashResults.length" class="empty">
-            Buscando en Unsplash…
-          </div>
-          <p v-else-if="unsplashError" class="unsplash-error">{{ unsplashError }}</p>
-          <template v-else>
-            <div class="grid">
-              <div v-for="photo in unsplashResults" :key="photo.id" class="unsplash-card">
-                <button class="thumb" :title="photo.alt" @click="choose(photo)">
-                  <img :src="photo.thumbUrl" :alt="photo.alt" loading="lazy" />
-                </button>
-                <a
-                  class="unsplash-credit"
-                  :href="photo.creditUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Foto: {{ photo.creditName }}
-                </a>
-              </div>
-            </div>
-            <p v-if="!unsplashResults.length" class="empty">
-              Sin resultados en Unsplash para «{{ search }}».
-            </p>
-            <div v-else-if="unsplashPage < unsplashTotalPages" class="unsplash-more-wrap">
-              <button class="unsplash-more" :disabled="unsplashLoading" @click="loadMoreUnsplash">
-                {{ unsplashLoading ? 'Buscando…' : 'Cargar más' }}
-              </button>
-            </div>
-          </template>
-        </section>
 
         <section v-if="pexelsActive" class="unsplash-section">
           <div class="unsplash-title">
@@ -332,6 +295,43 @@ async function onFileChosen(e) {
             <div v-else-if="pexelsPage < pexelsTotalPages" class="unsplash-more-wrap">
               <button class="unsplash-more" :disabled="pexelsLoading" @click="loadMorePexels">
                 {{ pexelsLoading ? 'Buscando…' : 'Cargar más' }}
+              </button>
+            </div>
+          </template>
+        </section>
+        
+        <section v-if="unsplashActive" class="unsplash-section">
+          <div class="unsplash-title">
+            <h3>Unsplash</h3>
+            <span class="unsplash-subtitle">Fotos libres de derechos</span>
+          </div>
+
+          <div v-if="unsplashLoading && !unsplashResults.length" class="empty">
+            Buscando en Unsplash…
+          </div>
+          <p v-else-if="unsplashError" class="unsplash-error">{{ unsplashError }}</p>
+          <template v-else>
+            <div class="grid">
+              <div v-for="photo in unsplashResults" :key="photo.id" class="unsplash-card">
+                <button class="thumb" :title="photo.alt" @click="choose(photo)">
+                  <img :src="photo.thumbUrl" :alt="photo.alt" loading="lazy" />
+                </button>
+                <a
+                  class="unsplash-credit"
+                  :href="photo.creditUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Foto: {{ photo.creditName }}
+                </a>
+              </div>
+            </div>
+            <p v-if="!unsplashResults.length" class="empty">
+              Sin resultados en Unsplash para «{{ search }}».
+            </p>
+            <div v-else-if="unsplashPage < unsplashTotalPages" class="unsplash-more-wrap">
+              <button class="unsplash-more" :disabled="unsplashLoading" @click="loadMoreUnsplash">
+                {{ unsplashLoading ? 'Buscando…' : 'Cargar más' }}
               </button>
             </div>
           </template>
