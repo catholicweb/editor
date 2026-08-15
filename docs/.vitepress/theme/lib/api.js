@@ -32,6 +32,19 @@ async function errText(res) {
   }
 }
 
+// Browsers cap the total payload of keepalive fetches (Chrome: 64 KiB) and
+// reject an over-cap body with TypeError: Failed to fetch. A flush can drop
+// keepalive and still complete while the page is merely hidden; on real
+// unload it is best-effort — the best a body this big can do.
+const KEEPALIVE_BODY_LIMIT = 56 * 1024; // bytes, margin under the 64 KiB cap
+function keepaliveFor(body, wantKeepalive) {
+  if (!wantKeepalive) return false;
+  const bytes = new TextEncoder().encode(String(body)).length;
+  if (bytes <= KEEPALIVE_BODY_LIMIT) return true;
+  console.warn(`[api] body ${bytes} bytes exceeds the keepalive cap; sending without keepalive`);
+  return false;
+}
+
 // ---- worker: magic-link login (no auth) -----------------------------------
 
 export async function requestMagicLink(apiBase, email) {
@@ -131,7 +144,9 @@ export async function putFile(apiBase, slug, token, fileToken, body, contentType
       body,
       // keepalive lets the request survive page unload (used for the on-leave
       // flush). We need a real fetch (not sendBeacon) to carry the bearer token.
-      keepalive,
+      // Dropped automatically when the body would exceed the browser's keepalive
+      // payload cap, which would otherwise reject the request outright.
+      keepalive: keepaliveFor(body, keepalive),
     }
   );
   if (!res.ok) throw new Error(`No se pudo guardar el fichero: ${await errText(res)}`);
@@ -143,6 +158,7 @@ export async function putFile(apiBase, slug, token, fileToken, body, contentType
 // result, which the editor adopts back (so multi-editor freshness is preserved).
 // Scoped to config.json — the only file the editor edits concurrently.
 export async function patchFile(apiBase, slug, token, ops, { keepalive = false } = {}) {
+  const body = JSON.stringify({ ops });
   const res = await fetch(
     `${trimBase(apiBase)}/sites/${encodeURIComponent(slug)}/config.json`,
     {
@@ -151,10 +167,11 @@ export async function patchFile(apiBase, slug, token, ops, { keepalive = false }
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ ops }),
+      body,
       // keepalive lets the request survive page unload (used for the on-leave
       // flush), same as putFile; patches stay small enough to fit the cap.
-      keepalive,
+      // Guarded against the browser's keepalive payload cap regardless.
+      keepalive: keepaliveFor(body, keepalive),
     }
   );
   if (!res.ok) throw new Error(`No se pudo guardar el fichero: ${await errText(res)}`);

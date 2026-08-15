@@ -257,6 +257,13 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug, e
 
     state.schema = schema;
     state.config = config || {}; // Store config in reactive state
+
+    // Remember exactly what the server returned, BEFORE schema defaults are
+    // applied below. Comparing this against the defaulted config tells us
+    // whether the loaded copy already carries the schema-backfilled ids /
+    // defaults (canonical) or needs them persisted (see the fullPutDone block).
+    const rawConfigSnapshot = plainSnapshot(state.config);
+
     state.fileIndex = buildFileIndex(schema); // No longer needs rawTokens
     state.mediaFiles = listMediaFiles(schema, state.mediaUrls);
 
@@ -282,15 +289,39 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug, e
       await openEntry(state.fileIndex[0]);
     }
 
-    // Baseline the dirty check against the loaded (defaulted) config, so a
-    // fresh login shows "Guardado." rather than spurious "Sin guardar".
+    // Baseline the dirty check against the loaded (defaulted) config, so a fresh
+    // login shows "Guardado." rather than spurious "Sin guardar".
     state.savedText = fullConfigText();
 
-    // Patch-save baseline: remember the loaded config and force the first save
-    // to be a full PUT, which persists the schema-backfilled ids server-side
-    // so subsequent { id } patch ops can resolve.
+    // Patch-save baseline: remember the loaded (defaulted) config — the diff
+    // baseline for later { id } patch ops.
     state.baselineConfig = plainSnapshot(state.config);
-    state.fullPutDone = false;
+
+    // If applying schema defaults to the loaded copy changes nothing, the
+    // server already carries the schema-backfilled ids / defaults (canonical):
+    // start in PATCH mode, no initial full PUT — a full PUT would just re-put
+    // the very bytes the server already has (and it is too big for the
+    // keepalive flush on hide). If defaults DO change the config, the copy
+    // genuinely lacks the ids, so persist the canonical form NOW (eager, plain
+    // fetch) instead of deferring to the first user save — the flush path must
+    // never ship a whole-config PUT. A failure here is non-fatal: fullPutDone
+    // stays false and the first user save retries the PUT (the old path).
+    if (diff(rawConfigSnapshot, state.baselineConfig).length === 0) {
+      state.fullPutDone = true;
+    } else {
+      state.fullPutDone = false;
+      try {
+        const text = JSON.stringify(state.config, null, 2) + '\n';
+        await api.putFile(
+          state.apiBase, state.slug, state.editorToken, state.configToken,
+          text, 'application/json; charset=utf-8'
+        );
+        state.fullPutDone = true;
+        state.baselineConfig = plainSnapshot(state.config);
+      } catch (err) {
+        console.warn('Initial id backfill PUT failed; the first save will retry it.', err);
+      }
+    }
 
     saveSession();
     state.status = ''; // Removed connection banner
