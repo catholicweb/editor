@@ -53,27 +53,59 @@ components:
     label: "Formato barra navegación"
     type: select
     options:
-      values: ["default","47herri","centered","minimal","two-row","solid-dark"]
+      values:
+        [
+          { value: "default", label: "Clásica (arriba)" },
+          { value: "47herri", label: "47herri (oscura y compacta)" },
+          { value: "centered", label: "Centrada (logo en el medio)" },
+          { value: "minimal", label: "Minimalista (solo lo esencial)" },
+          { value: "two-row", label: "Dos filas (logo arriba, menú abajo)" },
+          { value: "solid-dark", label: "Oscura y sólida" },
+        ]
   radiusSelect:
     label: "Redondez de elementos"
     type: select
     options:
-      values: ["sharp","soft","rounded","pill"]
+      values:
+        [
+          { value: "sharp", label: "Esquinas rectas" },
+          { value: "soft", label: "Redondeo suave" },
+          { value: "rounded", label: "Redondeo amplio" },
+          { value: "pill", label: "Forma de píldora (muy redondeado)" },
+        ]
   shadowSelect:
     label: "Intensidad de sombras"
     type: select
     options:
-      values: ["none","light","medium","strong"]
+      values:
+        [
+          { value: "none", label: "Sin sombra (plano)" },
+          { value: "light", label: "Sombra suave" },
+          { value: "medium", label: "Sombra media" },
+          { value: "strong", label: "Sombra intensa" },
+        ]
   buttonStyle:
     label: "Estilo de botones"
     type: select
     options:
-      values: ["solid","outline","soft","pill"]
+      values:
+        [
+          { value: "solid", label: "Sólido (con relleno de color)" },
+          { value: "outline", label: "Contorno (solo borde)" },
+          { value: "soft", label: "Suave / claro" },
+          { value: "pill", label: "Forma de píldora (muy redondeado)" },
+        ]
   footerStyle:
     label: "Estilo de pie de página"
     type: select
     options:
-      values: ["auto","standard","minimal","expanded"]
+      values:
+        [
+          { value: "auto", label: "Automático (según el contenido)" },
+          { value: "standard", label: "Estándar" },
+          { value: "minimal", label: "Minimalista (solo lo esencial)" },
+          { value: "expanded", label: "Amplio (todo el detalle)" },
+        ]
   font:
     label: Tipo letra
     type: select
@@ -470,10 +502,10 @@ content:
         component: font
         options: { themeRole: body }
       - { name: navStyle, label: Estilo de la barrra de navegación, component: navigationBar }
-      - { name: radius, label: "Redondez de elementos (sharp/soft/rounded/pill)", component: radiusSelect }
-      - { name: shadow, label: "Intensidad de sombras (none/light/medium/strong)", component: shadowSelect }
-      - { name: buttonStyle, label: "Estilo de botones (solid/outline/soft/pill)", component: buttonStyle }
-      - { name: footerStyle, label: "Estilo de pie de página (auto/standard/minimal/expanded)", component: footerStyle }
+      - { name: radius, label: "Redondez de elementos", component: radiusSelect, options: { themeRole: radius } }
+      - { name: shadow, label: "Intensidad de sombras", component: shadowSelect, options: { themeRole: shadow } }
+      - { name: buttonStyle, label: "Estilo de botones", component: buttonStyle, options: { themeRole: buttonStyle } }
+      - { name: footerStyle, label: "Estilo de pie de página", component: footerStyle }
       - name: styles
         label: Estilos avanzados
         type: object

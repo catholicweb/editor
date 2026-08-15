@@ -274,6 +274,9 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug, e
     // Apply fonts from config
     applyFontsFromConfig();
 
+    // Apply radius/shadow/buttonStyle design tokens from config (live preview)
+    applyDesignTokensFromConfig();
+
     // Auto-open the first file if no file is currently open
     if (!state.currentEntry && state.fileIndex.length > 0) {
       await openEntry(state.fileIndex[0]);
@@ -382,6 +385,12 @@ watch(() => themeValue('heading'), (newFont) => {
   }
 });
 
+// Watch for design-token changes (radius/shadow/buttonStyle) in config.
+// Any of the three changing re-applies the whole token set cheaply; it is idempotent.
+watch([() => themeValue('radius'), () => themeValue('shadow'), () => themeValue('buttonStyle')], () => {
+  applyDesignTokensFromConfig();
+});
+
 // Accept only #RGB / #RRGGBB hex colors; anything else is rejected so a
 // malicious or malformed config value can't inject into CSS or produce NaN.
 function validHexColor(str) {
@@ -460,6 +469,51 @@ function applyFontsFromConfig() {
     loadGoogleFont(headingFont);
     document.documentElement.style.setProperty('--pe-heading-font', `"${headingFont}", system-ui, -apple-system, sans-serif`);
   }
+}
+
+// Design-token presets mirror the web-template's `css.js` RADIUS_PRESETS /
+// SHADOW_PRESETS (rem values converted to px and remapped onto the editor's
+// three size tokens). Values must stay whitelisted constants keyed by the
+// schema's enum tokens — never raw config text — so a malformed config value
+// can't inject CSS. Unknown tokens fall back to a sensible default.
+const RADIUS_PRESETS = {
+  sharp: { sm: '0px', radius: '0px', lg: '0px' },
+  soft: { sm: '4px', radius: '8px', lg: '12px' },
+  rounded: { sm: '8px', radius: '12px', lg: '16px' },
+  pill: { sm: '12px', radius: '16px', lg: '24px' },
+};
+const SHADOW_PRESETS = {
+  none: { sm: '0 0 transparent', radius: '0 0 transparent', lg: '0 0 transparent' },
+  light: {
+    sm: '0 1px 2px 0 rgb(0 0 0 / 0.03)',
+    radius: '0 1px 2px -1px rgb(0 0 0 / 0.04)',
+    lg: '0 4px 6px -2px rgb(0 0 0 / 0.04)',
+  },
+  medium: {
+    sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+    radius: '0 1px 3px rgb(0 0 0 / 0.06), 0 2px 6px -1px rgb(0 0 0 / 0.08)',
+    lg: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+  },
+  strong: {
+    sm: '0 2px 4px 0 rgb(0 0 0 / 0.08)',
+    radius: '0 4px 8px -1px rgb(0 0 0 / 0.12), 0 2px 4px -2px rgb(0 0 0 / 0.12)',
+    lg: '0 18px 24px -5px rgb(0 0 0 / 0.16), 0 6px 8px -6px rgb(0 0 0 / 0.16)',
+  },
+};
+
+// Apply radius/shadow/buttonStyle design tokens to the editor's own CSS custom
+// properties so the editor previews the site's look at runtime.
+function applyDesignTokensFromConfig() {
+  const rv = RADIUS_PRESETS[themeValue('radius')] || RADIUS_PRESETS.soft;
+  const sv = SHADOW_PRESETS[themeValue('shadow')] || SHADOW_PRESETS.medium;
+  const root = document.documentElement;
+  root.style.setProperty('--pe-radius-sm', rv.sm);
+  root.style.setProperty('--pe-radius', rv.radius);
+  root.style.setProperty('--pe-radius-lg', rv.lg);
+  root.style.setProperty('--pe-shadow-sm', sv.sm);
+  root.style.setProperty('--pe-shadow', sv.radius);
+  root.style.setProperty('--pe-shadow-lg', sv.lg);
+  root.dataset.themeButton = themeValue('buttonStyle') || 'solid';
 }
 
 async function fetchSchemaText(schemaUrl) {
@@ -697,6 +751,7 @@ export async function saveCurrent({ keepalive = false } = {}) {
       // calling directly is immediate and safe).
       applyAccentColorFromConfig();
       applyFontsFromConfig();
+      applyDesignTokensFromConfig();
       state.baselineConfig = plainSnapshot(state.config);
     }
 
@@ -756,6 +811,7 @@ export async function restoreConfig(newConfig) {
   // theme watches would also fire, but calling directly is immediate and safe).
   applyAccentColorFromConfig();
   applyFontsFromConfig();
+  applyDesignTokensFromConfig();
 
   state.error = '';
   state.status = 'Versión restaurada. Revisa y guarda.';
@@ -890,6 +946,7 @@ export async function refreshConfig() {
     state.currentBody = '';
     applyAccentColorFromConfig();
     applyFontsFromConfig();
+    applyDesignTokensFromConfig();
 
     // Resnapshot the patch baseline against the adopted tree and align the
     // whole-config dirty baseline so isDirty stays false and "Guardado." shows.
