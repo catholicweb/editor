@@ -27,8 +27,11 @@ function ensureEventsShape() {
 }
 ensureEventsShape();
 
-// The value is the live events document (a reactive proxy passed in by FieldRenderer).
-const value = props.container;
+// The live events document. Read props.container through a computed so we
+// follow the store's post-save/restore/refresh re-alias of state.config /
+// state.draft onto a fresh tree (a one-time `const value = props.container`
+// snapshot would hold a detached events doc whose edits isDirty/autosave can't see).
+const value = computed(() => props.container);
 
 // Get event fields from schema
 const eventFields = computed(() => {
@@ -54,7 +57,7 @@ const weekStart = ref(startOfWeek(new Date()));
 const editingIndex = ref(null); // index into value[listKey]
 const modalOpen = computed(() => editingIndex.value !== null);
 const editingEvent = computed(() =>
-  editingIndex.value === null ? null : value[listKey]?.[editingIndex.value]
+  editingIndex.value === null ? null : value.value[listKey]?.[editingIndex.value]
 );
 const presetOccurrence = ref(null); // occurrence clicked on the grid, used as default for exceptions
 
@@ -72,19 +75,19 @@ function addEvent(preset = {}) {
   if (preset.time) evt.times = preset.time ? [preset.time] : [];
   // New events default to the first celebrant (the párroco / moderador) so
   // they're never left without one.
-  const first = value[celebrantsKey]?.[0];
+  const first = value.value[celebrantsKey]?.[0];
   if (first) evt.celebrants = [first.id];
   // Ensure value[listKey] exists before pushing
-  if (!Array.isArray(value[listKey])) value[listKey] = [];
-  value[listKey].push(evt);
-  editingIndex.value = value[listKey].length - 1;
+  if (!Array.isArray(value.value[listKey])) value.value[listKey] = [];
+  value.value[listKey].push(evt);
+  editingIndex.value = value.value[listKey].length - 1;
 }
 function removeEvent() {
   const i = editingIndex.value;
   if (i === null) return;
   if (!confirm('¿Eliminar este evento?')) return;
-  if (value[listKey]) {
-    value[listKey].splice(i, 1);
+  if (value.value[listKey]) {
+    value.value[listKey].splice(i, 1);
   }
   editingIndex.value = null;
 }
@@ -95,9 +98,9 @@ async function duplicateEvent() {
   const { id, except, ...rest } = src;
   const evt = { ...rest, id: generateId('evt'), except: [] };
   // Ensure value[listKey] exists before pushing
-  if (!Array.isArray(value[listKey])) value[listKey] = [];
-  value[listKey].push(evt);
-  const newIndex = value[listKey].length - 1;
+  if (!Array.isArray(value.value[listKey])) value.value[listKey] = [];
+  value.value[listKey].push(evt);
+  const newIndex = value.value[listKey].length - 1;
   closeModal();
   // Open the new event after the modal resets.
   nextTick(() => {
