@@ -28,9 +28,10 @@ function ensureEventsShape() {
 ensureEventsShape();
 
 // The live events document. Read props.container through a computed so we
-// follow the store's post-save/restore/refresh re-alias of state.config /
-// state.draft onto a fresh tree (a one-time `const value = props.container`
-// snapshot would hold a detached events doc whose edits isDirty/autosave can't see).
+// follow the store's post-save/restore/refresh config swaps — state.config is
+// replaced wholesale and `currentData` (the prop's source) reads the open tab
+// live from the new tree. A one-time `const value = props.container` snapshot
+// would hold a detached events doc whose edits isDirty/autosave can't see.
 const value = computed(() => props.container);
 
 // Get event fields from schema

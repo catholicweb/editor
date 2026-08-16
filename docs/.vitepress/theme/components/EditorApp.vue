@@ -4,7 +4,7 @@ import LoginView from './auth/LoginView.vue';
 import AdminView from './auth/AdminView.vue';
 import FieldBrowser from './FieldBrowser.vue';
 import FieldsGroup from './FieldsGroup.vue';
-import { state, isLoggedIn, isDirty, login, redeemMagic, loadSavedSession, initBeforeUnloadHandler, openEntry, saveCurrent, restoreConfig, DEFAULTS } from '../lib/store.js';
+import { state, isLoggedIn, isDirty, currentData, login, redeemMagic, loadSavedSession, initBeforeUnloadHandler, openEntry, saveCurrent, restoreConfig, DEFAULTS } from '../lib/store.js';
 import UserAvatar from './UserAvatar.vue';
 import PeIcon from './PeIcon.vue';
 import VersionHistoryModal from './VersionHistoryModal.vue';
@@ -251,11 +251,11 @@ const isCalendarDoc = computed(() =>
       </transition>
 
       <div
-        v-if="state.currentEntry && state.draft"
+        v-if="state.currentEntry"
         class="document"
         :class="{ 'document-wide': isCalendarDoc }"
       >
-        <FieldsGroup :fields="state.currentEntry.fields" :container="state.draft" />
+        <FieldsGroup :fields="state.currentEntry.fields" :container="currentData" />
       </div>
       <div v-else class="empty-state">
         <div class="empty-icon">📄</div>
