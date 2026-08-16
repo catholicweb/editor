@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue';
 import { state } from '../lib/store.js';
 import { ensurePath } from '../lib/schema.js';
-import { recurrenceLabel } from '../lib/calendar.js';
+import { recurrenceLabel, generateId } from '../lib/calendar.js';
 import PeIcon from './PeIcon.vue';
 
 const props = defineProps({
@@ -359,6 +359,10 @@ function mergePlaces(osmPlaces, misasPlaces) {
 // Map API event to our event structure
 function mapEvent(apiEvent, place) {
   return {
+    // Stable id so the events list stays keyed for lib/patch.js (per-field
+    // last-edit-wins) instead of degrading to a wholesale keyless replace when
+    // autodiscovered events mix with hand-authored ones. Mirrors newEvent().
+    id: generateId('evt'),
     type: 'mass',
     location: place.name,
     date: apiEvent.date || null,
