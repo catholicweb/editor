@@ -7,12 +7,24 @@ components:
     label: Text Content
     type: rich-text
   ordering:
-    label: Ordering
+    label: Agrupación
     type: select
     options:
       multiple: true
       creatable: true
-      values: ["title", "dates", "times", "locations", "byday", "language", "notes", "weekday", "byweek", "empty"]
+      values:
+        [
+          { value: "title", label: "Título" },
+          { value: "dates", label: "Fecha" },
+          { value: "times", label: "Hora" },
+          { value: "locations", label: "Lugar" },
+          { value: "byday", label: "Día de la semana" },
+          { value: "language", label: "Idioma" },
+          { value: "notes", label: "Notas" },
+          { value: "weekday", label: "Agrupación de días" },
+          { value: "byweek", label: "Semana del mes" },
+          { value: "empty", label: "Vacío (sin agrupar)" },
+        ]
   times:
     label: horas
     type: select
@@ -48,7 +60,23 @@ components:
     options:
       multiple: true
       creatable: true
-      values: ["Español:es", "Català:ca", "Galego:gl", "Euskara:eu", "English:en", "Français:fr", "Deutsch:de", "Italiano:it", "Português:pt", "Română:ro", "العربية:ar", "中文:zh", "Български:bg", "Polski:pl"]
+      values:
+        [
+          { value: "Español:es", label: "Español" },
+          { value: "Català:ca", label: "Català" },
+          { value: "Galego:gl", label: "Galego" },
+          { value: "Euskara:eu", label: "Euskara" },
+          { value: "English:en", label: "English" },
+          { value: "Français:fr", label: "Français" },
+          { value: "Deutsch:de", label: "Deutsch" },
+          { value: "Italiano:it", label: "Italiano" },
+          { value: "Português:pt", label: "Português" },
+          { value: "Română:ro", label: "Română" },
+          { value: "العربية:ar", label: "العربية" },
+          { value: "中文:zh", label: "中文" },
+          { value: "Български:bg", label: "Български" },
+          { value: "Polski:pl", label: "Polski" },
+        ]
   navigationBar:
     label: "Formato barra navegación"
     type: select
@@ -117,7 +145,52 @@ components:
     type: select
     options:
       creatable: true
-      values: ["h1", "h2", "h3", "h4", "h5", "h6", "p", "img", "blockquote", "a", "ul", "ol", "li", "div", "span", "strong", "em", "br", "hr", "table", "tr", "td", "th", "form", "input", "button", "label", "select", "option", "textarea", "iframe", "header", "footer", "nav", "article", "section", "aside", "details", "summary", "video", "audio", "canvas", "svg"]
+      values:
+        [
+          { value: "h1", label: "Título (h1)" },
+          { value: "h2", label: "Subtítulo (h2)" },
+          { value: "h3", label: "Sección (h3)" },
+          { value: "h4", label: "Título pequeño (h4)" },
+          { value: "h5", label: "Titular menor (h5)" },
+          { value: "h6", label: "Titular menor (h6)" },
+          { value: "p", label: "Párrafo" },
+          { value: "img", label: "Imagen" },
+          { value: "blockquote", label: "Cita" },
+          { value: "a", label: "Enlace" },
+          { value: "ul", label: "Lista con viñetas" },
+          { value: "ol", label: "Lista numerada" },
+          { value: "li", label: "Elemento de lista" },
+          { value: "div", label: "Contenedor (div)" },
+          { value: "span", label: "Texto inline" },
+          { value: "strong", label: "Negrita (strong)" },
+          { value: "em", label: "Cursiva (em)" },
+          { value: "br", label: "Salto de línea" },
+          { value: "hr", label: "Línea separadora" },
+          { value: "table", label: "Tabla" },
+          { value: "tr", label: "Fila de tabla" },
+          { value: "td", label: "Celda de tabla" },
+          { value: "th", label: "Celda cabecera" },
+          { value: "form", label: "Formulario" },
+          { value: "input", label: "Campo de entrada" },
+          { value: "button", label: "Botón" },
+          { value: "label", label: "Etiqueta" },
+          { value: "select", label: "Lista desplegable" },
+          { value: "option", label: "Opción" },
+          { value: "textarea", label: "Área de texto" },
+          { value: "iframe", label: "Marco insertado" },
+          { value: "header", label: "Cabecera" },
+          { value: "footer", label: "Pie de página" },
+          { value: "nav", label: "Navegación" },
+          { value: "article", label: "Artículo" },
+          { value: "section", label: "Sección" },
+          { value: "aside", label: "Lateral (aside)" },
+          { value: "details", label: "Detalle plegable" },
+          { value: "summary", label: "Resumen plegable" },
+          { value: "video", label: "Vídeo" },
+          { value: "audio", label: "Audio" },
+          { value: "canvas", label: "Lienzo" },
+          { value: "svg", label: "Gráfico vectorial" },
+        ]
   blocktype:
     label: Selector
     type: select
@@ -136,12 +209,22 @@ components:
     options:
       source: "info.places"
   tags:
-    label: Options
+    label: Opciones
     type: select
     options:
       multiple: true
       creatable: false
-      values: ["dark", "twocol", "small", "tiny", "large", "hidden", "3d", "carousel"]
+      values:
+        [
+          { value: "dark", label: "Fondo oscuro" },
+          { value: "twocol", label: "Dos columnas" },
+          { value: "small", label: "Elementos pequeños" },
+          { value: "tiny", label: "Elementos muy pequeños" },
+          { value: "large", label: "Elementos grandes" },
+          { value: "hidden", label: "Ocultar sección" },
+          { value: "3d", label: "Efecto 3D" },
+          { value: "carousel", label: "Carrusel" },
+        ]
   rrule:
     label: Fechas
     type: select
@@ -173,7 +256,28 @@ components:
     type: select
     options:
       creatable: true
-      values: ["opacity: 0;", "opacity: 0.5;", "transform: scale(0.8);", "transform: scale(1.2);", "transform: scaleX(1.5);", "transform: scaleY(.5);", "transform: rotate(6deg);", "transform: rotate(-6deg);", "transform: translateX(-20%);", "transform: translateX(20%);", "transform: translateY(-20%);", "transform: translateY(20%);", "transform: translate(-50%, -50%);", "filter: blur(5px);", "filter: brightness(1.2);", "filter: contrast(150%);", "filter: grayscale(100%);", "filter: invert(100%);", "color: rgb(var(--color-accent));"]
+      values:
+        [
+          { value: "opacity: 0;", label: "Invisible (opacidad 0)" },
+          { value: "opacity: 0.5;", label: "Semitransparente (opacidad 50%)" },
+          { value: "transform: scale(0.8);", label: "Reducir tamaño (80%)" },
+          { value: "transform: scale(1.2);", label: "Aumentar tamaño (120%)" },
+          { value: "transform: scaleX(1.5);", label: "Ensanchar (150%)" },
+          { value: "transform: scaleY(.5);", label: "Comprimir vertical" },
+          { value: "transform: rotate(6deg);", label: "Rotar 6°" },
+          { value: "transform: rotate(-6deg);", label: "Rotar -6°" },
+          { value: "transform: translateX(-20%);", label: "Desplazar izquierda" },
+          { value: "transform: translateX(20%);", label: "Desplazar derecha" },
+          { value: "transform: translateY(-20%);", label: "Desplazar arriba" },
+          { value: "transform: translateY(20%);", label: "Desplazar abajo" },
+          { value: "transform: translate(-50%, -50%);", label: "Centrar" },
+          { value: "filter: blur(5px);", label: "Desenfocar (5px)" },
+          { value: "filter: brightness(1.2);", label: "Más brillo (120%)" },
+          { value: "filter: contrast(150%);", label: "Más contraste (150%)" },
+          { value: "filter: grayscale(100%);", label: "Escala de grises" },
+          { value: "filter: invert(100%);", label: "Invertir colores" },
+          { value: "color: rgb(var(--color-accent));", label: "Color de acento" },
+        ]
   hero:
     label: Hero
     type: object
@@ -435,7 +539,11 @@ content:
                 options:
                   multiple: false
                   creatable: true
-                  values: ["video", "dates"]
+                  values:
+                    [
+                      { value: "video", label: "Vídeo" },
+                      { value: "dates", label: "Fechas" },
+                    ]
               - { name: value, label: Valor, type: string }
       - name: autodiscover
         label: Encontrar templos
