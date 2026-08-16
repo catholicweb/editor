@@ -60,9 +60,14 @@ export const state = reactive({
 
   // currently open document
   currentEntry: null,
-  draft: null, // reactive parsed data object
-  currentBody: '', // markdown body text (preserved but not edited), for round-trip
-  savedText: '', // whole-config serialization last confirmed on the server (dirty baseline)
+  // ⚠️ REACTIVITY INVARIANT — READ BEFORE EDITING ⚠️
+  // state.config is the SINGLE source of truth (reactive). There is deliberately
+  // NO `state.draft` buffer for the open tab — the form binds to the `currentData`
+  // computed (exported below), which reads state.config[currentEntry.tabPath] LIVE.
+  // This eliminates the alias-drift bug class: edits can never escape the config
+  // into a detached per-tab handle, because no such handle exists. If you find
+  // yourself tempted to add a draft field, bind to currentData instead.
+  savedText: '', // whole-config JSON last confirmed on the server (dirty baseline)
 
   // Patch-save state (see lib/patch.js). `baselineConfig` is a plain deep clone
   // of the last server-confirmed config (the diff baseline). `fullPutDone` records
@@ -74,20 +79,24 @@ export const state = reactive({
 
 export const isLoggedIn = computed(() => !!state.slug && !!state.schema);
 
-// Serialize the WHOLE config for dirty comparison, overlaying the currently
-// open tab's draft. The active draft can diverge from `state.config[tab]` after
-// a save (saveCurrent replaces that key with a copy), so we must read edits
-// from the draft rather than from `state.config` when comparing.
-function fullConfigText() {
-  const base = state.config || {};
-  if (state.currentEntry && state.draft != null) {
-    return JSON.stringify(
-      { ...base, [state.currentEntry.tabPath]: { ...state.draft } },
-      null,
-      2
-    ) + '\n';
-  }
-  return JSON.stringify(base, null, 2) + '\n';
+// THE single accessor for the open tab's data. ALWAYS reads state.config live —
+// never caches a snapshot, never reassigns. Components receive this (via
+// `:container`) as a plain reactive object; Vue auto-unwraps the computed in
+// templates and prop bindings. Because it's a computed getter over state.config,
+// config swaps (post-save/restore/refresh) propagate automatically — there is
+// no handle to re-alias.
+export const currentData = computed(() => {
+  if (!state.currentEntry || !state.config) return null;
+  return state.config[state.currentEntry.tabPath];
+});
+
+// Serialize the WHOLE config for dirty comparison, version snapshots, and save
+// baselines. There is no draft overlay: currentData reads state.config[tabPath]
+// directly, so this single serialization captures every edit. The diff
+// (lib/patch.js) receives plainSnapshot(state.config) elsewhere; this function
+// is only for string-level dirty tracking.
+function serializeCurrent() {
+  return JSON.stringify(state.config || {}, null, 2) + '\n';
 }
 
 // A non-reactive plain-object snapshot of the config. The diff (lib/patch.js)
@@ -98,8 +107,8 @@ function plainSnapshot(raw) {
 }
 
 export const isDirty = computed(() => {
-  if (!state.config || state.draft == null) return false;
-  return fullConfigText() !== state.savedText;
+  if (!state.config) return false;
+  return serializeCurrent() !== state.savedText;
 });
 
 // ---------------------------------------------------------------------------
@@ -107,11 +116,13 @@ export const isDirty = computed(() => {
 // ---------------------------------------------------------------------------
 
 // Serialize the current WHOLE config into a version snapshot. Uses
-// fullConfigText() so an unsaved tab draft is captured too. Best-effort: a
-// failure (quota, unsupported CompressionStream) must never break a save.
+// serializeCurrent() — there is no draft to overlay; currentData reads
+// state.config[tabPath] live, so the whole config is always up to date.
+// Best-effort: a failure (quota, unsupported CompressionStream) must never
+// break a save.
 export async function snapshotCurrent(label = '') {
   if (!state.slug || !state.config) return;
-  await versions.pushSnapshot(lsKey('versions', state.slug), fullConfigText(), label);
+  await versions.pushSnapshot(lsKey('versions', state.slug), serializeCurrent(), label);
 }
 
 // Local snapshots the modal lists. Chronological order; the modal sorts.
@@ -291,7 +302,7 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug, e
 
     // Baseline the dirty check against the loaded (defaulted) config, so a fresh
     // login shows "Guardado." rather than spurious "Sin guardar".
-    state.savedText = fullConfigText();
+    state.savedText = serializeCurrent();
 
     // Patch-save baseline: remember the loaded (defaulted) config — the diff
     // baseline for later { id } patch ops.
@@ -579,8 +590,7 @@ export function logout() {
   state.mediaFiles = [];
   state.editors = [];
   state.currentEntry = null;
-  state.draft = null;
-  state.currentBody = '';
+  // No draft/currentBody reset — those fields no longer exist (see currentData).
   state.savedText = '';
   state.baselineConfig = null;
   state.fullPutDone = false;
@@ -597,7 +607,8 @@ export async function switchSlug(slug) {
 
   state.error = '';
   // Kill any pending autosave timer so it can never fire mid-switch with a stale
-  // draft (the deep watch below would schedule a fresh one for the new slug).
+  // config reference (the deep watch below would schedule a fresh one for the
+  // new slug).
   if (autosaveTimer) {
     clearTimeout(autosaveTimer);
     autosaveTimer = null;
@@ -615,8 +626,7 @@ export async function switchSlug(slug) {
   // Reset the slug-scoped leftovers login() won't clear so its auto-open picks
   // the new slug's first tab and the editor roster is re-loaded by the caller.
   state.currentEntry = null;
-  state.draft = null;
-  state.currentBody = '';
+  // No draft/currentBody reset — those fields no longer exist (see currentData).
   state.editors = [];
 
   // Belt-and-braces: explicitly reset the patch-save / dirty baseline so we
@@ -692,16 +702,18 @@ export async function openEntry(entry) {
       }
     }
 
-    // Extract the relevant field from config.json
-    const data = state.config ? (state.config[entry.tabPath] || {}) : {};
-
-    // Apply defaults from schema (a no-op for tabs already defaulted at login).
-    applyDefaults(entry.fields, data);
+    // Ensure the open tab's slot exists IN config (the single source of truth).
+    // currentData reads state.config[tabPath] live — the object MUST live in
+    // config, never a detached copy, or edits would never reach state.config.
+    // (applyDefaults at login normally covers this; this is the safety net for
+    // lazily-loaded configs.)
+    if (!state.config) state.config = {};
+    if (!state.config[entry.tabPath]) state.config[entry.tabPath] = {};
+    applyDefaults(entry.fields, state.config[entry.tabPath]);
 
     state.currentEntry = entry;
-    state.draft = reactive(data);
-    state.currentBody = '';
-    // Note: `savedText` (the whole-config dirty baseline) is intentionally NOT
+    // NOTE: no state.draft / state.currentBody assignment — see currentData.
+    // `savedText` (the whole-config dirty baseline) is intentionally NOT
     // touched here. It only advances on a confirmed save or login, so switching
     // tabs can never clear pending changes.
     state.status = '';
@@ -713,18 +725,19 @@ export async function openEntry(entry) {
 }
 
 export async function saveCurrent({ keepalive = false } = {}) {
-  if (!state.currentEntry || state.draft == null) return;
+  if (!state.currentEntry || !state.config) return;
   state.loading = true;
   state.saving = true;
   state.error = '';
   try {
     const entry = state.currentEntry;
 
-    // `state.draft` aliases `state.config[tabPath]` (see openEntry), so every
-    // edit already lives in the whole config — no need to copy the tab here.
-    // Deliberately NOT replacing `config[tabPath]` with a copy: that used to
-    // sever the alias, letting edits made after a save escape the config until
-    // the next save. After a confirm we re-alias the draft to the adopted tree.
+    // Every edit already flows directly into state.config (via the currentData
+    // computed), so there is nothing to copy here. Deliberately NOT replacing
+    // config[tabPath] with a copy: that used to sever the alias and let post-save
+    // edits escape the config until the next save. With currentData there is no
+    // handle to re-alias — the form always reads state.config[tabPath] live, so
+    // the adopted tree (below) is seen immediately.
     state.config = state.config || {};
 
     let fileToken = entry.fileToken || state.configToken;
@@ -764,9 +777,10 @@ export async function saveCurrent({ keepalive = false } = {}) {
 
     // Only advance the whole-config dirty baseline after a CONFIRMED save, so a
     // transient failure never looks like the data was persisted. Adopt the
-    // merged config (a PATCH may include other editors' changes), re-alias the
-    // open tab's draft to the new tree (mirrors openEntry), and resnapshot the
-    // patch baseline against it.
+    // merged config (a PATCH may include other editors' changes), ensure the
+    // open tab survives in the adopted tree, and resnapshot the patch baseline
+    // against it. currentData reads state.config[tabPath] live, so the form
+    // automatically sees the adopted tree — no draft handle to re-alias.
     if (mergedData) {
       if (mergedData !== state.config) state.config = reactive(mergedData);
       let data = state.config[entry.tabPath];
@@ -775,8 +789,6 @@ export async function saveCurrent({ keepalive = false } = {}) {
         state.config[entry.tabPath] = data;
       }
       applyDefaults(entry.fields, data);
-      state.draft = reactive(data);
-      state.currentBody = '';
       // Adopted config may carry different theme values (e.g. from another
       // editor); re-apply them now (the theme watches would also fire, but
       // calling directly is immediate and safe).
@@ -786,7 +798,7 @@ export async function saveCurrent({ keepalive = false } = {}) {
       state.baselineConfig = plainSnapshot(state.config);
     }
 
-    state.savedText = fullConfigText();
+    state.savedText = serializeCurrent();
     lastSavedAt = Date.now();
     state.status = 'Guardado.';
 
@@ -823,19 +835,18 @@ export async function restoreConfig(newConfig) {
     autosaveTimer = null;
   }
 
-  // Swap in the restored config and re-alias the open tab's draft (mirrors the
-  // tail of openEntry) so the form edits the new data, not the old object tree.
+  // Swap in the restored config. currentData reads state.config[tabPath] live,
+  // so the form automatically edits the new tree — no draft handle to re-alias.
+  // Just ensure the open tab survives in the adopted tree.
   state.config = reactive(newConfig || {});
   const entry = state.currentEntry;
-  if (entry && state.draft != null) {
+  if (entry) {
     let data = state.config[entry.tabPath];
     if (!data) {
       data = {};
       state.config[entry.tabPath] = data;
     }
     applyDefaults(entry.fields, data);
-    state.currentBody = '';
-    state.draft = reactive(data);
   }
 
   // Restored config may carry different theme values; re-apply them now (the
@@ -850,10 +861,11 @@ export async function restoreConfig(newConfig) {
   // `savedText` is intentionally NOT advanced — the restore must read as a
   // pending change against the server's last-known serialization.
 
-  // Swapping state.draft fires the deep autosave watch, which would otherwise
-  // schedule an unprompted write of the restore within AUTOSAVE_DELAY. The
-  // watcher (flush: 'pre') runs before nextTick's post-flush callback, so await
-  // it and clear the timer it just scheduled.
+  // Swapping state.config fires the deep autosave watch (it tracks
+  // currentData, which reads state.config), which would otherwise schedule an
+  // unprompted write of the restore within AUTOSAVE_DELAY. The watcher
+  // (flush: 'pre') runs before nextTick's post-flush callback, so await it and
+  // clear the timer it just scheduled.
   await nextTick();
   if (autosaveTimer) {
     clearTimeout(autosaveTimer);
@@ -871,10 +883,10 @@ export function scheduleAutosave() {
 
   // Set new timer
   autosaveTimer = setTimeout(async () => {
-    if (!state.currentEntry || state.draft == null) return;
+    if (!state.currentEntry) return;
 
     // Check if there are changes across the whole config
-    if (fullConfigText() === state.savedText) return; // No changes
+    if (serializeCurrent() === state.savedText) return; // No changes
 
     // Save
     try {
@@ -906,17 +918,15 @@ export async function uploadMedia(file, relPath) {
   return url;
 }
 
-// Autosave: watch for changes and trigger autosave
-watch(
-  () => state.draft,
-  (newDraft) => {
-    if (newDraft) {
-      // Schedule autosave when draft changes
-      scheduleAutosave();
-    }
-  },
-  { deep: true }
-);
+// Autosave: deep-watch the open tab's data via the currentData computed so any
+// mutation that reaches state.config[tabPath] schedules a debounced save. Watching
+// currentData (instead of a draft handle) means config swaps from post-save/
+// restore/refresh are automatically tracked — no stale reference can miss a
+// change. The timer is cleared in restoreConfig/refreshConfig after they swap
+// state.config (a nextTick() that catches the flush:'pre' watcher).
+watch(currentData, (data) => {
+  if (data) scheduleAutosave();
+}, { deep: true });
 
 // Leave handler: when the tab is hidden, navigated away from, or closed, push
 // any pending changes to the server. The request uses fetch keepalive so it
@@ -963,7 +973,8 @@ export async function refreshConfig() {
     if (!fresh || typeof fresh !== 'object') return;
 
     // Adoption tail — mirrors saveCurrent/restoreConfig. Replacing state.config
-    // severs the draft alias, so re-alias the open tab's draft to the new tree.
+    // is safe: currentData reads state.config[tabPath] live, so the form
+    // automatically follows the new tree. Just ensure the open tab survives.
     state.config = reactive(fresh);
     if (entry) {
       let data = state.config[entry.tabPath];
@@ -972,9 +983,7 @@ export async function refreshConfig() {
         state.config[entry.tabPath] = data;
       }
       applyDefaults(entry.fields, data);
-      state.draft = reactive(data);
     }
-    state.currentBody = '';
     applyAccentColorFromConfig();
     applyFontsFromConfig();
     applyDesignTokensFromConfig();
@@ -982,7 +991,7 @@ export async function refreshConfig() {
     // Resnapshot the patch baseline against the adopted tree and align the
     // whole-config dirty baseline so isDirty stays false and "Guardado." shows.
     state.baselineConfig = plainSnapshot(state.config);
-    state.savedText = fullConfigText();
+    state.savedText = serializeCurrent();
     state.status = 'Guardado.';
   } catch (err) {
     // Non-fatal: keep the current config and just log; the next visible event
