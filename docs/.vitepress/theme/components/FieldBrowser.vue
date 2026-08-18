@@ -13,6 +13,8 @@ function isCurrentEntry(entry) {
 async function selectEntry(entry) {
   if (isCurrentEntry(entry)) return;
 
+  state.info = '';  // user navigated — clear the welcome banner
+
   // Update URL with the current tab (for deep linking / browser history)
   const newUrl = `${window.location.pathname}?edit=${entry.tabPath}`;
   window.history.pushState({}, '', newUrl);

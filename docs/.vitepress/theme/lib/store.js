@@ -48,6 +48,7 @@ export const state = reactive({
   // ui
   status: '',
   error: '',
+  info: '',       // transient success/welcome message (green banner, mirrors error)
   loading: false,
   saving: false, // true while a save request is in flight (drives the header disk indicator)
 
@@ -367,6 +368,8 @@ export async function redeemMagic({ apiBase, dataBase, schemaUrl, code }) {
   try {
     const { slug, token, email, slugs } = await api.exchangeMagic(apiBase, code);
     await login({ apiBase, dataBase, schemaUrl, editorToken: token, slug, email, slugs });
+    // Green welcome banner — only on magic-link login, not saved-session auto-login.
+    state.info = `¡Bienvenido! Completa los datos a continuación para publicar tu sitio en ${state.slug}.parroquia.app`;
   } catch (err) {
     state.error = err.message || String(err);
     throw err;
@@ -596,6 +599,7 @@ export function logout() {
   state.fullPutDone = false;
   state.status = '';
   state.error = '';
+  state.info = '';
 }
 
 // Switch the active slug to another site the SAME email can edit (multisession).
@@ -606,6 +610,7 @@ export async function switchSlug(slug) {
   if (!slug || slug === state.slug || !Array.isArray(state.slugs) || !state.slugs.includes(slug)) return;
 
   state.error = '';
+  state.info = '';
   // Kill any pending autosave timer so it can never fire mid-switch with a stale
   // config reference (the deep watch below would schedule a fresh one for the
   // new slug).
@@ -729,6 +734,7 @@ export async function saveCurrent({ keepalive = false } = {}) {
   state.loading = true;
   state.saving = true;
   state.error = '';
+  state.info = '';
   try {
     const entry = state.currentEntry;
 
@@ -856,6 +862,7 @@ export async function restoreConfig(newConfig) {
   applyDesignTokensFromConfig();
 
   state.error = '';
+  state.info = '';
   state.status = 'Versión restaurada. Revisa y guarda.';
 
   // `savedText` is intentionally NOT advanced — the restore must read as a
