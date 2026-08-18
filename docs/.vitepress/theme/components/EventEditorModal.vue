@@ -76,6 +76,7 @@ const eventFieldDefs = computed(() => {
   const hidden = typeDefaultFieldNames.value;
   const eventFields = state.schema?.eventFields || getEventFields();
   const r = [
+    { name: 'id', label: 'Identificador', type: 'uuid', hidden: true }, // just in case
     { name: 'type', label: 'Tipo de evento', type: 'select', options: { source: props.eventTypesSource } },
     ...eventFields
       .filter((f) => !hidden.has(f.name))

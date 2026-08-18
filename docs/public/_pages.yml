@@ -311,7 +311,6 @@ components:
     label: Evento
     type: object
     fields:
-      - { name: id, label: Identificador, type: uuid, hidden: true }
       - { name: title, label: Título/Nombre del evento, type: string }
       - { name: image, label: Imagen, type: image }
       - { name: description, label: Descripción, type: rich-text }
@@ -499,7 +498,6 @@ content:
           - { name: id, label: Identificador, type: uuid, hidden: true }
           - { name: label, label: "Tipo de evento (ej: Eucaristía)", type: string }
           - { name: icon, label: Icono (se mostrará unicamente en este editor), type: icon }
-          - { name: page, label: "Crear una página para cada evento de este tipo", type: boolean, default: false }
           - { name: defaults, component: event }
           #- { name: protected, label: 'Elemento protegido/imborrable (dev only, ira escondido)', type: text }
 
@@ -569,24 +567,25 @@ content:
     label: Páginas
     type: tab
     fields:
-      - name: languages
-        label: Idiomas de la web
-        component: languages
       - name: list
         label: Lista de páginas
         component: page
         list: { collapsible: { collapsed: true, summary: "{fields.title}" }, sort: "alphabetical", modal: true  }
+      - { name: pageperlocatoin, label: Crear una página para cada templo, type: boolean, default: true }  
+      - { name: pageperevent, label: Crear una página para cada evento de tipo, type: select, options: { source: "event-types.list", multiple: true, label: "{title}" }  }  
       - name: nav
         label: Menu de navegación
         type: object
         list: { collapsible: { collapsed: true, summary: "{fields.title}" } }
         fields:
-          - { name: title, label: Titulo sección, type: string }
+          - { name: title, label: Titulo del submenu, type: string }
           - name: links
             label: Enlaces
             type: select
             options: { source: "pages.list", multiple: true, label: "{title}" }
-      - { name: pageperlocatoin, label: Crear una página automaticamente para cada templo, type: boolean, default: true }  
+      - name: languages
+        label: Idiomas de la web
+        component: languages
 
   - name: theme
     label: Diseño
