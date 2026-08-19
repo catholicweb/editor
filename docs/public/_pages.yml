@@ -25,6 +25,23 @@ components:
           { value: "byweek", label: "Semana del mes" },
           { value: "empty", label: "Vacío (sin agrupar)" },
         ]
+  orderSelect:
+    label: Criterio de agrupación
+    type: select
+    options:
+      values:
+        [
+          { value: "title", label: "Título" },
+          { value: "dates", label: "Fecha" },
+          { value: "times", label: "Hora" },
+          { value: "locations", label: "Lugar" },
+          { value: "byday", label: "Día de la semana" },
+          { value: "language", label: "Idioma" },
+          { value: "notes", label: "Notas" },
+          { value: "weekday", label: "Agrupación de días" },
+          { value: "byweek", label: "Semana del mes" },
+          { value: "empty", label: "Vacío (sin agrupar)" },
+        ]
   times:
     label: horas
     type: select
@@ -402,7 +419,11 @@ components:
               fields:
                 - { name: title, type: string, label: Titulo sección }
                 - { name: filter, label: Filtro. Incluir solo eventos que contengan, type: string }
-                - { name: order, label: "Agrupación de eventos (tabla, fila, columna, subfila, notas)", component: ordering }
+                - { name: orderTabla, label: "Tabla", component: orderSelect }
+                - { name: orderFila, label: "Fila", component: orderSelect }
+                - { name: orderColumna, label: "Columna", component: orderSelect }
+                - { name: orderSubfila, label: "Subfila", component: orderSelect }
+                - { name: orderNotas, label: "Notas", component: orderSelect }
                 - { name: tags, label: Opciones de estilo, component: tags }
             - name: video-gospel
               label: Audios Nuevo Testamento
