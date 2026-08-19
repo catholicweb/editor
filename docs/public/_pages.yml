@@ -217,13 +217,24 @@ components:
       values:
         [
           { value: "dark", label: "Fondo oscuro" },
-          { value: "twocol", label: "Dos columnas" },
-          { value: "small", label: "Elementos pequeños" },
-          { value: "tiny", label: "Elementos muy pequeños" },
-          { value: "large", label: "Elementos grandes" },
-          { value: "hidden", label: "Ocultar sección" },
           { value: "3d", label: "Efecto 3D" },
           { value: "carousel", label: "Carrusel" },
+          { value: "twocols", label: "Dos columnas" },
+          { value: "small", label: "Elementos pequeños" },
+          { value: "tiny", label: "Elementos muy pequeños" },
+          { value: "medium", label: "Elementos medianos" },
+          { value: "large", label: "Elementos grandes" },
+          { value: "xs", label: "Elementos extra pequeños" },
+          { value: "xl", label: "Elementos extra grandes" },
+          { value: "dense", label: "Gaps estrechos" },
+          { value: "spacious", label: "Gaps anchos" },
+          { value: "cards", label: "Estilo tarjeta" },
+          { value: "bordered", label: "Con bordes" },
+          { value: "flat", label: "Sin sombra" },
+          { value: "masonry", label: "Masonry" },
+          { value: "narrow", label: "Ancho estrecho" },
+          { value: "fullbleed", label: "Ancho completo" },
+          { value: "hidden", label: "Ocultar sección" },
         ]
   rrule:
     label: Fechas
@@ -353,7 +364,7 @@ components:
                   fields:
                     - { name: title, label: Pregunta, type: string }
                     - { name: html, label: Respuesta, type: rich-text }
-                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+                - { name: tags, label: Opciones de estilo, component: tags }
             - name: scrollyTelling
               label: Narración interactiva
               fields:
@@ -365,19 +376,19 @@ components:
                   fields:
                     - { name: text, label: Texto, type: rich-text }
                     - { name: image, label: Imagen, type: image }
-                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+                - { name: tags, label: Opciones de estilo, component: tags }
             - name: gallery
               label: Galeria de imagenes
               fields:
                 - { name: title, type: string, label: Titulo sección }
                 - { name: list, type: image, label: Seleccion de imagenes, options: { multiple: true } }
-                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+                - { name: tags, label: Opciones de estilo, component: tags }
             - name: text
               label: Texto
               fields:
                 - { name: title, type: string, label: Titulo sección }
                 - { name: html, label: Texto largo, type: rich-text }
-                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+                - { name: tags, label: Opciones de estilo, component: tags }
             - name: gospel
               label: Evangelio del día
               fields:
@@ -385,43 +396,43 @@ components:
                 - { name: readings, label: Mostrar primera/segunda y salmo, type: boolean, default: false }
                 - { name: audio, label: Añadir audio, type: boolean, default: false }
                 - { name: images, label: Mostrar imagenes, type: boolean, default: true }
-                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+                - { name: tags, label: Opciones de estilo, component: tags }
             - name: calendar
               label: Eventos
               fields:
                 - { name: title, type: string, label: Titulo sección }
                 - { name: filter, label: Filtro. Incluir solo eventos que contengan, type: string }
                 - { name: order, label: "Agrupación de eventos (tabla, fila, columna, subfila, notas)", component: ordering }
-                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+                - { name: tags, label: Opciones de estilo, component: tags }
             - name: video-gospel
               label: Audios Nuevo Testamento
               fields:
                 - { name: title, type: string, label: Titulo sección }
-                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+                - { name: tags, label: Opciones de estilo, component: tags }
             - name: video-podcast
               label: Podcast católicos
               fields:
                 - { name: title, type: string, label: Titulo sección }
                 - { name: links, label: Podcast, component: podcast }
-                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+                - { name: tags, label: Opciones de estilo, component: tags }
             - name: video-channel
               label: Canal de Youtube
               fields:
                 - { name: title, type: string, label: Titulo sección }
                 - { name: filter, label: Filtro. Incluir solo videos que contengan, type: string }
-                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+                - { name: tags, label: Opciones de estilo, component: tags }
             - name: town
               label: Lista de pueblos
               fields:
                 - { name: title, type: string, label: Titulo sección }
                 - { name: filters, label: Filtros a mostrar, type: select, options: { multiple: true, creatable: true } }
-                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+                - { name: tags, label: Opciones de estilo, component: tags }
             - name: video
               label: Lista de videos/audios
               fields:
                 - { name: title, type: string, label: Titulo sección }
                 - { name: links, label: Enlaces externos, type: string, list: { collapsible: { collapsed: true } } }
-                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+                - { name: tags, label: Opciones de estilo, component: tags }
             - name: map
               label: Mapa
               fields:
@@ -429,7 +440,7 @@ components:
                 - { name: geo, type: string, label: "Coordenadas (ej: 42.801941, -1.645660)" }
                 - { name: name, type: string, label: Nombre }
                 - { name: image, type: image, label: Imagen }
-                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+                - { name: tags, label: Opciones de estilo, component: tags }
             - name: fundraising
               label: Campaña financiación
               fields:
@@ -440,7 +451,7 @@ components:
                 - { name: goal, type: number, label: Total a recaudar }
                 - { name: action, type: string, label: Nombre acción, hidden: true, default: Donar }
                 - { name: image, type: image, label: Imagen }
-                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+                - { name: tags, label: Opciones de estilo, component: tags }
             - name: hero
               label: Cabezera de sección
               component: hero
@@ -448,7 +459,7 @@ components:
               label: Miembros del equipo
               fields:
                 - { name: title, type: string, label: Titulo sección }
-                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+                - { name: tags, label: Opciones de estilo, component: tags }
             - name: links
               label: Enlaces internos
               fields:
@@ -456,7 +467,7 @@ components:
                 - name: links
                   type: select
                   options: { source: "pages.list", multiple: true, label: "{title}" }
-                - { name: tags, label: Opciones avanzadas de estilo, component: tags }
+                - { name: tags, label: Opciones de estilo, component: tags }
 
 
 media:
