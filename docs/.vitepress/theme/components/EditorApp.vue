@@ -106,21 +106,11 @@ onMounted(async () => {
       // error already surfaced in state.error; fall through to the login form
     } finally {
       booting.value = false;
-      if (isLoggedIn.value) {
-        // Magic-link login succeeded: land on the Páginas tab. parseDeepLink()
-        // (fired by the isLoggedIn watcher ~100 ms after login resolves) will
-        // read this and openEntry() the pages tab. state.info was set in
-        // redeemMagic() once login() resolved.
-        window.history.replaceState({}, '', '/?edit=pages');
-      } else {
-        // Login failed: strip the consumed single-use params so a refresh
-        // doesn't retry the exchange. Error is already in state.error.
-        const p = new URLSearchParams(window.location.search);
-        p.delete('code');
-        p.delete('slug');
-        const qs = p.toString();
-        window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : ''));
-      }
+      const p = new URLSearchParams(window.location.search);
+      p.delete('code');
+      p.delete('slug');
+      const qs = p.toString();
+      window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : ''));
     }
   } else if (saved && saved.editorToken) {
     // Auto-login when a session is already saved locally (slug is stored with

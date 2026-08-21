@@ -6,25 +6,6 @@ components:
   text:
     label: Text Content
     type: rich-text
-  ordering:
-    label: Agrupación
-    type: select
-    options:
-      multiple: true
-      creatable: true
-      values:
-        [
-          { value: "title", label: "Título" },
-          { value: "dates", label: "Fecha" },
-          { value: "times", label: "Hora" },
-          { value: "locations", label: "Lugar" },
-          { value: "byday", label: "Día de la semana" },
-          { value: "language", label: "Idioma" },
-          { value: "notes", label: "Notas" },
-          { value: "weekday", label: "Agrupación de días" },
-          { value: "byweek", label: "Semana del mes" },
-          { value: "empty", label: "Vacío (sin agrupar)" },
-        ]
   orderSelect:
     label: Criterio de agrupación
     type: select
@@ -169,7 +150,6 @@ components:
           { value: "h3", label: "Sección (h3)" },
           { value: "h4", label: "Título pequeño (h4)" },
           { value: "h5", label: "Titular menor (h5)" },
-          { value: "h6", label: "Titular menor (h6)" },
           { value: "p", label: "Párrafo" },
           { value: "img", label: "Imagen" },
           { value: "blockquote", label: "Cita" },
@@ -177,19 +157,18 @@ components:
           { value: "ul", label: "Lista con viñetas" },
           { value: "ol", label: "Lista numerada" },
           { value: "li", label: "Elemento de lista" },
+          { value: "button", label: "Botón" },
           { value: "div", label: "Contenedor (div)" },
           { value: "span", label: "Texto inline" },
           { value: "strong", label: "Negrita (strong)" },
           { value: "em", label: "Cursiva (em)" },
-          { value: "br", label: "Salto de línea" },
-          { value: "hr", label: "Línea separadora" },
+          { value: "section", label: "Sección" },
           { value: "table", label: "Tabla" },
           { value: "tr", label: "Fila de tabla" },
           { value: "td", label: "Celda de tabla" },
           { value: "th", label: "Celda cabecera" },
           { value: "form", label: "Formulario" },
           { value: "input", label: "Campo de entrada" },
-          { value: "button", label: "Botón" },
           { value: "label", label: "Etiqueta" },
           { value: "select", label: "Lista desplegable" },
           { value: "option", label: "Opción" },
@@ -199,14 +178,6 @@ components:
           { value: "footer", label: "Pie de página" },
           { value: "nav", label: "Navegación" },
           { value: "article", label: "Artículo" },
-          { value: "section", label: "Sección" },
-          { value: "aside", label: "Lateral (aside)" },
-          { value: "details", label: "Detalle plegable" },
-          { value: "summary", label: "Resumen plegable" },
-          { value: "video", label: "Vídeo" },
-          { value: "audio", label: "Audio" },
-          { value: "canvas", label: "Lienzo" },
-          { value: "svg", label: "Gráfico vectorial" },
         ]
   blocktype:
     label: Selector
@@ -419,11 +390,11 @@ components:
               fields:
                 - { name: title, type: string, label: Titulo sección }
                 - { name: filter, label: Filtro. Incluir solo eventos que contengan, type: string }
-                - { name: orderTabla, label: "Tabla", component: orderSelect }
-                - { name: orderFila, label: "Fila", component: orderSelect }
-                - { name: orderColumna, label: "Columna", component: orderSelect }
-                - { name: orderSubfila, label: "Subfila", component: orderSelect }
-                - { name: orderNotas, label: "Notas", component: orderSelect }
+                - { name: orderTabla, label: "Dividir en tablas según:", component: orderSelect }
+                - { name: orderFila, label: "Dividir en filas según:", component: orderSelect }
+                - { name: orderColumna, label: "Dividir en columnas según:", component: orderSelect }
+                - { name: orderSubfila, label: "Dividir en subfila según:", component: orderSelect }
+                - { name: orderNotas, label: "Añadir notas según:", component: orderSelect }
                 - { name: tags, label: Opciones de estilo, component: tags }
             - name: video-gospel
               label: Audios Nuevo Testamento

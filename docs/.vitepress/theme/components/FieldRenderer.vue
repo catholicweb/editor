@@ -135,6 +135,7 @@ const editingFields = computed(() => {
 });
 const editingTitle = computed(() => {
   const item = editingItem.value;
+  if (item.protected) return item.protected
   if (!item) return 'elemento';
   if (isBlock.value) {
     const def = editingDef.value;

@@ -368,8 +368,14 @@ export async function redeemMagic({ apiBase, dataBase, schemaUrl, code }) {
   try {
     const { slug, token, email, slugs } = await api.exchangeMagic(apiBase, code);
     await login({ apiBase, dataBase, schemaUrl, editorToken: token, slug, email, slugs });
+    // Auto-open the info path
+    if (state.fileIndex.length > 0) {
+      const entry = state.fileIndex.find(e => e.tabPath === 'info');
+      await openEntry(entry);
+    }
     // Green welcome banner — only on magic-link login, not saved-session auto-login.
     state.info = `¡Bienvenido! Completa los datos a continuación para publicar tu sitio en ${state.slug}.parroquia.app`;
+    
   } catch (err) {
     state.error = err.message || String(err);
     throw err;
