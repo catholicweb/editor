@@ -43,10 +43,16 @@ if (props.container[props.keyName] === undefined) {
   props.container[props.keyName] = defaultForField(props.field);
 }
 
+import { state, applyNerdyConfig } from '../lib/store.js';
+
 const scalarValue = computed({
-  get: () => props.container[props.keyName],
+  get: () => {
+    if (props.field.name === 'rawJson') return state.nerdyText;
+    return props.container[props.keyName];
+  },
   set: (v) => {
-    props.container[props.keyName] = v;
+    if (props.field.name === 'rawJson') state.nerdyText = v;
+    else props.container[props.keyName] = v;
   },
 });
 

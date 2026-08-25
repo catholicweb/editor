@@ -44,6 +44,8 @@ export const state = reactive({
   configToken: null,    // Filename for config.json
   mediaUrls: [],        // Absolute public URLs for media files (no tokens)
   config: null,         // Config data (reactive, single source of truth)
+  nerdyText: '',        // Hidden raw-JSON editor (outside reactivity path)
+  nerdyValid: true,     // Validation of nerdyText
 
   // ui
   status: '',
@@ -98,6 +100,21 @@ export const currentData = computed(() => {
 // is only for string-level dirty tracking.
 function serializeCurrent() {
   return JSON.stringify(state.config || {}, null, 2) + '\n';
+}
+
+export function applyNerdyConfig() {
+  if (!state.nerdyValid) return false;
+  try {
+    const parsed = JSON.parse(state.nerdyText);
+    state.config = parsed; // full reactive replacement (plain object)
+    state.savedText = serializeCurrent();
+    state.nerdyText = JSON.stringify(parsed, null, 2);
+    state.nerdyValid = true;
+    return true;
+  } catch (e) {
+    state.nerdyValid = false;
+    return false;
+  }
 }
 
 // A non-reactive plain-object snapshot of the config. The diff (lib/patch.js)
@@ -723,6 +740,10 @@ export async function openEntry(entry) {
     applyDefaults(entry.fields, state.config[entry.tabPath]);
 
     state.currentEntry = entry;
+    if (entry.name === 'nerdy') {
+      state.nerdyText = JSON.stringify(state.config, null, 2);
+      state.nerdyValid = true;
+    }
     // NOTE: no state.draft / state.currentBody assignment — see currentData.
     // `savedText` (the whole-config dirty baseline) is intentionally NOT
     // touched here. It only advances on a confirmed save or login, so switching
@@ -940,6 +961,16 @@ export async function uploadMedia(file, relPath) {
 watch(currentData, (data) => {
   if (data) scheduleAutosave();
 }, { deep: true });
+
+// Validation for hidden nerdy field (outside reactivity path)
+watch(() => state.nerdyText, (text) => {
+  try {
+    JSON.parse(text || '{}');
+    state.nerdyValid = true;
+  } catch (e) {
+    state.nerdyValid = false;
+  }
+}, { immediate: true });
 
 // Leave handler: when the tab is hidden, navigated away from, or closed, push
 // any pending changes to the server. The request uses fetch keepalive so it

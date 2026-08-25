@@ -4,7 +4,7 @@ import LoginView from './auth/LoginView.vue';
 import AdminView from './auth/AdminView.vue';
 import FieldBrowser from './FieldBrowser.vue';
 import FieldsGroup from './FieldsGroup.vue';
-import { state, isLoggedIn, isDirty, currentData, login, redeemMagic, loadSavedSession, initBeforeUnloadHandler, openEntry, saveCurrent, restoreConfig, DEFAULTS } from '../lib/store.js';
+import { state, isLoggedIn, isDirty, currentData, login, redeemMagic, loadSavedSession, initBeforeUnloadHandler, openEntry, saveCurrent, restoreConfig, DEFAULTS, applyNerdyConfig } from '../lib/store.js';
 import UserAvatar from './UserAvatar.vue';
 import PeIcon from './PeIcon.vue';
 import VersionHistoryModal from './VersionHistoryModal.vue';
@@ -259,6 +259,10 @@ const isCalendarDoc = computed(() =>
         :class="{ 'document-wide': isCalendarDoc }"
       >
         <FieldsGroup :fields="state.currentEntry.fields" :container="currentData" />
+        <div v-if="state.currentEntry?.name === 'nerdy'" class="nerdy-actions" style="margin-top: 1rem; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; background: #fafafa;">
+          <div v-if="!state.nerdyValid" style="color: #c00; font-weight: bold; margin-bottom: 0.5rem;">JSON inválido — corrige antes de aplicar.</div>
+          <button type="button" :disabled="!state.nerdyValid" @click="applyNerdyConfig()" style="padding: 0.5rem 1rem; font-size: 1rem;">Apply / Guardar cambios</button>
+        </div>
       </div>
       <div v-else class="empty-state">
         <div class="empty-icon">📄</div>
