@@ -505,6 +505,15 @@ content:
           - { name: defaults, label: "Valores por defecto para evento de este tipo",component: event }
           #- { name: protected, label: 'Elemento protegido/imborrable (dev only, ira escondido)', type: text }
 
+  - name: nerdy
+    icon: false # hidden tab: edit whole config as JSON
+    type: tab
+    label: Nerdy
+    fields:
+      - name: rawJson
+        label: JSON completo
+        type: text
+
   - name: info
     icon: identification
     type: tab
