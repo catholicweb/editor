@@ -11,108 +11,57 @@ const emit = defineEmits(['update:modelValue']);
 const isOpen = ref(false);
 const search = ref('');
 
-// Expanded curated list of religious and church-related icons from various Iconify sets
-// Format: { name: 'display name', icon: 'iconify-collection:icon-name' }
+// Curated Catholic / Christian icon list — unique icon strings, no duplicates
 const iconList = [
-  // Religious Symbols - Crosses
+  // Cruces
   { name: 'Cruz Latina', icon: 'heroicons-solid:plus' },
   { name: 'Cruz Ortodoxa', icon: 'mdi:cross' },
   { name: 'Cruz Celta', icon: 'mdi:cross-celtic' },
   { name: 'Cruz de Malta', icon: 'mdi:cross-bolnisi' },
 
-  // Religious Symbols - Christian
-  { name: 'Iglesia', icon: 'heroicons-solid:church' },
-  { name: 'Basílica', icon: 'mdi:church' },
+  // Iglesias y lugares sagrados
+  { name: 'Iglesia / Basílica', icon: 'mdi:church' },
   { name: 'Catedral', icon: 'fa-solid:church' },
   { name: 'Capilla', icon: 'entypo:home' },
 
-  // Religious Symbols - Divine
-  { name: 'Espíritu Santo (Paloma)', icon: 'heroicons-solid:paper-airplane' },
+  // Espiritual / divino
+  { name: 'Oración / Adoración', icon: 'mdi:hands-pray' },
   { name: 'Ángel', icon: 'mdi:angel' },
-  { name: 'Querubín', icon: 'ph:star-four' },
-  { name: 'Oración', icon: 'mdi:hands-pray' },
+  { name: 'Espíritu Santo', icon: 'heroicons-solid:paper-airplane' },
   { name: 'Rosario', icon: 'mdi:rosary' },
+  { name: 'Querubín', icon: 'ph:star-four' },
 
-  // Religious Symbols - Objects
+  // Escritura y objetos litúrgicos
   { name: 'Biblia', icon: 'heroicons-solid:book-open' },
   { name: 'Cáliz', icon: 'game-icons:jeweled-chalice' },
-  { name: 'Hostia', icon: 'mdi:bread-slice' },
-  { name: 'Vela', icon: 'heroicons-solid:fire' },
+  { name: 'Hostia / Pan / Comunión', icon: 'mdi:bread-slice' },
+  { name: 'Vela / Pentecostés', icon: 'heroicons-solid:fire' },
   { name: 'Incienso', icon: 'mdi:incense' },
-
-  // Religious Symbols - Heart & Love
-  { name: 'Corazón Sagrado', icon: 'heroicons-solid:heart' },
-  { name: 'Sagrado Corazón', icon: 'mdi:heart-box' },
-  { name: 'Amor Cristiano', icon: 'mdi:heart-plus' },
-
-  // Religious Events
-  { name: 'Bautizo', icon: 'mdi:water' },
-  { name: 'Comunión', icon: 'mdi:bread-slice' },
-  { name: 'Confirmación', icon: 'mdi:hand-peace' },
-  { name: 'Matrimonio', icon: 'heroicons-solid:heart' },
-  { name: 'Funeral', icon: 'mdi:coffin' },
-  { name: 'Misas', icon: 'mdi:church' },
-  { name: 'Confesión', icon: 'mdi:ear-hearing' },
-  { name: 'Adoración', icon: 'mdi:hands-pray' },
-  { name: 'Via Crucis', icon: 'mdi:cross' },
-
-  // Religious Celebrations
-  { name: 'Navidad', icon: 'mdi:pine-tree' },
-  { name: 'Pascua', icon: 'mdi:egg' },
-  { name: 'Pentecostés', icon: 'mdi:fire' },
-  { name: 'Corpus Christi', icon: 'mdi:bread-slice' },
-
-  // People
-  { name: 'Persona', icon: 'heroicons-solid:user' },
-  { name: 'Sacerdote', icon: 'mdi:priest' },
-  { name: 'Obispo', icon: 'mdi:hat-fedora' },
-  { name: 'Grupo', icon: 'heroicons-solid:users' },
-  { name: 'Niños', icon: 'mdi:account-child' },
-  { name: 'Familia', icon: 'heroicons-solid:user-group' },
-
-  // Time & Events
-  { name: 'Calendario', icon: 'heroicons-solid:calendar' },
-  { name: 'Reloj', icon: 'heroicons-solid:clock' },
-  { name: 'Campana', icon: 'heroicons-solid:bell' },
-  { name: 'Campana de la Iglesia', icon: 'mdi:bell' },
-  { name: 'Música', icon: 'heroicons-solid:musical-note' },
-
-  // Places
-  { name: 'Casa', icon: 'heroicons-solid:home' },
-  { name: 'Cementerio', icon: 'mdi:cemetery' },
-  { name: 'Monasterio', icon: 'mdi:church' },
-  { name: 'Hospital', icon: 'heroicons-solid:building-library' },
-  { name: 'Escuela', icon: 'heroicons-solid:academic-cap' },
-
-  // Objects & Symbols
-  { name: 'Estrella', icon: 'heroicons-solid:star' },
-  { name: 'Libro', icon: 'heroicons-solid:book-open' },
-  { name: 'Llave', icon: 'heroicons-solid:key' },
-  { name: 'Escudo', icon: 'heroicons-solid:shield-check' },
-  { name: 'Olivo', icon: 'mdi:tree' },
-  { name: 'Pan', icon: 'mdi:bread-slice' },
   { name: 'Vino', icon: 'mdi:glass-wine' },
 
-  // Actions
-  { name: 'Check', icon: 'heroicons-solid:check-circle' },
-  { name: 'X', icon: 'heroicons-solid:x-circle' },
-  { name: 'Plus', icon: 'heroicons-solid:plus-circle' },
-  { name: 'Editar', icon: 'heroicons-solid:pencil' },
-  { name: 'Borrar', icon: 'heroicons-solid:trash' },
-  { name: 'Compartir', icon: 'heroicons-solid:share' },
+  // Sacramentos y celebraciones
+  { name: 'Bautizo', icon: 'mdi:water' },
+  { name: 'Confirmación', icon: 'mdi:hand-peace' },
+  { name: 'Corazón Sagrado', icon: 'heroicons-solid:heart' },
+  { name: 'Funeral', icon: 'mdi:coffin' },
+  { name: 'Navidad', icon: 'mdi:pine-tree' },
+  { name: 'Pascua', icon: 'mdi:egg' },
+  { name: 'Campana', icon: 'mdi:bell' },
+  { name: 'Calendario litúrgico', icon: 'heroicons-solid:calendar' },
 
-  // Communication
-  { name: 'Teléfono', icon: 'heroicons-solid:phone' },
-  { name: 'Email', icon: 'heroicons-solid:envelope' },
-  { name: 'Chat', icon: 'heroicons-solid:chat-bubble-bottom-center-text' },
+  // Personas y comunidad
+  { name: 'Persona', icon: 'heroicons-solid:user' },
+  { name: 'Sacerdote', icon: 'mdi:priest' },
+  { name: 'Niños', icon: 'mdi:account-child' },
+  { name: 'Grupo', icon: 'heroicons-solid:users' },
+  { name: 'Familia', icon: 'heroicons-solid:user-group' },
 
-  // Misc
-  { name: 'Sol', icon: 'heroicons-solid:sun' },
-  { name: 'Luna', icon: 'heroicons-solid:moon' },
-  { name: 'Mundo', icon: 'heroicons-solid:globe-americas' },
-  { name: 'Dinero', icon: 'heroicons-solid:currency-dollar' },
-  { name: 'Regalo', icon: 'heroicons-solid:gift' },
-  { name: 'Bandera', icon: 'heroicons-solid:flag' },
+  // Otros símbolos
+  { name: 'Confesión', icon: 'mdi:ear-hearing' },
+  { name: 'Estrella', icon: 'heroicons-solid:star' },
+  { name: 'Escudo / Protección', icon: 'heroicons-solid:shield-check' },
+  { name: 'Olivo', icon: 'mdi:tree' },
+  { name: 'Música / Canto', icon: 'heroicons-solid:musical-note' },
 ];
 
 const filteredIcons = computed(() => {
