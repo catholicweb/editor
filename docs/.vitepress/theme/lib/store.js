@@ -106,8 +106,8 @@ export function applyNerdyConfig() {
   if (!state.nerdyValid) return false;
   try {
     const parsed = JSON.parse(state.nerdyText);
-    state.config = parsed; // full reactive replacement (plain object)
-    state.savedText = serializeCurrent();
+    state.config = reactive(parsed); // full reactive replacement (plain object)
+    //state.savedText = serializeCurrent();
     state.nerdyText = JSON.stringify(parsed, null, 2);
     state.nerdyValid = true;
     return true;
@@ -723,17 +723,10 @@ export async function openEntry(entry) {
 
   try {
     // Load config from state or server if needed
-    if (!state.config) {
-      if (entry.fileToken) {
-        const text = await api.getFileText(state.dataBase, state.slug, entry.fileToken);
-        if (text) {
-          state.config = JSON.parse(text);
-        }
-      } else if (entry.name === 'nerdy') {
-        const text = await api.getFileText(state.dataBase, state.slug, 'config.json');
-        if (text) {
-          state.config = JSON.parse(text);
-        }
+    if (!state.config && entry.fileToken) {
+      const text = await api.getFileText(state.dataBase, state.slug, entry.fileToken);
+      if (text) {
+        state.config = JSON.parse(text);
       }
     }
 
@@ -747,7 +740,7 @@ export async function openEntry(entry) {
     applyDefaults(entry.fields, state.config[entry.tabPath]);
 
     state.currentEntry = entry;
-    if (entry.name === 'nerdy') {
+    if (entry.contentName === 'nerdy') {
       state.nerdyText = JSON.stringify(state.config, null, 2);
       state.nerdyValid = true;
     }

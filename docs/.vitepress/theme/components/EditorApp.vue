@@ -259,7 +259,7 @@ const isCalendarDoc = computed(() =>
         :class="{ 'document-wide': isCalendarDoc }"
       >
         <FieldsGroup :fields="state.currentEntry.fields" :container="currentData" />
-        <div v-if="state.currentEntry?.name === 'nerdy'" class="nerdy-actions" style="margin-top: 1rem; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; background: #fafafa;">
+        <div v-if="state.currentEntry?.contentName === 'nerdy'" class="nerdy-actions" style="margin-top: 1rem; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; background: #fafafa;">
           <div v-if="!state.nerdyValid" style="color: #c00; font-weight: bold; margin-bottom: 0.5rem;">JSON inválido — corrige antes de aplicar.</div>
           <button type="button" :disabled="!state.nerdyValid" @click="applyNerdyConfig()" style="padding: 0.5rem 1rem; font-size: 1rem;">Apply / Guardar cambios</button>
         </div>
