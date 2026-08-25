@@ -206,7 +206,9 @@ components:
         [
           { value: "dark", label: "Fondo oscuro" },
           { value: "3d", label: "Efecto 3D" },
+          { value: "horizontal", label: "Horizontal (fila única)" },
           { value: "carousel", label: "Carrusel" },
+          { value: "masonry", label: "Masonry" },
           { value: "twocols", label: "Dos columnas" },
           { value: "small", label: "Elementos pequeños" },
           { value: "tiny", label: "Elementos muy pequeños" },
@@ -219,7 +221,6 @@ components:
           { value: "cards", label: "Estilo tarjeta" },
           { value: "bordered", label: "Con bordes" },
           { value: "flat", label: "Sin sombra" },
-          { value: "masonry", label: "Masonry" },
           { value: "narrow", label: "Ancho estrecho" },
           { value: "fullbleed", label: "Ancho completo" },
           { value: "hidden", label: "Ocultar sección" },
@@ -501,7 +502,7 @@ content:
           - { name: id, label: Identificador, type: uuid, hidden: true }
           - { name: label, label: "Tipo de evento (ej: Eucaristía)", type: string }
           - { name: icon, label: Icono (se mostrará unicamente en este editor), type: icon }
-          - { name: defaults, component: event }
+          - { name: defaults, label: "Valores por defecto para evento de este tipo",component: event }
           #- { name: protected, label: 'Elemento protegido/imborrable (dev only, ira escondido)', type: text }
 
   - name: info
@@ -509,7 +510,7 @@ content:
     type: tab
     label: Datos
     fields:
-      - { name: title, label: Nombre o título de la página web, type: string }
+      - { name: title, label: Nombre o título de la web, type: string }
       - { name: description, label: Breve descripción de la web, type: text }
       - name: collaborators
         label: Lista de colaboradores
@@ -625,6 +626,6 @@ content:
         fields:
           - { name: selector, label: "Elemento", component: selector }
           - { name: cssClass, label: "Efecto a aplicar", component: effect }
-          - { name: scroll, label: "Aplicar al hacer scroll", type: boolean, default: false }
+          - { name: scroll, label: "Aplicar al hacer desplazar (scroll)", type: boolean, default: false }
 
       
