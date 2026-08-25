@@ -723,10 +723,17 @@ export async function openEntry(entry) {
 
   try {
     // Load config from state or server if needed
-    if (!state.config && entry.fileToken) {
-      const text = await api.getFileText(state.dataBase, state.slug, entry.fileToken);
-      if (text) {
-        state.config = JSON.parse(text);
+    if (!state.config) {
+      if (entry.fileToken) {
+        const text = await api.getFileText(state.dataBase, state.slug, entry.fileToken);
+        if (text) {
+          state.config = JSON.parse(text);
+        }
+      } else if (entry.name === 'nerdy') {
+        const text = await api.getFileText(state.dataBase, state.slug, 'config.json');
+        if (text) {
+          state.config = JSON.parse(text);
+        }
       }
     }
 
