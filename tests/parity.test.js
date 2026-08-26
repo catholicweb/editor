@@ -10,7 +10,8 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const EDITOR_PATCH = resolve('docs/.vitepress/theme/lib/patch.js');
-const CONFIG_API_PATCH = resolve('../../../../config-api/src/patch.js');
+let CONFIG_API_PATCH = resolve('../../../../config-api/src/patch.js');
+if(!existsSync(CONFIG_API_PATCH)) CONFIG_API_PATCH = resolve('../config-api/src/patch.js');
 
 function stripHeaderComment(code) {
   // Both files have a header comment block that describes the inter-repo
