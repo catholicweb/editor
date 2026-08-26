@@ -5,9 +5,9 @@
   "scripts": {
     "dev": "vitepress dev docs",
     "build": "vitepress build docs",
+    "test": "vitest run",
     "preview": "vitepress preview docs",
     "import-media": "node docs/.vitepress/import-media.js",
-    "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
