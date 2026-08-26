@@ -628,6 +628,9 @@ content:
       - { name: shadow, label: "Intensidad de sombras", component: shadowSelect, options: { themeRole: shadow } }
       - { name: buttonStyle, label: "Estilo de botones", component: buttonStyle, options: { themeRole: buttonStyle } }
       - { name: footerStyle, label: "Estilo de pie de página", component: footerStyle }
+      - name: preview
+        label: Vista previa de estilos
+        type: preview
       - name: styles
         label: Estilos avanzados
         type: object
