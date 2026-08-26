@@ -16,10 +16,10 @@ components:
           { value: "dates", label: "Fecha" },
           { value: "times", label: "Hora" },
           { value: "locations", label: "Lugar" },
-          { value: "byday", label: "Día de la semana" },
+          { value: "byday", label: "Día de la semana (lunes, martes...)" },
           { value: "language", label: "Idioma" },
           { value: "notes", label: "Notas" },
-          { value: "weekday", label: "Agrupación de días" },
+          { value: "weekday", label: "Laborable/festivo (laborable, sábado, domingo)" },
           { value: "byweek", label: "Semana del mes" },
           { value: "empty", label: "Vacío (sin agrupar)" },
         ]
@@ -143,6 +143,7 @@ components:
     type: select
     options:
       creatable: true
+      multiple: true
       values:
         [
           { value: "h1", label: "Título (h1)" },
@@ -185,12 +186,6 @@ components:
     options:
       creatable: false
       values: ["card-full", "gallery", "resource-list", "video-grid", "hero-banner", "portfolio", "product-cards", "article-list", "team-cards", "compact-list", "text", "timeline", "calendar-cards", "carousel", "accordion"]
-  multiplier:
-    label: Multiplier
-    type: select
-    options:
-      creatable: true
-      values: ["0.25", "0.5", "0.75", "1", "1.25", "1.50", "2", "4"]
   location:
     label: Lugares
     type: select
@@ -205,17 +200,19 @@ components:
       values:
         [
           { value: "dark", label: "Fondo oscuro" },
+          { value: "twocols", label: "Dos columnas" },
+          # Layout
           { value: "3d", label: "Efecto 3D" },
           { value: "horizontal", label: "Horizontal (fila única)" },
           { value: "carousel", label: "Carrusel" },
-          { value: "masonry", label: "Masonry" },
-          { value: "twocols", label: "Dos columnas" },
-          { value: "small", label: "Elementos pequeños" },
+          { value: "masonry", label: "Masonry (teselas de distintos tamaños)" },
+          # Size
           { value: "tiny", label: "Elementos muy pequeños" },
+          { value: "small", label: "Elementos pequeños" },
           { value: "medium", label: "Elementos medianos" },
           { value: "large", label: "Elementos grandes" },
-          { value: "xs", label: "Elementos extra pequeños" },
-          { value: "xl", label: "Elementos extra grandes" },
+          { value: "xl", label: "Elementos muy grandes" },
+          # Spacing
           { value: "dense", label: "Gaps estrechos" },
           { value: "spacious", label: "Gaps anchos" },
           { value: "cards", label: "Estilo tarjeta" },
@@ -256,27 +253,94 @@ components:
     type: select
     options:
       creatable: true
+      multiple: true
       values:
         [
-          { value: "opacity: 0;", label: "Invisible (opacidad 0)" },
+          ## --- Opacidad ---
+          { value: "opacity: 0;", label: "Invisible (opacidad 0%)" },
           { value: "opacity: 0.5;", label: "Semitransparente (opacidad 50%)" },
+          { value: "opacity: 0.8;", label: "Casi opaco (opacidad 80%)" },
+
+          ## --- Escala ---
           { value: "transform: scale(0.8);", label: "Reducir tamaño (80%)" },
           { value: "transform: scale(1.2);", label: "Aumentar tamaño (120%)" },
           { value: "transform: scaleX(1.5);", label: "Ensanchar (150%)" },
-          { value: "transform: scaleY(.5);", label: "Comprimir vertical" },
+          { value: "transform: scaleY(0.5);", label: "Comprimir vertical (50%)" },
+
+          ## --- Rotación ---
           { value: "transform: rotate(6deg);", label: "Rotar 6°" },
           { value: "transform: rotate(-6deg);", label: "Rotar -6°" },
+          { value: "transform: rotate(90deg);", label: "Rotar 90°" },
+          { value: "transform: rotate(180deg);", label: "Rotar 180°" },
+
+          ## --- Posición / desplazamiento ---
           { value: "transform: translateX(-20%);", label: "Desplazar izquierda" },
           { value: "transform: translateX(20%);", label: "Desplazar derecha" },
           { value: "transform: translateY(-20%);", label: "Desplazar arriba" },
           { value: "transform: translateY(20%);", label: "Desplazar abajo" },
           { value: "transform: translate(-50%, -50%);", label: "Centrar" },
+
+          ## --- Filtros ---
           { value: "filter: blur(5px);", label: "Desenfocar (5px)" },
           { value: "filter: brightness(1.2);", label: "Más brillo (120%)" },
+          { value: "filter: brightness(0.7);", label: "Oscurecer (70%)" },
           { value: "filter: contrast(150%);", label: "Más contraste (150%)" },
           { value: "filter: grayscale(100%);", label: "Escala de grises" },
+          { value: "filter: sepia(100%);", label: "Sepia" },
+          { value: "filter: saturate(200%);", label: "Más saturación" },
           { value: "filter: invert(100%);", label: "Invertir colores" },
+          { value: "filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));", label: "Sombra suave" },
+
+          ## --- Bordes y esquinas ---
+          { value: "border-radius: 8px;", label: "Esquinas redondeadas" },
+          { value: "border-radius: 9999px;", label: "Esquinas totalmente redondeadas" },
+          { value: "border: 2px solid rgb(var(--color-accent));", label: "Borde de acento" },
+
+          ## --- Sombras ---
+          { value: "box-shadow: 0 4px 6px rgba(0,0,0,0.1);", label: "Sombra ligera" },
+          { value: "box-shadow: 0 10px 20px rgba(0,0,0,0.25);", label: "Sombra pronunciada" },
+
+          ## --- Tipografía ---
+          { value: "font-weight: bold;", label: "Negrita" },
+          { value: "font-style: italic;", label: "Cursiva" },
+          { value: "text-decoration: underline;", label: "Subrayado" },
+          { value: "text-transform: uppercase;", label: "Mayúsculas" },
+          { value: "letter-spacing: 2px;", label: "Espaciado entre letras" },
+          { value: "text-align: center;", label: "Centrar texto" },
+
+          ## --- Color ---
           { value: "color: rgb(var(--color-accent));", label: "Color de acento" },
+          { value: "background-color: rgb(var(--color-accent));", label: "Fondo de acento" },
+
+          ## --- Interacción / cursor ---
+          { value: "cursor: pointer;", label: "Cursor de mano" },
+          { value: "pointer-events: none;", label: "Deshabilitar interacción" },
+          { value: "user-select: none;", label: "Deshabilitar selección de texto" },
+
+          ## --- Visibilidad / display ---
+          { value: "display: none;", label: "Ocultar elemento" },
+          { value: "visibility: hidden;", label: "Ocultar (mantener espacio)" },
+
+          ## --- Transición (para que los cambios se animen) ---
+          { value: "transition: all 0.3s ease;", label: "Transición suave" },
+
+          ## --- Padding (alineado a la escala de Tailwind) ---
+          { value: "padding: 0.5rem;", label: "Relleno pequeño" },
+          { value: "padding: 1rem;", label: "Relleno medio" },
+          { value: "padding: 2rem;", label: "Relleno grande" },
+          { value: "padding-top: 1.5rem;", label: "Espacio arriba" },
+          { value: "padding-bottom: 1.5rem;", label: "Espacio abajo" },
+
+          ## --- Margin ---
+          { value: "margin: 0;", label: "Sin margen" },
+          { value: "margin: 0 auto;", label: "Centrar horizontalmente" },
+          { value: "margin-top: 2rem;", label: "Margen arriba" },
+          { value: "margin-bottom: 2rem;", label: "Margen abajo" },
+
+          ## --- Tamaño de texto ---
+          { value: "font-size: 0.875rem;", label: "Texto pequeño" },
+          { value: "font-size: 1.25rem;", label: "Texto grande" },
+          { value: "font-size: 2rem;", label: "Texto extra grande" },
         ]
   hero:
     label: Hero
@@ -623,18 +687,26 @@ content:
         label: "Tipo de letra del cuerpo (cualquiera de https://fonts.google.com/)"
         component: font
         options: { themeRole: body }
-      - { name: navStyle, label: Estilo de la barrra de navegación, component: navigationBar }
-      - { name: radius, label: "Redondez de elementos", component: radiusSelect, options: { themeRole: radius } }
-      - { name: shadow, label: "Intensidad de sombras", component: shadowSelect, options: { themeRole: shadow } }
-      - { name: buttonStyle, label: "Estilo de botones", component: buttonStyle, options: { themeRole: buttonStyle } }
+      - { name: navStyle, label: "Estilo de la barrra de navegación", component: navigationBar }
       - { name: footerStyle, label: "Estilo de pie de página", component: footerStyle }
+ 
+
       - name: styles
-        label: Estilos avanzados
+        label: Estilos para cada elemento
         type: object
         list: { collapsible: { collapsed: true, summary: "{fields.selector}" } }
         fields:
-          - { name: selector, label: "Elemento", component: selector }
+          - { name: selector, label: "Lista de elementos", component: selector }
           - { name: cssClass, label: "Efecto a aplicar", component: effect }
-          - { name: scroll, label: "Aplicar al hacer desplazar (scroll)", type: boolean, default: false }
+          - { name: scroll, label: "Aplicar al hacer desplazar (transición)", type: boolean, default: false }
 
-      
+      - { name: radius, label: "Redondez de elementos", component: radiusSelect, options: { themeRole: radius } }
+      - { name: shadow, label: "Intensidad de sombras", component: shadowSelect, options: { themeRole: shadow } }
+      - { name: buttonStyle, label: "Estilo de botones", component: buttonStyle, options: { themeRole: buttonStyle } }
+      # `preview` is a custom field type rendered by Preview.vue
+      # (see FieldRenderer's `field.type === 'preview'` branch)
+      - name: preview
+        type: preview
+        label: Visualiza los estilos
+        options:
+          styles: "theme"   # location of the 
