@@ -462,6 +462,11 @@ watch([() => themeValue('radius'), () => themeValue('shadow'), () => themeValue(
   applyDesignTokensFromConfig();
 });
 
+// Watch theme.styles array directly (not via themeRole) for live preview.
+watch(() => state.config?.theme?.styles, () => {
+  applyThemeStylesPreview();
+}, { deep: true });
+
 // Accept only #RGB / #RRGGBB hex colors; anything else is rejected so a
 // malicious or malformed config value can't inject into CSS or produce NaN.
 function validHexColor(str) {
@@ -629,16 +634,6 @@ function applyThemeStylesPreview() {
     if (styleEl) styleEl.remove();
   }
 }
-
-// Reactive watch: when config changes from form edits, refresh preview.
-let lastThemeCss = '';
-setInterval(() => {
-  const css = buildThemeStylesCss();
-  if (css !== lastThemeCss) {
-    lastThemeCss = css;
-    applyThemeStylesPreview();
-  }
-}, 300);
 
 // Design-token presets mirror the web-template's `css.js` RADIUS_PRESETS /
 // SHADOW_PRESETS (rem values converted to px and remapped onto the editor's
