@@ -310,6 +310,9 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug, e
     // Apply fonts from config
     applyFontsFromConfig();
 
+    // Apply theme.styles CSS preview (idea: style-preview)
+    applyThemeStylesPreview();
+
     // Apply radius/shadow/buttonStyle design tokens from config (live preview)
     applyDesignTokensFromConfig();
 
@@ -538,6 +541,104 @@ function applyFontsFromConfig() {
     document.documentElement.style.setProperty('--pe-heading-font', `"${headingFont}", system-ui, -apple-system, sans-serif`);
   }
 }
+
+// ----- theme.styles preview injection (idea: style-preview) -----
+// Mirror web-template/css.js logic for theme.styles array.
+// Injected globally into editor chrome, reactive on config change.
+
+function toArray(x) {
+  const arr = Array.isArray(x) ? x : [x];
+  return arr.filter((item) => typeof item === 'string').map((item) => item.trim()).filter((item) => item.length > 0);
+}
+
+function mergeCssDeclarations(x) {
+  const merged = new Map();
+  const combined = new Map();
+  for (const str of toArray(x)) {
+    const idx = str.indexOf(':');
+    if (idx === -1) continue;
+    const prop = str.slice(0, idx).trim();
+    const value = str.slice(idx + 1).replace(/;$/, '').trim();
+    if (prop === 'transform' || prop === 'filter') {
+      combined.set(prop, [...(combined.get(prop) || []), value]);
+    } else {
+      merged.set(prop, value);
+    }
+  }
+  for (const [prop, values] of combined) {
+    merged.set(prop, values.join(' '));
+  }
+  return Array.from(merged, ([prop, value]) => `${prop}: ${value};`);
+}
+
+function sanitizeSelector(s) {
+  if (typeof s !== 'string') return '';
+  // Reject anything that could break CSS or inject HTML/scripts.
+  const bad = /[<>"'`]|expression\s*\(|javascript:|url\s*\(/i;
+  if (bad.test(s)) return '';
+  // Only allow safe CSS selector chars.
+  const safe = /^[a-zA-Z0-9\s\.,#>+~\[\]="'\-_:]+$/;
+  return safe.test(s) ? s.trim() : '';
+}
+
+function sanitizeCssClassBlock(x) {
+  if (typeof x !== 'string') return '';
+  // Allow CSS declarations with safe chars; drop closing braces to prevent injection.
+  return x.replace(/[}]/g, '').trim();
+}
+
+const ON_SCROLL = 'animation: scrolled linear both; animation-timeline: view(); animation-range: entry 30% cover 30%;';
+
+function buildThemeStylesCss() {
+  const styles = state.config?.theme?.styles;
+  if (!Array.isArray(styles) || styles.length === 0) return '';
+  let css = '';
+  for (const item of styles) {
+    if (!item || typeof item !== 'object') continue;
+    const selectors = toArray(item.selector);
+    const rawCssClass = sanitizeCssClassBlock(item.cssClass);
+    const classes = mergeCssDeclarations(rawCssClass);
+    const scroll = !!item.scroll;
+    for (const s of selectors) {
+      const safeSel = sanitizeSelector(s);
+      if (!safeSel) continue;
+      for (const c of classes) {
+        if (!c || typeof c !== 'string') continue;
+        if (scroll) {
+          css += `${safeSel} { ${c} ${ON_SCROLL} }\n\n`;
+        } else {
+          css += `${safeSel} { ${c} }\n\n`;
+        }
+      }
+    }
+  }
+  return css;
+}
+
+function applyThemeStylesPreview() {
+  let styleEl = document.getElementById('theme-preview-styles');
+  const css = buildThemeStylesCss();
+  if (css) {
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = 'theme-preview-styles';
+      document.head.appendChild(styleEl);
+    }
+    styleEl.textContent = '/* theme-preview (idea: style-preview) */\n' + css;
+  } else {
+    if (styleEl) styleEl.remove();
+  }
+}
+
+// Reactive watch: when config changes from form edits, refresh preview.
+let lastThemeCss = '';
+setInterval(() => {
+  const css = buildThemeStylesCss();
+  if (css !== lastThemeCss) {
+    lastThemeCss = css;
+    applyThemeStylesPreview();
+  }
+}, 300);
 
 // Design-token presets mirror the web-template's `css.js` RADIUS_PRESETS /
 // SHADOW_PRESETS (rem values converted to px and remapped onto the editor's
@@ -827,6 +928,7 @@ export async function saveCurrent({ keepalive = false } = {}) {
       // calling directly is immediate and safe).
       applyAccentColorFromConfig();
       applyFontsFromConfig();
+      applyThemeStylesPreview();
       applyDesignTokensFromConfig();
       state.baselineConfig = plainSnapshot(state.config);
     }
@@ -886,6 +988,7 @@ export async function restoreConfig(newConfig) {
   // theme watches would also fire, but calling directly is immediate and safe).
   applyAccentColorFromConfig();
   applyFontsFromConfig();
+  applyThemeStylesPreview();
   applyDesignTokensFromConfig();
 
   state.error = '';
@@ -1030,6 +1133,7 @@ export async function refreshConfig() {
     }
     applyAccentColorFromConfig();
     applyFontsFromConfig();
+    applyThemeStylesPreview();
     applyDesignTokensFromConfig();
 
     // Resnapshot the patch baseline against the adopted tree and align the
