@@ -1,10 +1,7 @@
 // Comprehensive test suite for patch.js (the diff/apply half of the patch-save system).
 //
 // These tests assert the CANONICAL semantics (matching config-api/src/patch.js).
-// On this branch, isKeyedArray([]) currently returns `true` (the bug — "vacuously
-// keyed"), so the empty-array / scalar-list test cases in sections 1 and 4 will
-// FAIL until the fix lands. They are intentionally written to document correct
-// behavior.
+// isKeyedArray([]) now returns false (bug fixed); all cases pass.
 
 import { describe, it, expect } from 'vitest';
 import { ID_KEY, isKeyedArray, diff, applyPatch } from '../docs/.vitepress/theme/lib/patch.js';
@@ -28,6 +25,10 @@ describe('isKeyedArray classification', () => {
 
   it('empty arrays are NOT keyed (keyless)', () => {
     expect(isKeyedArray([])).toBe(false);
+  });
+
+  it('objects with numeric id are keyless (id must be string)', () => {
+    expect(isKeyedArray([{ id: 1 }])).toBe(false);
   });
 
   it('arrays of objects all carrying a non-empty string id ARE keyed', () => {

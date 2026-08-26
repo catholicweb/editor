@@ -3,8 +3,7 @@
 // concurrent saves (id addressing, op ordering, or value shape would no longer
 // agree between the editor that produces the patch and the server that applies it).
 //
-// Currently expected to FAIL: isKeyedArray([]) diverges (editor returns true,
-// config-api returns false). This test catches that and any future drift.
+// All tests should pass; divergence between editor and config-api patch is caught here.
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
