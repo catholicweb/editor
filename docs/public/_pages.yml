@@ -689,8 +689,6 @@ content:
         options: { themeRole: body }
       - { name: navStyle, label: "Estilo de la barrra de navegación", component: navigationBar }
       - { name: footerStyle, label: "Estilo de pie de página", component: footerStyle }
- 
-
       - name: styles
         label: Estilos para cada elemento
         type: object

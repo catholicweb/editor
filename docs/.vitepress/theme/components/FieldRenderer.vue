@@ -5,6 +5,7 @@ import ScalarInput from './ScalarInput.vue';
 import PeIcon from './PeIcon.vue';
 import CalendarEditor from './CalendarEditor.vue';
 import PlacesAutodiscover from './PlacesAutodiscover.vue';
+import Preview from './Preview.vue';
 import {
   isRepeatable,
   defaultForField,
@@ -253,6 +254,12 @@ const editingTitle = computed(() => {
     :field="field"
     :container="container"
     :key-name="keyName"
+  />
+
+  <!-- PREVIEW TYPE (idea: new-type-preview) -->
+  <Preview
+    v-else-if="field.type === 'preview'"
+    :field="field"
   />
 
   <!-- LEAF -->
