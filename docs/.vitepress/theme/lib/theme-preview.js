@@ -41,15 +41,23 @@ export function sanitizeCssClassBlock(x) {
 
 const ON_SCROLL = 'animation: scrolled linear both; animation-timeline: view(); animation-range: entry 30% cover 30%;';
 
+const BASE_CSS =`@keyframes scrolled {
+  to {
+    opacity: 1;          /* fully visible */
+    transform: scale(1) rotate(0) translate(0); /* no scaling or translation */
+  }
+}`
+
 export function buildThemeStylesCss(styles) {
   if (!Array.isArray(styles) || styles.length === 0) return '';
-  let css = '';
+  let css = BASE_CSS;
   for (const item of styles) {
     if (!item || typeof item !== 'object') continue;
     const selectors = toArray(item.selector);
-    const rawCssClass = sanitizeCssClassBlock(item.cssClass);
+    const rawCssClass = toArray(item.cssClass).map(c => sanitizeCssClassBlock(c));
     const classes = mergeCssDeclarations(rawCssClass);
     const scroll = !!item.scroll;
+    console.log(selectors, rawCssClass, classes, scroll)
     for (const s of selectors) {
       const safeSel = sanitizeSelector(s);
       if (!safeSel) continue;
@@ -69,6 +77,7 @@ export function buildThemeStylesCss(styles) {
 export function applyThemeStylesPreview(styles) {
   let styleEl = document.getElementById('theme-preview-styles');
   const css = buildThemeStylesCss(styles);
+  console.log(styleEl, css, styles)
   if (css) {
     if (!styleEl) {
       styleEl = document.createElement('style');

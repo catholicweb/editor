@@ -39,8 +39,8 @@ const rootStyles = computed(() => {
   const styles = [];
   if (theme.headingFont) styles.push(`font-family: '${theme.headingFont}', sans-serif;`);
   if (theme.bodyFont) styles.push(`font-family: '${theme.bodyFont}', sans-serif;`);
-  if (theme.accentColor && /^#[0-9a-fA-F]{3,6}$/.test(theme.accentColor)) styles.push(`color: ${theme.accentColor};`);
-  if (theme.accentPrimary && /^#[0-9a-fA-F]{3,6}$/.test(theme.accentPrimary)) styles.push(`background: ${theme.accentPrimary};`);
+  /*if (theme.accentColor && /^#[0-9a-fA-F]{3,6}$/.test(theme.accentColor)) styles.push(`color: ${theme.accentColor};`);
+  if (theme.accentPrimary && /^#[0-9a-fA-F]{3,6}$/.test(theme.accentPrimary)) styles.push(`background: ${theme.accentPrimary};`);*/
   return styles.join(' ');
 });
 
