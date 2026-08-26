@@ -6,6 +6,11 @@ import { normalizeSchema, applyDefaults } from './schema.js';
 import { diff } from './patch.js';
 import { buildFileIndex, listMediaFiles } from './content-index.js';
 import * as versions from './versions.js';
+import {
+  sanitizeFontName, validHexColor, adjustColor,
+  RADIUS_PRESETS, SHADOW_PRESETS,
+  buildThemeStylesCss, applyThemeStylesPreview, loadedFonts
+} from './theme-preview.js';
 
 // Autosave: debounce timer per file
 let autosaveTimer = null;
@@ -311,7 +316,7 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug, e
     applyFontsFromConfig();
 
     // Apply theme.styles CSS preview (idea: style-preview)
-    applyThemeStylesPreview();
+    applyThemeStylesPreview(state.config?.theme?.styles);
 
     // Apply radius/shadow/buttonStyle design tokens from config (live preview)
     applyDesignTokensFromConfig();
@@ -464,14 +469,11 @@ watch([() => themeValue('radius'), () => themeValue('shadow'), () => themeValue(
 
 // Watch theme.styles array directly (not via themeRole) for live preview.
 watch(() => state.config?.theme?.styles, () => {
-  applyThemeStylesPreview();
+  applyThemeStylesPreview(state.config?.theme?.styles);
 }, { deep: true });
 
 // Accept only #RGB / #RRGGBB hex colors; anything else is rejected so a
 // malicious or malformed config value can't inject into CSS or produce NaN.
-function validHexColor(str) {
-  return typeof str === 'string' && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(str);
-}
 
 // Apply accent color to CSS variables
 function applyAccentColor(color) {
@@ -482,37 +484,15 @@ function applyAccentColor(color) {
   root.style.setProperty('--pe-accent-soft', adjustColor(color, 90) + '1a');
 }
 
-// Helper to adjust color brightness
-function adjustColor(color, amount) {
-  // Simple hex color adjustment (supports #RGB and #RRGGBB)
-  if (color.startsWith('#')) {
-    const hex = color.slice(1);
-    const num = parseInt(hex, 16);
-    let r = (num >> 16) + amount;
-    let g = ((num >> 8) & 0x00FF) + amount;
-    let b = (num & 0x0000FF) + amount;
-    r = Math.max(0, Math.min(255, r));
-    g = Math.max(0, Math.min(255, g));
-    b = Math.max(0, Math.min(255, b));
-    return '#' + (0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1);
-  }
-  return color;
-}
-
 // ---------------------------------------------------------------------------
 // Dynamic Font Loading
 // ---------------------------------------------------------------------------
 
-// Keep track of loaded fonts to avoid duplicate loading
-const loadedFonts = new Set();
 
 // Only keep safe characters in a font-family name before it reaches a CSS
 // string or a Google Fonts URL. Rejects quotes, &, ; and other characters
 // that could break out of the URL/string, while keeping spaces (which become
 // '+' in the URL form).
-function sanitizeFontName(name) {
-  return String(name || '').replace(/[^A-Za-z0-9 ]/g, '').trim();
-}
 
 // Load Google Font dynamically
 function loadGoogleFont(fontName) {
@@ -546,124 +526,6 @@ function applyFontsFromConfig() {
     document.documentElement.style.setProperty('--pe-heading-font', `"${headingFont}", system-ui, -apple-system, sans-serif`);
   }
 }
-
-// ----- theme.styles preview injection (idea: style-preview) -----
-// Mirror web-template/css.js logic for theme.styles array.
-// Injected globally into editor chrome, reactive on config change.
-
-function toArray(x) {
-  const arr = Array.isArray(x) ? x : [x];
-  return arr.filter((item) => typeof item === 'string').map((item) => item.trim()).filter((item) => item.length > 0);
-}
-
-function mergeCssDeclarations(x) {
-  const merged = new Map();
-  const combined = new Map();
-  for (const str of toArray(x)) {
-    const idx = str.indexOf(':');
-    if (idx === -1) continue;
-    const prop = str.slice(0, idx).trim();
-    const value = str.slice(idx + 1).replace(/;$/, '').trim();
-    if (prop === 'transform' || prop === 'filter') {
-      combined.set(prop, [...(combined.get(prop) || []), value]);
-    } else {
-      merged.set(prop, value);
-    }
-  }
-  for (const [prop, values] of combined) {
-    merged.set(prop, values.join(' '));
-  }
-  return Array.from(merged, ([prop, value]) => `${prop}: ${value};`);
-}
-
-function sanitizeSelector(s) {
-  if (typeof s !== 'string') return '';
-  // Reject anything that could break CSS or inject HTML/scripts.
-  const bad = /[<>"'`]|expression\s*\(|javascript:|url\s*\(/i;
-  if (bad.test(s)) return '';
-  // Only allow safe CSS selector chars.
-  const safe = /^[a-zA-Z0-9\s\.,#>+~\[\]="'\-_:]+$/;
-  return safe.test(s) ? s.trim() : '';
-}
-
-function sanitizeCssClassBlock(x) {
-  if (typeof x !== 'string') return '';
-  // Allow CSS declarations with safe chars; drop closing braces to prevent injection.
-  return x.replace(/[}]/g, '').trim();
-}
-
-const ON_SCROLL = 'animation: scrolled linear both; animation-timeline: view(); animation-range: entry 30% cover 30%;';
-
-function buildThemeStylesCss() {
-  const styles = state.config?.theme?.styles;
-  if (!Array.isArray(styles) || styles.length === 0) return '';
-  let css = '';
-  for (const item of styles) {
-    if (!item || typeof item !== 'object') continue;
-    const selectors = toArray(item.selector);
-    const rawCssClass = sanitizeCssClassBlock(item.cssClass);
-    const classes = mergeCssDeclarations(rawCssClass);
-    const scroll = !!item.scroll;
-    for (const s of selectors) {
-      const safeSel = sanitizeSelector(s);
-      if (!safeSel) continue;
-      for (const c of classes) {
-        if (!c || typeof c !== 'string') continue;
-        if (scroll) {
-          css += `${safeSel} { ${c} ${ON_SCROLL} }\n\n`;
-        } else {
-          css += `${safeSel} { ${c} }\n\n`;
-        }
-      }
-    }
-  }
-  return css;
-}
-
-function applyThemeStylesPreview() {
-  let styleEl = document.getElementById('theme-preview-styles');
-  const css = buildThemeStylesCss();
-  if (css) {
-    if (!styleEl) {
-      styleEl = document.createElement('style');
-      styleEl.id = 'theme-preview-styles';
-      document.head.appendChild(styleEl);
-    }
-    styleEl.textContent = '/* theme-preview (idea: style-preview) */\n' + css;
-  } else {
-    if (styleEl) styleEl.remove();
-  }
-}
-
-// Design-token presets mirror the web-template's `css.js` RADIUS_PRESETS /
-// SHADOW_PRESETS (rem values converted to px and remapped onto the editor's
-// three size tokens). Values must stay whitelisted constants keyed by the
-// schema's enum tokens — never raw config text — so a malformed config value
-// can't inject CSS. Unknown tokens fall back to a sensible default.
-const RADIUS_PRESETS = {
-  sharp: { sm: '0px', radius: '0px', lg: '0px' },
-  soft: { sm: '4px', radius: '8px', lg: '12px' },
-  rounded: { sm: '8px', radius: '12px', lg: '16px' },
-  pill: { sm: '12px', radius: '16px', lg: '24px' },
-};
-const SHADOW_PRESETS = {
-  none: { sm: '0 0 transparent', radius: '0 0 transparent', lg: '0 0 transparent' },
-  light: {
-    sm: '0 1px 2px 0 rgb(0 0 0 / 0.03)',
-    radius: '0 1px 2px -1px rgb(0 0 0 / 0.04)',
-    lg: '0 4px 6px -2px rgb(0 0 0 / 0.04)',
-  },
-  medium: {
-    sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
-    radius: '0 1px 3px rgb(0 0 0 / 0.06), 0 2px 6px -1px rgb(0 0 0 / 0.08)',
-    lg: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
-  },
-  strong: {
-    sm: '0 2px 4px 0 rgb(0 0 0 / 0.08)',
-    radius: '0 4px 8px -1px rgb(0 0 0 / 0.12), 0 2px 4px -2px rgb(0 0 0 / 0.12)',
-    lg: '0 18px 24px -5px rgb(0 0 0 / 0.16), 0 6px 8px -6px rgb(0 0 0 / 0.16)',
-  },
-};
 
 // Apply radius/shadow/buttonStyle design tokens to the editor's own CSS custom
 // properties so the editor previews the site's look at runtime.
@@ -923,7 +785,7 @@ export async function saveCurrent({ keepalive = false } = {}) {
       // calling directly is immediate and safe).
       applyAccentColorFromConfig();
       applyFontsFromConfig();
-      applyThemeStylesPreview();
+      applyThemeStylesPreview(state.config?.theme?.styles);
       applyDesignTokensFromConfig();
       state.baselineConfig = plainSnapshot(state.config);
     }
@@ -983,7 +845,7 @@ export async function restoreConfig(newConfig) {
   // theme watches would also fire, but calling directly is immediate and safe).
   applyAccentColorFromConfig();
   applyFontsFromConfig();
-  applyThemeStylesPreview();
+  applyThemeStylesPreview(state.config?.theme?.styles);
   applyDesignTokensFromConfig();
 
   state.error = '';
@@ -1128,7 +990,7 @@ export async function refreshConfig() {
     }
     applyAccentColorFromConfig();
     applyFontsFromConfig();
-    applyThemeStylesPreview();
+    applyThemeStylesPreview(state.config?.theme?.styles);
     applyDesignTokensFromConfig();
 
     // Resnapshot the patch baseline against the adopted tree and align the
