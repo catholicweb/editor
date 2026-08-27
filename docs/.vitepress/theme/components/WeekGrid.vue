@@ -187,6 +187,8 @@ function onAlldayClick(dayIndex, occs) {
 
 <template>
   <div class="week-grid">
+
+    <!-- Week toolbar -->
     <div class="week-toolbar">
       <div class="nav">
         <button @click="prev">‹</button>
@@ -197,6 +199,37 @@ function onAlldayClick(dayIndex, occs) {
       <button class="add-event" @click="emit('add-event', {})">+ Evento</button>
     </div>
 
+    <p v-if="!occurrences.length" class="empty-week">
+      No hay eventos esta semana. Usa <strong>+ Evento</strong> para añadir.
+    </p>
+    
+    <!-- Event list -->
+    <div v-if="occurrences.length" class="event-list">
+      <div v-for="(dayOccs, dayIdx) in occurrencesByDay" :key="dayIdx" class="event-day">
+        <h4 v-if="dayOccs.length" class="day-header">
+          {{ DAY_NAME_BY_GETDAY[listDays[dayIdx].getDay()] }} {{ listDays[dayIdx].getDate() }}
+        </h4>
+        <div v-for="(o, oi) in dayOccs" :key="`${o.eventIndex}-${oi}`" class="event-row" :class="{ specific: !o.recurring }" @click="emit('edit-occurrence', o)">
+          <span class="event-time" v-if="o.time">{{ o.time }}</span>
+          <span class="event-time" v-else>—</span>
+          <span class="event-icon" v-if="o.style.icon" :class="[o.warn ? `ev ev-small warn-${o.warn}` : null]" :style="{ color: o.style.color || '#9aa0a6' }">
+            <PeIcon :name="o.style.icon" :size="16" />
+          </span>
+          <span class="event-type">{{ o.title || 'Sin título' }}</span>
+          <span class="event-location" v-if="o.location?.length">{{ o.location.join(', ') }}</span>
+          <span class="event-rec" v-if="o.recurLabel">{{ o.recurLabel }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Warnings -->
+    <div v-if="hasWarnings" class="legend">
+      <span v-if="hasPurpleWarnings" class="legend-item"><span class="swatch warn-purple"></span> No hay celebrante asignado</span>
+      <span v-if="hasRedWarnings" class="legend-item"><span class="swatch warn-red"></span> Bilocación requerida (mismo celebrante solapado en lugares distintos)</span>
+      <span v-if="hasOrangeWarnings" class="legend-item"><span class="swatch warn-orange"></span> Poco tiempo (0–15 min) entre eventos del mismo celebrante en lugares distintos</span>
+    </div>
+
+    <!-- Event grid -->
     <div class="grid-scroll" ref="scrollEl">
       <div class="grid">
         <!-- header row -->
@@ -260,36 +293,15 @@ function onAlldayClick(dayIndex, occs) {
           </div>
         </template>
       </div>
-
-      <p v-if="!occurrences.length" class="empty-week">
-        No hay eventos esta semana. Usa <strong>+ Evento</strong> para añadir.
-      </p>
     </div>
 
-    <div v-if="hasWarnings" class="legend">
-      <span v-if="hasPurpleWarnings" class="legend-item"><span class="swatch warn-purple"></span> No hay celebrante asignado</span>
-      <span v-if="hasRedWarnings" class="legend-item"><span class="swatch warn-red"></span> Bilocación requerida (mismo celebrante solapado en lugares distintos)</span>
-      <span v-if="hasOrangeWarnings" class="legend-item"><span class="swatch warn-orange"></span> Poco tiempo (0–15 min) entre eventos del mismo celebrante en lugares distintos</span>
-    </div>
 
-    <!-- Event list below the grid -->
-    <div v-if="occurrences.length" class="event-list">
-      <div v-for="(dayOccs, dayIdx) in occurrencesByDay" :key="dayIdx" class="event-day">
-        <h4 v-if="dayOccs.length" class="day-header">
-          {{ DAY_NAME_BY_GETDAY[listDays[dayIdx].getDay()] }} {{ listDays[dayIdx].getDate() }}
-        </h4>
-        <div v-for="(o, oi) in dayOccs" :key="`${o.eventIndex}-${oi}`" class="event-row" :class="{ specific: !o.recurring }" @click="emit('edit-occurrence', o)">
-          <span class="event-time" v-if="o.time">{{ o.time }}</span>
-          <span class="event-time" v-else>—</span>
-          <span class="event-icon" v-if="o.style.icon" :class="[o.warn ? `ev ev-small warn-${o.warn}` : null]" :style="{ color: o.style.color || '#9aa0a6' }">
-            <PeIcon :name="o.style.icon" :size="16" />
-          </span>
-          <span class="event-type">{{ o.title || 'Sin título' }}</span>
-          <span class="event-location" v-if="o.location?.length">{{ o.location.join(', ') }}</span>
-          <span class="event-rec" v-if="o.recurLabel">{{ o.recurLabel }}</span>
-        </div>
-      </div>
-    </div>
+
+
+
+
+
+
   </div>
 </template>
 
@@ -506,9 +518,9 @@ function onAlldayClick(dayIndex, occs) {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  margin-top: 6px;
+  /*margin-top: 6px;
   padding-top: 14px;
-  border-top: 1px solid var(--pe-border);
+  border-top: 1px solid var(--pe-border);*/
 }
 .event-day {
   display: flex;

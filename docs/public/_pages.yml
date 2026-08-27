@@ -60,20 +60,37 @@ components:
       creatable: true
       values:
         [
+        # Co-official & regional languages in Spain
           { value: "Español:es", label: "Español" },
+          { value: "Castellano:es", label: "Castellano" },
           { value: "Català:ca", label: "Català" },
+          { value: "Valencià:va", label: "Valencià" },
           { value: "Galego:gl", label: "Galego" },
           { value: "Euskara:eu", label: "Euskara" },
+
+        # Primary Western & Central European
           { value: "English:en", label: "English" },
           { value: "Français:fr", label: "Français" },
           { value: "Deutsch:de", label: "Deutsch" },
           { value: "Italiano:it", label: "Italiano" },
           { value: "Português:pt", label: "Português" },
+          { value: "Nederlands:nl", label: "Nederlands" },
+
+         # Eastern & Northern European
           { value: "Română:ro", label: "Română" },
-          { value: "العربية:ar", label: "العربية" },
-          { value: "中文:zh", label: "中文" },
           { value: "Български:bg", label: "Български" },
           { value: "Polski:pl", label: "Polski" },
+          { value: "Українська:uk", label: "Українська" },
+          { value: "Русский:ru", label: "Русский" },
+          { value: "Svenska:sv", label: "Svenska" },
+          { value: "Ελληνικά:el", label: "Ελληνικά" },
+          { value: "Magyar:hu", label: "Magyar" },
+          { value: "Čeština:cs", label: "Čeština" },
+
+          # Key global & demographic languages relevant to Spain/EU
+          { value: "العربية:ar", label: "العربية" },
+          { value: "中文:zh", label: "中文" },
+          { value: "Türkçe:tr", label: "Türkçe" }
         ]
   navigationBar:
     label: "Formato barra navegación"
@@ -399,7 +416,6 @@ components:
         - { name: title, label: Título, type: string }
         - { name: description, label: Subtitulo, type: string }
         - { name: image, label: Imagen, type: image }
-        #- { name: protected, label: 'Elemento protegido/imborrable (dev only, ira escondido)', type: text }
         #- { name: hideHero, label: Esconder cabezera por defecto, type: boolean, default: false }
         - name: sections
           label: Secciones de la página
@@ -409,7 +425,7 @@ components:
             - name: accordion
               label: FAQ
               fields:
-                - { name: title, type: string, label: Titulo sección }
+                - { name: title, type: string, label: Titulo sección, default: "Preguntas frecuentes" }
                 - name: elements
                   label: Preguntas y respuestas
                   type: object
@@ -421,7 +437,7 @@ components:
             - name: scrollyTelling
               label: Narración interactiva
               fields:
-                - { name: title, type: string, label: Titulo sección }
+                - { name: title, type: string, label: Titulo de la narración }
                 - name: elements
                   label: Viñetas
                   type: object
@@ -445,7 +461,7 @@ components:
             - name: gospel
               label: Evangelio del día
               fields:
-                - { name: title, type: string, label: Titulo sección }
+                - { name: title, type: string, label: Titulo sección, default: "Evangelio de hoy" }
                 - { name: readings, label: Mostrar primera/segunda y salmo, type: boolean, default: false }
                 - { name: audio, label: Añadir audio, type: boolean, default: false }
                 - { name: images, label: Mostrar imagenes, type: boolean, default: true }
@@ -453,7 +469,7 @@ components:
             - name: calendar
               label: Eventos
               fields:
-                - { name: title, type: string, label: Titulo sección }
+                - { name: title, type: string, label: Titulo sección, default: "Nuestros eventos" }
                 - { name: filter, label: Filtro. Incluir solo eventos que contengan, type: string }
                 - { name: orderTabla, label: "Dividir en tablas según:", component: orderSelect }
                 - { name: orderFila, label: "Dividir en filas según:", component: orderSelect }
@@ -464,12 +480,12 @@ components:
             - name: video-gospel
               label: Audios Nuevo Testamento
               fields:
-                - { name: title, type: string, label: Titulo sección }
+                - { name: title, type: string, label: Titulo sección, default: "Audios Nuevo Testamento" }
                 - { name: tags, label: Opciones de estilo, component: tags }
             - name: video-podcast
               label: Podcast católicos
               fields:
-                - { name: title, type: string, label: Titulo sección }
+                - { name: title, type: string, label: Titulo sección, default: "Descubre tu fe" }
                 - { name: links, label: Podcast, component: podcast }
                 - { name: tags, label: Opciones de estilo, component: tags }
             - name: video-channel
@@ -479,9 +495,9 @@ components:
                 - { name: filter, label: Filtro. Incluir solo videos que contengan, type: string }
                 - { name: tags, label: Opciones de estilo, component: tags }
             - name: town
-              label: Lista de pueblos
+              label: Lista de templos/pueblos
               fields:
-                - { name: title, type: string, label: Titulo sección }
+                - { name: title, type: string, label: Titulo sección, default: "Nuestros pueblos" }
                 - { name: filters, label: Filtros a mostrar, type: select, options: { multiple: true, creatable: true } }
                 - { name: tags, label: Opciones de estilo, component: tags }
             - name: video
@@ -493,7 +509,7 @@ components:
             - name: map
               label: Mapa
               fields:
-                - { name: title, type: string, label: Título sección }
+                - { name: title, type: string, label: Título sección, default: 'Ven a conocernos' }
                 - { name: geo, type: string, label: "Coordenadas (ej: 42.801941, -1.645660)" }
                 - { name: name, type: string, label: Nombre }
                 - { name: image, type: image, label: Imagen }
@@ -501,7 +517,7 @@ components:
             - name: fundraising
               label: Campaña financiación
               fields:
-                - { name: title, type: string, label: Titulo sección }
+                - { name: title, type: string, label: Titulo sección, default: "Ayudanos a llegar a más" }
                 - { name: name, type: string, label: "Nombre causa (ej: Nuevo tejado)" }
                 - { name: description, type: string, label: Descripcion }
                 - { name: raised, type: number, label: Recaudado hasta la fecha }
@@ -515,7 +531,7 @@ components:
             - name: team
               label: Miembros del equipo
               fields:
-                - { name: title, type: string, label: Titulo sección }
+                - { name: title, type: string, label: Titulo sección, default: "Nuestro equipo parroquial" }
                 - { name: tags, label: Opciones de estilo, component: tags }
             - name: links
               label: Enlaces internos
@@ -527,10 +543,6 @@ components:
                 - { name: tags, label: Opciones de estilo, component: tags }
 
 
-media:
-  input: ''
-  output: ''
-  categories: ["image", "document"]
 content:
   - name: calendar
     icon: calendar
@@ -591,18 +603,20 @@ content:
         list: { collapsible: { collapsed: true, summary: "{fields.name}" } }
         fields:
           - { name: name, label: Nombre, type: string }
+          - { name: phonenumber, label: "Número teléfono", type: string }
+          - { name: image, label: Foto, type: image }
           - name: social
-            label: Información de contacto (teléfono, email...)
+            label: Otra información de contacto (email, instagram....)
             type: string
             list: { collapsible: { collapsed: true } }
-          - { name: image, label: Foto, type: image }
+          
       - name: places
         label: Lista de templos
         type: object
         list: { collapsible: { collapsed: true, summary: "{fields.name}" }, sort: "alphabetical", modal: false }
         fields:
           - { name: name, type: string, label: Nombre }
-          - { name: image, type: image, label: Imagenes, options: { multiple: true } }
+          - { name: images, type: image, label: Imagenes, options: { multiple: true } }
           - { name: geo, type: string, label: "Coordenadas (ej: 42.801941, -1.645660)" }
           - name: tags
             label: Otros valores
