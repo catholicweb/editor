@@ -336,7 +336,15 @@ onMounted(() => {
   unicode-bidi: isolate;
 }
 .rich-editable :deep(ul) {
-  padding-left: 20px;
+  list-style-type: disc;
+  padding-left: 24px;
+}
+.rich-editable :deep(ol) {
+  list-style-type: decimal;
+  padding-left: 24px;
+}
+.rich-editable :deep(li) {
+  margin: 2px 0;
 }
 .rich-editable :deep(a) {
   color: var(--pe-accent);
