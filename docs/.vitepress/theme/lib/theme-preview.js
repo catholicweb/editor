@@ -57,7 +57,6 @@ export function buildThemeStylesCss(styles) {
     const rawCssClass = toArray(item.cssClass).map(c => sanitizeCssClassBlock(c));
     const classes = mergeCssDeclarations(rawCssClass);
     const scroll = !!item.scroll;
-    console.log(selectors, rawCssClass, classes, scroll)
     for (const s of selectors) {
       const safeSel = sanitizeSelector(s);
       if (!safeSel) continue;
@@ -77,7 +76,6 @@ export function buildThemeStylesCss(styles) {
 export function applyThemeStylesPreview(styles) {
   let styleEl = document.getElementById('theme-preview-styles');
   const css = buildThemeStylesCss(styles);
-  console.log(styleEl, css, styles)
   if (css) {
     if (!styleEl) {
       styleEl = document.createElement('style');

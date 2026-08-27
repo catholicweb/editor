@@ -73,9 +73,9 @@ watch(
 const toolbar = [
   { id: 'bold', icon: 'material-symbols:format-bold', tip: 'Negrita' },
   { id: 'italic', icon: 'material-symbols:format-italic', tip: 'Cursiva' },
-  { id: 'h2', icon: 'material-symbols:format-size', tip: 'Título 2' },
-  { id: 'h3', icon: 'material-symbols:format-size', tip: 'Título 3' },
-  { id: 'h4', icon: 'material-symbols:format-size', tip: 'Título 4' },
+  { id: 'h2', icon: 'material-symbols:format-h2', tip: 'Título 2' },
+  { id: 'h3', icon: 'material-symbols:format-h3', tip: 'Título 3' },
+  { id: 'h4', icon: 'material-symbols:format-h4', tip: 'Título 4' },
   { id: 'ul', icon: 'material-symbols:format-list-bulleted', tip: 'Lista con viñetas' },
   { id: 'ol', icon: 'material-symbols:format-list-numbered', tip: 'Lista numerada' },
   { id: 'image', icon: 'material-symbols:image', tip: 'Insertar imagen' },
@@ -245,7 +245,7 @@ onMounted(() => {
         @click="t.id === 'link-internal' ? openInternalLinkPicker($event) : onToolbar(t.id)"
       >
         <PeIcon :name="t.icon" :size="16" />
-      ></button>
+      </button>
     </div>
     <div
       ref="richEl"
