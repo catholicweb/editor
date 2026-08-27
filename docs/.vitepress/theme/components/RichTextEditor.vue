@@ -2,6 +2,7 @@
 import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import MarkdownIt from 'markdown-it';
 import TurndownService from 'turndown';
+import PeIcon from './PeIcon.vue';
 import ImagePickerModal from './ImagePickerModal.vue';
 import { state } from '../lib/store.js';
 import { resolvePath } from '../lib/schema.js';
@@ -70,17 +71,17 @@ watch(
 
 // ---- toolbar ---------------------------------------------------------------
 const toolbar = [
-  { id: 'bold', label: '<b>B</b>', tip: 'Negrita' },
-  { id: 'italic', label: '<i>I</i>', tip: 'Cursiva' },
-  { id: 'h2', label: 'H2', tip: 'Título 2' },
-  { id: 'h3', label: 'H3', tip: 'Título 3' },
-  { id: 'h4', label: 'H4', tip: 'Título 4' },
-  { id: 'ul', label: '• Lista', tip: 'Lista con viñetas' },
-  { id: 'ol', label: '1. Lista', tip: 'Lista numerada' },
-  { id: 'image', label: '🖼 Imagen', tip: 'Insertar imagen' },
-  { id: 'link-internal', label: '🔗 Página', tip: 'Enlace a una página interna' },
-  { id: 'link-external', label: 'Enlace', tip: 'Enlace externo' },
-  { id: 'clear', label: 'Limpiar', tip: 'Quitar formato' },
+  { id: 'bold', icon: 'material-symbols:format-bold', tip: 'Negrita' },
+  { id: 'italic', icon: 'material-symbols:format-italic', tip: 'Cursiva' },
+  { id: 'h2', icon: 'material-symbols:format-size', tip: 'Título 2' },
+  { id: 'h3', icon: 'material-symbols:format-size', tip: 'Título 3' },
+  { id: 'h4', icon: 'material-symbols:format-size', tip: 'Título 4' },
+  { id: 'ul', icon: 'material-symbols:format-list-bulleted', tip: 'Lista con viñetas' },
+  { id: 'ol', icon: 'material-symbols:format-list-numbered', tip: 'Lista numerada' },
+  { id: 'image', icon: 'material-symbols:image', tip: 'Insertar imagen' },
+  { id: 'link-internal', icon: 'material-symbols:link', tip: 'Enlace a una página interna' },
+  { id: 'link-external', icon: 'material-symbols:globe', tip: 'Enlace externo' },
+  { id: 'clear', icon: 'material-symbols:delete', tip: 'Quitar formato' },
 ];
 
 function exec(cmd, val = null) {
@@ -242,7 +243,8 @@ onMounted(() => {
         :title="t.tip"
         @mousedown.prevent
         @click="t.id === 'link-internal' ? openInternalLinkPicker($event) : onToolbar(t.id)"
-        v-html="t.label"
+      >
+        <PeIcon :name="t.icon" :size="16" />
       ></button>
     </div>
     <div
@@ -336,7 +338,15 @@ onMounted(() => {
   unicode-bidi: isolate;
 }
 .rich-editable :deep(ul) {
-  padding-left: 20px;
+  list-style-type: disc;
+  padding-left: 24px;
+}
+.rich-editable :deep(ol) {
+  list-style-type: decimal;
+  padding-left: 24px;
+}
+.rich-editable :deep(li) {
+  margin: 2px 0;
 }
 .rich-editable :deep(a) {
   color: var(--pe-accent);
