@@ -18,6 +18,58 @@ const AUTOSAVE_DELAY = 60_000; // (long time, we rely on autosave on visibility 
 
 const LS_PREFIX = 'parroquiaEditor';
 
+// Legacy-structures check: detect config.json keys/properties not mapped by schema
+function getFieldNames(fields) {
+  if (!Array.isArray(fields)) return new Set();
+  const s = new Set();
+  for (const f of fields) {
+    if (f && f.name) s.add(f.name);
+    // nested object / block sub-fields
+    if (f && f.type === 'object' && Array.isArray(f.fields)) {
+      for (const n of getFieldNames(f.fields)) s.add(n);
+    }
+    if (f && f.type === 'block' && Array.isArray(f.blocks)) {
+      for (const b of f.blocks) {
+        if (b && Array.isArray(b.fields)) {
+          for (const n of getFieldNames(b.fields)) s.add(n);
+        }
+      }
+    }
+  }
+  return s;
+}
+
+function checkLegacyData(config, fileIndex) {
+  if (!config || typeof config !== 'object') return;
+  const allowedTabs = new Set(fileIndex.map(e => e.tabPath));
+  for (const topKey of Object.keys(config)) {
+    if (!allowedTabs.has(topKey)) {
+      console.error('[Legacy data] Unreachable config property at top level:', topKey, '| snippet:', typeof config[topKey] === 'object' ? JSON.stringify(config[topKey]).slice(0, 120) : String(config[topKey]).slice(0, 120));
+    } else {
+      const entry = fileIndex.find(e => e.tabPath === topKey);
+      if (entry && config[topKey] && typeof config[topKey] === 'object' && !Array.isArray(config[topKey])) {
+        const allowedNested = getFieldNames(entry.fields);
+        for (const nestedKey of Object.keys(config[topKey])) {
+          if (!allowedNested.has(nestedKey)) {
+            console.error('[Legacy data] Unreachable config property:', topKey + '.' + nestedKey, '| snippet:', typeof config[topKey][nestedKey] === 'object' ? JSON.stringify(config[topKey][nestedKey]).slice(0, 120) : String(config[topKey][nestedKey]).slice(0, 120));
+          } else {
+            // recursive deeper check if nested value is object and field defines sub-structure
+            const subField = (entry.fields || []).find(f => f && f.name === nestedKey);
+            if (subField && config[topKey][nestedKey] && typeof config[topKey][nestedKey] === 'object' && !Array.isArray(config[topKey][nestedKey])) {
+              const deeperAllowed = getFieldNames(subField.fields || (subField.type === 'object' ? subField.fields : []));
+              for (const d of Object.keys(config[topKey][nestedKey])) {
+                if (!deeperAllowed.has(d)) {
+                  console.error('[Legacy data] Unreachable config property:', topKey + '.' + nestedKey + '.' + d, '| snippet:', typeof config[topKey][nestedKey][d] === 'object' ? JSON.stringify(config[topKey][nestedKey][d]).slice(0, 120) : String(config[topKey][nestedKey][d]).slice(0, 120));
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 // Connection defaults. Fixed deployment config, not user-editable — these are
 // the only source of connection values (a saved session is never trusted for
 // them). Each falls back to the hardcoded default unless overridden at build
@@ -291,6 +343,8 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug, e
 
     state.schema = schema;
     state.config = config || {}; // Store config in reactive state
+    // Check for legacy/unreachable data before defaults may mask it
+    checkLegacyData(state.config, state.fileIndex || buildFileIndex(state.schema || {}));
 
     // Remember exactly what the server returned, BEFORE schema defaults are
     // applied below. Comparing this against the defaulted config tells us
@@ -685,6 +739,7 @@ export async function openEntry(entry) {
       const text = await api.getFileText(state.dataBase, state.slug, entry.fileToken);
       if (text) {
         state.config = JSON.parse(text);
+        checkLegacyData(state.config, state.fileIndex || buildFileIndex(state.schema || {}));
       }
     }
 
