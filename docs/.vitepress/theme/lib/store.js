@@ -41,12 +41,13 @@ function getFieldNames(fields) {
 
 function checkLegacyData(config, fileIndex) {
   if (!config || typeof config !== 'object') return;
-  const allowedTabs = new Set(fileIndex.map(e => e.tabPath));
+  const allowedTabs = new Set(fileIndex.content.map(e => e.name));
+  allowedTabs.add('dev')
   for (const topKey of Object.keys(config)) {
     if (!allowedTabs.has(topKey)) {
       console.error('[Legacy data] Unreachable config property at top level:', topKey, '| snippet:', typeof config[topKey] === 'object' ? JSON.stringify(config[topKey]).slice(0, 120) : String(config[topKey]).slice(0, 120));
     } else {
-      const entry = fileIndex.find(e => e.tabPath === topKey);
+      const entry = fileIndex.content.find(e => e.name === topKey);
       if (entry && config[topKey] && typeof config[topKey] === 'object' && !Array.isArray(config[topKey])) {
         const allowedNested = getFieldNames(entry.fields);
         for (const nestedKey of Object.keys(config[topKey])) {
@@ -344,7 +345,7 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug, e
     state.schema = schema;
     state.config = config || {}; // Store config in reactive state
     // Check for legacy/unreachable data before defaults may mask it
-    checkLegacyData(state.config, state.fileIndex || buildFileIndex(state.schema || {}));
+    checkLegacyData(state.config, state.schema);
 
     // Remember exactly what the server returned, BEFORE schema defaults are
     // applied below. Comparing this against the defaulted config tells us
@@ -739,7 +740,7 @@ export async function openEntry(entry) {
       const text = await api.getFileText(state.dataBase, state.slug, entry.fileToken);
       if (text) {
         state.config = JSON.parse(text);
-        checkLegacyData(state.config, state.fileIndex || buildFileIndex(state.schema || {}));
+        checkLegacyData(state.config, state.schema);
       }
     }
 
