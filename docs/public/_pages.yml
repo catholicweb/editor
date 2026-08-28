@@ -494,6 +494,12 @@ components:
                 - { name: title, type: string, label: Titulo sección }
                 - { name: filter, label: Filtro. Incluir solo videos que contengan, type: string }
                 - { name: tags, label: Opciones de estilo, component: tags }
+            - name: video-instagram
+              label: Cuenta de instagram
+              fields:
+                - { name: title, type: string, label: Titulo sección }
+                - { name: filter, label: Filtro. Incluir solo posts que contengan, type: string }
+                - { name: tags, label: Opciones de estilo, component: tags }
             - name: town
               label: Lista de templos/pueblos
               fields:
@@ -595,8 +601,8 @@ content:
     type: tab
     label: Datos
     fields:
-      - { name: title, label: Nombre o título de la web, type: string }
-      - { name: description, label: Breve descripción de la web, type: text }
+      - { name: title, label: Título del sitio web, type: string }
+      - { name: description, label: Breve descripción del sitio web, type: text }
       - name: collaborators
         label: Lista de colaboradores
         type: object
