@@ -40,19 +40,24 @@ function getFieldNames(fields) {
 }
 
 function checkLegacyData(config, fileIndex) {
-  if (!config || typeof config !== 'object') return;
+  if (!config || typeof config !== 'object') return [];
+  const messages = [];
   const allowedTabs = new Set(fileIndex.content.map(e => e.name));
   allowedTabs.add('dev')
   for (const topKey of Object.keys(config)) {
     if (!allowedTabs.has(topKey)) {
-      console.error('[Legacy data] Unreachable config property at top level:', topKey, '| snippet:', typeof config[topKey] === 'object' ? JSON.stringify(config[topKey]).slice(0, 120) : String(config[topKey]).slice(0, 120));
+      const snippet = typeof config[topKey] === 'object' ? JSON.stringify(config[topKey]).slice(0, 120) : String(config[topKey]).slice(0, 120);
+      console.error('[Legacy data] Unreachable config property at top level:', topKey, '| snippet:', snippet);
+      messages.push(topKey);
     } else {
       const entry = fileIndex.content.find(e => e.name === topKey);
       if (entry && config[topKey] && typeof config[topKey] === 'object' && !Array.isArray(config[topKey])) {
         const allowedNested = getFieldNames(entry.fields);
         for (const nestedKey of Object.keys(config[topKey])) {
           if (!allowedNested.has(nestedKey)) {
-            console.error('[Legacy data] Unreachable config property:', topKey + '.' + nestedKey, '| snippet:', typeof config[topKey][nestedKey] === 'object' ? JSON.stringify(config[topKey][nestedKey]).slice(0, 120) : String(config[topKey][nestedKey]).slice(0, 120));
+            const snippet = typeof config[topKey][nestedKey] === 'object' ? JSON.stringify(config[topKey][nestedKey]).slice(0, 120) : String(config[topKey][nestedKey]).slice(0, 120);
+            console.error('[Legacy data] Unreachable config property:', topKey + '.' + nestedKey, '| snippet:', snippet);
+            messages.push(topKey + '.' + nestedKey);
           } else {
             // recursive deeper check if nested value is object and field defines sub-structure
             const subField = (entry.fields || []).find(f => f && f.name === nestedKey);
@@ -60,7 +65,9 @@ function checkLegacyData(config, fileIndex) {
               const deeperAllowed = getFieldNames(subField.fields || (subField.type === 'object' ? subField.fields : []));
               for (const d of Object.keys(config[topKey][nestedKey])) {
                 if (!deeperAllowed.has(d)) {
-                  console.error('[Legacy data] Unreachable config property:', topKey + '.' + nestedKey + '.' + d, '| snippet:', typeof config[topKey][nestedKey][d] === 'object' ? JSON.stringify(config[topKey][nestedKey][d]).slice(0, 120) : String(config[topKey][nestedKey][d]).slice(0, 120));
+                  const snippet = typeof config[topKey][nestedKey][d] === 'object' ? JSON.stringify(config[topKey][nestedKey][d]).slice(0, 120) : String(config[topKey][nestedKey][d]).slice(0, 120);
+                  console.error('[Legacy data] Unreachable config property:', topKey + '.' + nestedKey + '.' + d, '| snippet:', snippet);
+                  messages.push(topKey + '.' + nestedKey + '.' + d);
                 }
               }
             }
@@ -69,6 +76,7 @@ function checkLegacyData(config, fileIndex) {
       }
     }
   }
+  return messages;
 }
 
 // Connection defaults. Fixed deployment config, not user-editable — these are
@@ -344,9 +352,6 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug, e
 
     state.schema = schema;
     state.config = config || {}; // Store config in reactive state
-    // Check for legacy/unreachable data before defaults may mask it
-    checkLegacyData(state.config, state.schema);
-
     // Remember exactly what the server returned, BEFORE schema defaults are
     // applied below. Comparing this against the defaulted config tells us
     // whether the loaded copy already carries the schema-backfilled ids /
@@ -740,7 +745,6 @@ export async function openEntry(entry) {
       const text = await api.getFileText(state.dataBase, state.slug, entry.fileToken);
       if (text) {
         state.config = JSON.parse(text);
-        checkLegacyData(state.config, state.schema);
       }
     }
 
@@ -757,6 +761,17 @@ export async function openEntry(entry) {
     if (entry.contentName === 'nerdy') {
       state.nerdyText = JSON.stringify(state.config, null, 2);
       state.nerdyValid = true;
+      if (state.schema && state.schema.content) {
+        const legacy = checkLegacyData(state.config, state.schema);
+        if (legacy && legacy.length) {
+          const summary = 'Legacy unreachable properties: ' + legacy.slice(0, 5).join(', ') + (legacy.length > 5 ? ' (+' + (legacy.length - 5) + ' más)' : '');
+          state.error = summary;
+        } else {
+          state.error = '';
+        }
+      } else {
+        state.error = '';
+      }
     }
     // NOTE: no state.draft / state.currentBody assignment — see currentData.
     // `savedText` (the whole-config dirty baseline) is intentionally NOT
