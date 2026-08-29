@@ -101,7 +101,7 @@ components:
           { value: "default", label: "Clásica (arriba)" },
           { value: "47herri", label: "47herri (oscura y compacta)" },
           { value: "centered", label: "Centrada (logo en el medio)" },
-          { value: "minimal", label: "Minimalista (solo lo esencial)" },
+          #{ value: "minimal", label: "Minimalista (solo lo esencial)" },
           { value: "two-row", label: "Dos filas (logo arriba, menú abajo)" },
           { value: "solid-dark", label: "Oscura y sólida" },
         ]
@@ -710,6 +710,10 @@ content:
         options: { themeRole: body }
       - { name: navStyle, label: "Estilo de la barrra de navegación", component: navigationBar }
       - { name: footerStyle, label: "Estilo de pie de página", component: footerStyle }
+      - { name: radius, label: "Redondez de elementos", component: radiusSelect, options: { themeRole: radius } }
+      #- { name: shadow, label: "Intensidad de sombras", component: shadowSelect, options: { themeRole: shadow } }
+      - { name: buttonStyle, label: "Estilo de botones", component: buttonStyle, options: { themeRole: buttonStyle } }
+
       - name: styles
         label: Estilos para cada elemento
         type: object
@@ -719,13 +723,10 @@ content:
           - { name: cssClass, label: "Efecto a aplicar", component: effect }
           - { name: scroll, label: "Aplicar al hacer desplazar (transición)", type: boolean, default: false }
 
-      - { name: radius, label: "Redondez de elementos", component: radiusSelect, options: { themeRole: radius } }
-      - { name: shadow, label: "Intensidad de sombras", component: shadowSelect, options: { themeRole: shadow } }
-      - { name: buttonStyle, label: "Estilo de botones", component: buttonStyle, options: { themeRole: buttonStyle } }
       # `preview` is a custom field type rendered by Preview.vue
       # (see FieldRenderer's `field.type === 'preview'` branch)
-      - name: preview
-        type: preview
-        label: Visualiza los estilos
-        options:
-          styles: "theme"   # location of the 
+      #- name: preview
+      #  type: preview
+      #  label: Visualiza los estilos
+      #  options:
+      #    styles: "theme"   # location of the 
