@@ -302,7 +302,7 @@ async function searchMisasAPI(lat, lon) {
 
     // Format places with events (parishes use parish.lat / parish.long)
     return [...merged.values()].map((parish) => {
-      const parts = [parish.addr, parish.loc, parish.prov, parish.zip].filter(Boolean);
+      const parts = [parish.addr, parish.zip, parish.loc, parish.prov].filter(Boolean);
       const addr = parts.join(', ') || undefined;
       return {
         id: generateId(),

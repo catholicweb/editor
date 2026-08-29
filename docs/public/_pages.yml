@@ -624,6 +624,7 @@ content:
           - { name: name, type: string, label: Nombre }
           - { name: images, type: image, label: Imagenes, options: { multiple: true } }
           - { name: geo, type: string, label: "Coordenadas (ej: 42.801941, -1.645660)" }
+          - { name: address, type: string, label: "Dirección" }
           - name: tags
             label: Otros valores
             type: object
