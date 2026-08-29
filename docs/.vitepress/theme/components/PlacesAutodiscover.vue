@@ -251,7 +251,9 @@ function formatPlaces(elements) {
 
     const distance = (userLat && userLon) ? calculateDistance(userLat, userLon, lat, lon) : null;
 
+    const addr = (el.tags['addr:street'] || '') + (el.tags['addr:housenumber'] ? ' ' + el.tags['addr:housenumber'] : '') + (el.tags['addr:city'] ? ', ' + el.tags['addr:city'] : '');
     places.push({
+      id: generateId(),
       name: cleanPlaceName(el.tags.name) || 'Sin nombre',
       geo: `${lat}, ${lon}`,
       lat: lat,
@@ -259,6 +261,7 @@ function formatPlaces(elements) {
       type: el.tags.religion || el.tags.denomination || 'unknown',
       distance: distance,
       events: [], // Initialize with empty events array
+      address: addr || undefined,
     });
   }
 
@@ -298,17 +301,23 @@ async function searchMisasAPI(lat, lon) {
     }
 
     // Format places with events (parishes use parish.lat / parish.long)
-    return [...merged.values()].map((parish) => ({
-      name: cleanPlaceName(parish.name) || 'Sin nombre',
-      geo: `${parish.lat}, ${parish.long}`,
-      lat: parish.lat,
-      lon: parish.long,
-      type: 'catholic', // misas.org only has Catholic parishes
-      distance: userLocation.value ? calculateDistance(userLocation.value.lat, userLocation.value.lon, parish.lat, parish.long) : null,
-      events: sortMassesByTime(parish.mass || []), // Events from the parish API, sorted by hour
-      source: 'misas.org', // Mark source for merging
-      image: parish.pic ? [`https://misas.org/images/${parish.pic}`] : undefined
-    }));
+    return [...merged.values()].map((parish) => {
+      const parts = [parish.addr, parish.loc, parish.prov, parish.zip].filter(Boolean);
+      const addr = parts.join(', ') || undefined;
+      return {
+        id: generateId(),
+        name: cleanPlaceName(parish.name) || 'Sin nombre',
+        geo: `${parish.lat}, ${parish.long}`,
+        lat: parish.lat,
+        lon: parish.long,
+        type: 'catholic', // misas.org only has Catholic parishes
+        distance: userLocation.value ? calculateDistance(userLocation.value.lat, userLocation.value.lon, parish.lat, parish.long) : null,
+        events: sortMassesByTime(parish.mass || []), // Events from the parish API, sorted by hour
+        source: 'misas.org', // Mark source for merging
+        image: parish.pic ? [`https://misas.org/images/${parish.pic}`] : undefined,
+        address: addr || undefined,
+      };
+    });
   } catch (err) {
     console.error('Failed to search parish API:', err);
     return []; // Return empty array on error, don't fail the whole discovery
@@ -338,6 +347,8 @@ function mergePlaces(osmPlaces, misasPlaces) {
         if (misasPlace.events && misasPlace.events.length > 0) {
           osmPlace.events = misasPlace.events;
         }
+        if (misasPlace.address) osmPlace.address = misasPlace.address;
+        if (misasPlace.id) osmPlace.id = misasPlace.id;
         osmPlace.source = 'merged';
         matchFound = true;
         break;
@@ -364,7 +375,7 @@ function mapEvent(apiEvent, place) {
     // autodiscovered events mix with hand-authored ones. Mirrors newEvent().
     id: generateId('evt'),
     type: 'mass',
-    location: place.name,
+    location: place.id,
     date: apiEvent.date || null,
     times: apiEvent.time || apiEvent.times || null,
     rrule: mapMassDays(apiEvent.days) || null,
@@ -419,9 +430,11 @@ async function selectPlace(place) {
   // Add the place to the configured list field of this tab's container.
   const list = ensurePath(props.container, listPath, () => []);
   list.push({
+    id: place.id,
     name: place.name,
     geo: place.geo,
     image: place.image,
+    address: place.address,
   });
 
   // Remove from discovered list

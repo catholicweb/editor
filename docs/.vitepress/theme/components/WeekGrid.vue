@@ -6,6 +6,7 @@ import {
   addDaysReal,
   formatWeekRange,
 } from '../lib/calendar.js';
+import { state } from '../lib/store.js';
 import PeIcon from './PeIcon.vue';
 
 const props = defineProps({
@@ -18,6 +19,18 @@ const props = defineProps({
 const emit = defineEmits(['edit-event', 'add-event', 'edit-occurrence', 'update:weekStart']);
 
 const weekStart = computed(() => props.weekStart);
+
+function findPlaceName(id) {
+  if (!id || !state.config?.info?.places) return id;
+  for (const place of state.config.info.places) {
+    if (place && place.id === id && place.name) return place.name;
+  }
+  return id;
+}
+function formatLocation(loc) {
+  const arr = Array.isArray(loc) ? loc : (loc ? [loc] : []);
+  return arr.map(findPlaceName).join(', ');
+}
 
 function prev() { emit('update:weekStart', addDaysReal(props.weekStart, -7)); }
 function next() { emit('update:weekStart', addDaysReal(props.weekStart, 7)); }
@@ -216,7 +229,7 @@ function onAlldayClick(dayIndex, occs) {
             <PeIcon :name="o.style.icon" :size="16" />
           </span>
           <span class="event-type">{{ o.title || 'Sin título' }}</span>
-          <span class="event-location" v-if="o.location?.length">{{ o.location.join(', ') }}</span>
+          <span class="event-location" v-if="o.location?.length">{{ formatLocation(o.location) }}</span>
           <span class="event-rec" v-if="o.recurLabel">{{ o.recurLabel }}</span>
         </div>
       </div>
