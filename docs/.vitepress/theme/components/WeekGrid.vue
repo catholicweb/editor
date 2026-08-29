@@ -21,14 +21,9 @@ const emit = defineEmits(['edit-event', 'add-event', 'edit-occurrence', 'update:
 const weekStart = computed(() => props.weekStart);
 
 function findPlaceName(id) {
-  if (!id || !state.config) return id;
-  for (const key in state.config) {
-    const arr = state.config[key];
-    if (Array.isArray(arr)) {
-      for (const item of arr) {
-        if (item && item.id === id && item.name) return item.name;
-      }
-    }
+  if (!id || !state.config?.info?.places) return id;
+  for (const place of state.config?.info?.places) {
+    if (place && place.id === id && place.name) return place.name;
   }
   return id;
 }
