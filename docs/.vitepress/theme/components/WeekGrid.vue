@@ -200,6 +200,8 @@ function typeStyle(id) {
   return t || {};
 }
 
+import ByTypeEventRow from './ByTypeEventRow.vue';
+
 const groupedByType = computed(() => {
   const groups = {};
   for (const ev of props.events || []) {
@@ -268,16 +270,7 @@ function onAlldayClick(dayIndex, occs) {
     <div v-else-if="viewMode === 'byType'" class="event-list by-type">
       <div v-for="group in groupedByType" :key="group.key" class="event-type-group">
         <h4 class="type-header">{{ group.label }}</h4>
-        <div v-for="(ev, idx) in group.events" :key="ev.id || idx" class="event-row" @click="emit('edit-event', props.events.indexOf(ev))">
-          <span class="event-time" v-if="ev.times?.length">{{ ev.times[0] }}</span>
-          <span class="event-time" v-else-if="ev.date">{{ ev.date }}{{ ev.time ? ' ' + ev.time : '' }}</span>
-          <span class="event-time" v-else>—</span>
-          <span class="event-icon" v-if="typeStyle(ev.type)?.icon" :style="{ color: typeStyle(ev.type)?.defaults?.color || '#9aa0a6' }">
-            <PeIcon :name="typeStyle(ev.type)?.icon" :size="16" />
-          </span>
-          <span class="event-type">{{ ev.title || 'Sin título' }}</span>
-          <span class="event-location" v-if="ev.location?.length">{{ formatLocation(ev.location) }}</span>
-        </div>
+        <ByTypeEventRow v-for="(ev, idx) in group.events" :key="ev.id || idx" :ev="ev" :index="props.events.indexOf(ev)" :event-types="props.eventTypes" :celebrants="props.celebrants" @edit-event="(i) => emit('edit-event', i)" />
       </div>
     </div>
 
