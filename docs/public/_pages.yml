@@ -450,7 +450,7 @@ components:
               label: Galeria de imagenes
               fields:
                 - { name: title, type: string, label: Titulo sección }
-                - { name: list, type: image, label: Seleccion de imagenes, options: { multiple: true } }
+                - { name: images, type: image, label: Seleccion de imagenes, options: { multiple: true } }
                 - { name: tags, label: Opciones de estilo, component: tags }
             - name: text
               label: Texto
