@@ -298,7 +298,7 @@ function onAlldayClick(dayIndex, occs) {
     <!-- Event list grouped by type -->
     <div v-else-if="viewMode === 'byType'" class="event-list by-type">
       <div v-for="group in eventsByType" :key="group.key" class="event-type-group">
-        <h4 class="type-header">{{ group.label }}</h4>
+        <h4 class="day-header">{{ group.label }}</h4>
         <div v-for="row in group.events" :key="row.ev.id || row.index" class="event-row" :class="{ specific: row.specific }" @click="emit('edit-event', row.index)">
           <span class="event-time">{{ row.timeStr }}</span>
           <span class="event-icon" v-if="row.style.icon" :class="[row.warn ? `ev ev-small warn-${row.warn}` : null]" :style="{ color: row.style.color || '#9aa0a6' }">
