@@ -17,6 +17,7 @@ const props = defineProps({
   weekStart: { type: Object, required: true }, // controlled by CalendarEditor
 });
 const emit = defineEmits(['edit-event', 'add-event', 'edit-occurrence', 'update:weekStart']);
+const viewMode = ref('list');
 
 const weekStart = computed(() => props.weekStart);
 
@@ -188,6 +189,28 @@ const occurrencesByDay = computed(() => {
   }
   return byDay;
 });
+
+function typeLabel(id) {
+  if (!id) return 'Sin tipo';
+  const t = props.eventTypes?.find(e => e.id === id || e.id === id);
+  return t?.label || id;
+}
+function typeStyle(id) {
+  const t = props.eventTypes?.find(e => e.id === id || e.id === id);
+  return t || {};
+}
+
+const groupedByType = computed(() => {
+  const groups = {};
+  for (const ev of props.events || []) {
+    const key = ev.type || 'sin-tipo';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(ev);
+  }
+  // Sort groups by label
+  const sortedKeys = Object.keys(groups).sort((a, b) => typeLabel(a).localeCompare(typeLabel(b)));
+  return sortedKeys.map(k => ({ key: k, label: typeLabel(k), events: groups[k] }));
+});
 function onAlldayClick(dayIndex, occs) {
   if (occs.length) emit('edit-event', occs[0].eventIndex);
   else {
@@ -210,14 +233,23 @@ function onAlldayClick(dayIndex, occs) {
       </div>
       <h3 class="range">{{ formatWeekRange(weekStart) }}</h3>
       <button class="add-event" @click="emit('add-event', {})">+ Evento</button>
+      <div class="view-toggle">
+        <button :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">Lista</button>
+        <button :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">Grid</button>
+        <button :class="{ active: viewMode === 'byType' }" @click="viewMode = 'byType'">Por tipo</button>
+      </div>
     </div>
 
-    <p v-if="!occurrences.length" class="empty-week">
+    <p v-if="viewMode === 'byType' && !props.events?.length" class="empty-week">
+      No hay eventos. Usa <strong>+ Evento</strong> para añadir.
+    </p>
+
+    <p v-if="viewMode === 'list' && !occurrences.length" class="empty-week">
       No hay eventos esta semana. Usa <strong>+ Evento</strong> para añadir.
     </p>
     
     <!-- Event list -->
-    <div v-if="occurrences.length" class="event-list">
+    <div v-if="viewMode === 'list' && occurrences.length" class="event-list">
       <div v-for="(dayOccs, dayIdx) in occurrencesByDay" :key="dayIdx" class="event-day">
         <h4 v-if="dayOccs.length" class="day-header">
           {{ DAY_NAME_BY_GETDAY[listDays[dayIdx].getDay()] }} {{ listDays[dayIdx].getDate() }}
@@ -235,6 +267,23 @@ function onAlldayClick(dayIndex, occs) {
       </div>
     </div>
 
+    <!-- Event list grouped by type -->
+    <div v-if="viewMode === 'byType'" class="event-list by-type">
+      <div v-for="group in groupedByType" :key="group.key" class="event-type-group">
+        <h4 class="type-header">{{ group.label }}</h4>
+        <div v-for="(ev, idx) in group.events" :key="ev.id || idx" class="event-row" @click="emit('edit-event', props.events.indexOf(ev))">
+          <span class="event-time" v-if="ev.times?.length">{{ ev.times[0] }}</span>
+          <span class="event-time" v-else-if="ev.date">{{ ev.date }}{{ ev.time ? ' ' + ev.time : '' }}</span>
+          <span class="event-time" v-else>—</span>
+          <span class="event-icon" v-if="typeStyle(ev.type)?.icon" :style="{ color: typeStyle(ev.type)?.defaults?.color || '#9aa0a6' }">
+            <PeIcon :name="typeStyle(ev.type)?.icon" :size="16" />
+          </span>
+          <span class="event-type">{{ ev.title || 'Sin título' }}</span>
+          <span class="event-location" v-if="ev.location?.length">{{ formatLocation(ev.location) }}</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Warnings -->
     <div v-if="hasWarnings" class="legend">
       <span v-if="hasPurpleWarnings" class="legend-item"><span class="swatch warn-purple"></span> No hay celebrante asignado</span>
@@ -243,7 +292,7 @@ function onAlldayClick(dayIndex, occs) {
     </div>
 
     <!-- Event grid -->
-    <div class="grid-scroll" ref="scrollEl">
+    <div v-if="viewMode === 'grid'" class="grid-scroll" ref="scrollEl">
       <div class="grid">
         <!-- header row -->
         <div class="cell corner"></div>
