@@ -231,25 +231,22 @@ function onAlldayClick(dayIndex, occs) {
         <button class="today" @click="goToday">Hoy</button>
         <button @click="next">›</button>
       </div>
-      <h3 class="range">{{ formatWeekRange(weekStart) }}</h3>
-      <button class="add-event" @click="emit('add-event', {})">+ Evento</button>
-      <div class="view-toggle">
-        <button :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">Lista</button>
-        <button :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">Grid</button>
-        <button :class="{ active: viewMode === 'byType' }" @click="viewMode = 'byType'">Por tipo</button>
+      <!--<h3 class="range">{{ formatWeekRange(weekStart) }}</h3>-->
+      
+      <div class="nav">
+        <button :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">Día</button>
+        <button :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">Tabla</button>
+        <button :class="{ active: viewMode === 'byType' }" @click="viewMode = 'byType'">Lista</button>
       </div>
+      <button class="add-event" @click="emit('add-event', {})">+ Evento</button>
     </div>
 
-    <p v-if="viewMode === 'byType' && !props.events?.length" class="empty-week">
+    <p v-if="!props.events?.length" class="empty-week">
       No hay eventos. Usa <strong>+ Evento</strong> para añadir.
-    </p>
-
-    <p v-if="viewMode === 'list' && !occurrences.length" class="empty-week">
-      No hay eventos esta semana. Usa <strong>+ Evento</strong> para añadir.
     </p>
     
     <!-- Event list -->
-    <div v-if="viewMode === 'list' && occurrences.length" class="event-list">
+    <div v-else-if="viewMode === 'list'" class="event-list">
       <div v-for="(dayOccs, dayIdx) in occurrencesByDay" :key="dayIdx" class="event-day">
         <h4 v-if="dayOccs.length" class="day-header">
           {{ DAY_NAME_BY_GETDAY[listDays[dayIdx].getDay()] }} {{ listDays[dayIdx].getDate() }}
@@ -268,7 +265,7 @@ function onAlldayClick(dayIndex, occs) {
     </div>
 
     <!-- Event list grouped by type -->
-    <div v-if="viewMode === 'byType'" class="event-list by-type">
+    <div v-else-if="viewMode === 'byType'" class="event-list by-type">
       <div v-for="group in groupedByType" :key="group.key" class="event-type-group">
         <h4 class="type-header">{{ group.label }}</h4>
         <div v-for="(ev, idx) in group.events" :key="ev.id || idx" class="event-row" @click="emit('edit-event', props.events.indexOf(ev))">
@@ -284,15 +281,8 @@ function onAlldayClick(dayIndex, occs) {
       </div>
     </div>
 
-    <!-- Warnings -->
-    <div v-if="hasWarnings" class="legend">
-      <span v-if="hasPurpleWarnings" class="legend-item"><span class="swatch warn-purple"></span> No hay celebrante asignado</span>
-      <span v-if="hasRedWarnings" class="legend-item"><span class="swatch warn-red"></span> Bilocación requerida (mismo celebrante solapado en lugares distintos)</span>
-      <span v-if="hasOrangeWarnings" class="legend-item"><span class="swatch warn-orange"></span> Poco tiempo (0–15 min) entre eventos del mismo celebrante en lugares distintos</span>
-    </div>
-
     <!-- Event grid -->
-    <div v-if="viewMode === 'grid'" class="grid-scroll" ref="scrollEl">
+    <div v-else-if="viewMode === 'grid'" class="grid-scroll" ref="scrollEl">
       <div class="grid">
         <!-- header row -->
         <div class="cell corner"></div>
@@ -355,6 +345,14 @@ function onAlldayClick(dayIndex, occs) {
           </div>
         </template>
       </div>
+    </div>
+
+
+    <!-- Warnings -->
+    <div v-if="hasWarnings" class="legend">
+      <span v-if="hasPurpleWarnings" class="legend-item"><span class="swatch warn-purple"></span> No hay celebrante asignado</span>
+      <span v-if="hasRedWarnings" class="legend-item"><span class="swatch warn-red"></span> Bilocación requerida (mismo celebrante solapado en lugares distintos)</span>
+      <span v-if="hasOrangeWarnings" class="legend-item"><span class="swatch warn-orange"></span> Poco tiempo (0–15 min) entre eventos del mismo celebrante en lugares distintos</span>
     </div>
 
 
