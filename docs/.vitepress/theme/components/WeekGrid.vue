@@ -5,6 +5,9 @@ import {
   startOfWeek,
   addDaysReal,
   formatWeekRange,
+  mergeTypeDefaults,
+  recurrenceLabel,
+  resolveEventStyle,
 } from '../lib/calendar.js';
 import { state } from '../lib/store.js';
 import PeIcon from './PeIcon.vue';
@@ -200,16 +203,42 @@ function typeStyle(id) {
   return t || {};
 }
 
-import ByTypeEventRow from './ByTypeEventRow.vue';
-
-const groupedByType = computed(() => {
+const eventsByType = computed(() => {
   const groups = {};
-  for (const ev of props.events || []) {
+  for (let i = 0; i < (props.events || []).length; i++) {
+    const ev = props.events[i];
     const key = ev.type || 'sin-tipo';
     if (!groups[key]) groups[key] = [];
-    groups[key].push(ev);
+    const eff = mergeTypeDefaults(ev, props.eventTypes || []);
+    const style = resolveEventStyle(eff, props.celebrants || [], props.eventTypes || []);
+    let timeStr = '—';
+    const times = eff.times || (eff.time ? [eff.time] : []);
+    if (Array.isArray(times) && times.length) {
+      let t = String(times[0]);
+      if (t.includes('.')) t = t.replace('.', ':');
+      timeStr = t;
+    } else if (times != null) {
+      let t = String(times);
+      if (t.includes('.')) t = t.replace('.', ':');
+      timeStr = t;
+    } else if (eff.date) {
+      timeStr = eff.date + (eff.time ? ' ' + String(eff.time).replace('.', ':') : '');
+    }
+    const warn = (!eff.celebrants || !eff.celebrants.length) ? 'purple' : null;
+    groups[key].push({
+      ev,
+      index: i,
+      key,
+      label: typeLabel(key),
+      timeStr,
+      title: eff.title || 'Sin título',
+      location: eff.location || ev.location,
+      recur: eff.rrule ? recurrenceLabel(eff.rrule) : null,
+      style,
+      warn,
+      specific: !eff.rrule,
+    });
   }
-  // Sort groups by label
   const sortedKeys = Object.keys(groups).sort((a, b) => typeLabel(a).localeCompare(typeLabel(b)));
   return sortedKeys.map(k => ({ key: k, label: typeLabel(k), events: groups[k] }));
 });
@@ -268,9 +297,18 @@ function onAlldayClick(dayIndex, occs) {
 
     <!-- Event list grouped by type -->
     <div v-else-if="viewMode === 'byType'" class="event-list by-type">
-      <div v-for="group in groupedByType" :key="group.key" class="event-type-group">
+      <div v-for="group in eventsByType" :key="group.key" class="event-type-group">
         <h4 class="type-header">{{ group.label }}</h4>
-        <ByTypeEventRow v-for="(ev, idx) in group.events" :key="ev.id || idx" :ev="ev" :index="props.events.indexOf(ev)" :event-types="props.eventTypes" :celebrants="props.celebrants" @edit-event="(i) => emit('edit-event', i)" />
+        <div v-for="row in group.events" :key="row.ev.id || row.index" class="event-row" :class="{ specific: row.specific }" @click="emit('edit-event', row.index)">
+          <span class="event-time">{{ row.timeStr }}</span>
+          <span class="event-icon" v-if="row.style.icon" :class="[row.warn ? `ev ev-small warn-${row.warn}` : null]" :style="{ color: row.style.color || '#9aa0a6' }">
+            <PeIcon :name="row.style.icon" :size="16" />
+          </span>
+          <span class="event-type">{{ row.title }}</span>
+          <span class="event-location" v-if="row.location?.length">{{ formatLocation(row.location) }}</span>
+          <span class="event-rec" v-if="row.recur">{{ row.recur }}</span>
+          <span v-if="row.style.celebrantName" class="event-celebrant" :style="{ background: row.style.color }" :title="row.style.celebrantName"></span>
+        </div>
       </div>
     </div>
 
