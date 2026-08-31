@@ -15,8 +15,9 @@ components:
       values:
         [
           { value: "byday:empty", label: 'Eventos puntuales' },
+          { value: "!dates:empty", label: 'Eventos puntuales' },
           { value: 'mass', label: "Mostrar sólo Misas" },
-          { value: 'mass', label: "Ocultar Misas" },
+          { value: '!mass', label: "Ocultar Misas" },
           { value: '!byday:empty&!mass', label: "Eventos periódicos (excepto Misas)" },
         ]
   ordering:
@@ -28,27 +29,11 @@ components:
       values:
         [
           { value: "title,dates,skip,times,locations", label: "Título > Fechas > Horas > Lugares" },
-          { value: "weekday,times,skip,locations,byday-weekday+byweek+notes", label: "Día de la semana > Horas > Lugares > Notas " },
+          { value: "weekday,times,skip,locations,byday-weekday+byweek+notes", label: "Laborable/Festivo > Horas > Lugares > Notas " },
           { value: "title,locations,skip,times,byday+byweek+notes", label: "Título > Lugares > Horas > Días" },
-
+          { value: "byday,times,skip,title,notes", label: "Día > Hora > Titulo > Notas" },
         ]
-  orderSelect:
-    label: Criterio de agrupación
-    type: select
-    options:
-      values:
-        [
-          { value: "title", label: "Título" },
-          { value: "dates", label: "Fecha" },
-          { value: "times", label: "Hora" },
-          { value: "locations", label: "Lugar" },
-          { value: "byday", label: "Día de la semana (lunes, martes...)" },
-          { value: "language", label: "Idioma" },
-          { value: "notes", label: "Notas" },
-          { value: "weekday", label: "Laborable/festivo (laborable, sábado, domingo)" },
-          { value: "byweek", label: "Semana del mes" },
-          { value: "empty", label: "Vacío (sin agrupar)" },
-        ]
+        # { value: "title""dates" "times""locations""byday""language""notes""weekday""byweek""empty"
   times:
     label: horas
     type: select
