@@ -6,6 +6,32 @@ components:
   text:
     label: Text Content
     type: rich-text
+  calendarFilter:
+    label: Filtro calendario
+    type: select
+    options:
+      multiple: false
+      creatable: true
+      values:
+        [
+          { value: "byday:empty", label: 'Eventos puntuales' },
+          { value: 'mass', label: "Mostrar sólo Misas" },
+          { value: 'mass', label: "Ocultar Misas" },
+          { value: '!byday:empty&!mass', label: "Eventos periódicos (excepto Misas)" },
+        ]
+  ordering:
+    label: Criterio agrupación
+    type: select
+    options:
+      multiple: false
+      creatable: true
+      values:
+        [
+          { value: "title,dates,skip,times,locations", label: "Título > Fechas > Horas > Lugares" },
+          { value: "weekday,times,skip,locations,byday-weekday+byweek+notes", label: "Día de la semana > Horas > Lugares > Notas " },
+          { value: "title,locations,skip,times,byday+byweek+notes", label: "Título > Lugares > Horas > Días" },
+
+        ]
   orderSelect:
     label: Criterio de agrupación
     type: select
@@ -154,7 +180,92 @@ components:
     type: select
     options:
       creatable: true
-      values: ["Roboto", "Open Sans", "Basque Smile", "Lato", "Montserrat", "Poppins", "Merriweather", "Raleway", "Oswald", "Playfair Display", "Source Sans Pro", "Nunito", "Quicksand", "Work Sans", "Bebas Neue", "Muli", "Roboto Slab", "Lora", "Josefin Sans", "Droid Serif", "Cabin", "Arimo", "Ubuntu", "Zilla Slab", "Tisa", "Anton", "Fira Sans", "Varela Round", "Crimson Pro", "Spectral", "Exo 2", "Bitter", "Archivo", "Dosis", "PT Sans", "Lobster", "Pacifico", "Dancing Script", "Sacramento", "Tangerine", "Unbounded", "Pangolin", "Bree Serif", "Vollkorn", "Monda", "Be Vietnam", "Karla", "Noto Sans", "Kalam"]
+      value: [
+        # Sans-serif — UI & body text workhorses
+        "Inter",
+        "Roboto",
+        "Open Sans",
+        "Lato",
+        "Montserrat",
+        "Poppins",
+        "Nunito",
+        "Nunito Sans",
+        "Mulish",
+        "Work Sans",
+        "Source Sans 3",
+        "Rubik",
+        "Karla",
+        "DM Sans",
+        "Manrope",
+        "Outfit",
+        "Plus Jakarta Sans",
+        "Figtree",
+        "Instrument Sans",
+        "Urbanist",
+        "Sora",
+        "Space Grotesk",
+        "IBM Plex Sans",
+        "PT Sans",
+        "Quicksand",
+        "Raleway",
+        "Barlow",
+        "Hind",
+        "Cabin",
+        "Arimo",
+        "Ubuntu",
+        "Fira Sans",
+        "Varela Round",
+        "Exo 2",
+        "Archivo",
+        "Dosis",
+        "Noto Sans",
+        "Be Vietnam Pro",
+        "Monda",
+
+        # Serif — editorial & elegant
+        "Playfair Display",
+        "Merriweather",
+        "Lora",
+        "PT Serif",
+        "Source Serif 4",
+        "Libre Baskerville",
+        "Crimson Pro",
+        "Cormorant Garamond",
+        "EB Garamond",
+        "Bitter",
+        "Domine",
+        "Noto Serif",
+        "Spectral",
+        "Vollkorn",
+        "Zilla Slab",
+        "Roboto Slab",
+        "Bree Serif",
+        "DM Serif Display",
+        "Fraunces",
+
+        # Display / headline
+        "Oswald",
+        "Bebas Neue",
+        "Abril Fatface",
+        "Josefin Sans",
+        "Archivo Black",
+        "Fjalla One",
+        "Anton",
+        "Unbounded",
+        "Basque Smile",
+
+        # Handwriting / script (accent use only)
+        "Caveat",
+        "Dancing Script",
+        "Sacramento",
+        "Tangerine",
+        "Pacifico",
+        "Lobster",
+        "Kalam",
+        "Pangolin"
+      ]
+
+
   selector:
     label: Selector
     type: select
@@ -470,12 +581,13 @@ components:
               label: Eventos
               fields:
                 - { name: title, type: string, label: Titulo sección, default: "Nuestros eventos" }
-                - { name: filter, label: Filtro. Incluir solo eventos que contengan, type: string }
-                - { name: orderTabla, label: "Dividir en tablas según:", component: orderSelect }
-                - { name: orderFila, label: "Dividir en filas según:", component: orderSelect }
-                - { name: orderColumna, label: "Dividir en columnas según:", component: orderSelect }
-                - { name: orderSubfila, label: "Dividir en subfila según:", component: orderSelect }
-                - { name: orderNotas, label: "Añadir notas según:", component: orderSelect }
+                - { name: filter, label: "Filtro. ¿Qué eventos quieres mostrar?", component: calendarFilter }
+                - { name: ordering, label: "Agrupación de eventos. ¿Cómo quieres agruparlos?", component: ordering }
+                #- { name: orderTabla, label: "Dividir en tablas según:", component: orderSelect }
+                #- { name: orderFila, label: "Dividir en filas según:", component: orderSelect }
+                #- { name: orderColumna, label: "Dividir en columnas según:", component: orderSelect }
+                #- { name: orderSubfila, label: "Dividir en subfila según:", component: orderSelect }
+                #- { name: orderNotas, label: "Añadir notas según:", component: orderSelect }
                 - { name: tags, label: Opciones de estilo, component: tags }
             - name: video-gospel
               label: Audios Nuevo Testamento
@@ -696,16 +808,16 @@ content:
         label: "Color elementos acentuados"
         type: color
         options: { themeRole: accent }
-      - name: accentPrimary
-        label: "Color secundario"
-        type: color
-        options: { themeRole: primary }
+      #- name: accentPrimary
+      #  label: "Color secundario"
+      #  type: color
+      #  options: { themeRole: primary }
       - name: headingFont
-        label: "Tipo de letra de los titulos (cualquiera de https://fonts.google.com/)"
+        label: "Tipo de letra de los titulos"
         component: font
         options: { themeRole: heading }
       - name: bodyFont
-        label: "Tipo de letra del cuerpo (cualquiera de https://fonts.google.com/)"
+        label: "Tipo de letra del cuerpo"
         component: font
         options: { themeRole: body }
       - { name: navStyle, label: "Estilo de la barrra de navegación", component: navigationBar }
