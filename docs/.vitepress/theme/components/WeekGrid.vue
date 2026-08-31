@@ -266,7 +266,7 @@ function onAlldayClick(dayIndex, occs) {
       
       <div class="nav">
         <button :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">Día</button>
-        <button :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">Tabla</button>
+        <!--<button :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">Tabla</button>-->
         <button :class="{ active: viewMode === 'byType' }" @click="viewMode = 'byType'">Lista</button>
       </div>
       <button class="add-event" @click="emit('add-event', {})">+ Evento</button>

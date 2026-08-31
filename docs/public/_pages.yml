@@ -504,21 +504,21 @@ components:
     type: object
     fields:
       - { name: title, label: Título/Nombre del evento, type: string }
-      - { name: image, label: Imagen, type: image }
+      - { name: images, label: Imagenes, type: image, options: { multiple: true } }
       - { name: description, label: Descripción, type: rich-text }
       - { name: location, label: Lugar, component: location }
       - { name: date, label: Fecha, type: date }
       - { name: times, label: Hora, component: times }
       - { name: rrule, label: Se repite, component: rrule }
       - { name: duration, label: Duración (min), type: number }
-      - { name: celebrants, label: Celebrantes, type: select, options: {  multiple: true, source: "info.collaborators" } }
+      #- { name: celebrants, label: Celebrantes, type: select, options: {  multiple: true, source: "info.collaborators" } }
   exception:
     label: Excepción
     type: object
     fields:
       - { name: newTime, label: Nueva hora, component: times }
       - { name: newPlace, label: Nuevo lugar, component: location }
-      - { name: celebrants, label: Celebrantes, type: select, options: {  multiple: true, source: "info.collaborators" } }
+      #- { name: celebrants, label: Celebrantes, type: select, options: {  multiple: true, source: "info.collaborators" } }
   page:
     label: Página
     type: object
