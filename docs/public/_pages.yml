@@ -14,9 +14,12 @@ components:
       creatable: true
       values:
         [
-          { value: "byday:empty", label: 'Eventos puntuales' },
-          { value: "!dates:empty", label: 'Eventos puntuales' },
+          { value: "!dates:empty&byday:empty", label: 'Eventos puntuales' }, # has a date and does not repeat
+          { value: '!byday:empty', label: "Eventos periódicos" }, # check is repeating only (start date is okay on repeating events)
+          { value: "{name}", label: 'Templo correspondiente' },
+          { value: "{title}", label: 'Evento correspondiente' },
           { value: 'mass', label: "Mostrar sólo Misas" },
+          { value: 'funeral', label: "Mostrar sólo funerales" },
           { value: '!mass', label: "Ocultar Misas" },
           { value: '!byday:empty&!mass', label: "Eventos periódicos (excepto Misas)" },
         ]
@@ -598,9 +601,16 @@ components:
                 - { name: filter, label: Filtro. Incluir solo posts que contengan, type: string }
                 - { name: tags, label: Opciones de estilo, component: tags }
             - name: town
-              label: Lista de templos/pueblos
+              label: Lista de templos
               fields:
                 - { name: title, type: string, label: Titulo sección, default: "Nuestros pueblos" }
+                - { name: filters, label: Filtros a mostrar, type: select, options: { multiple: true, creatable: true } }
+                - { name: tags, label: Opciones de estilo, component: tags }
+            - name: eventCards
+              label: Lista de grupos parroquiales
+              fields:
+                - { name: title, type: string, label: Titulo sección, default: "Nuestros parroquiales" }
+                - { name: eventsToShow, label: "Eventos/grupos a mostrar", type: select, options: { source: "event-types.list", multiple: true, label: "{title}" }  }  
                 - { name: filters, label: Filtros a mostrar, type: select, options: { multiple: true, creatable: true } }
                 - { name: tags, label: Opciones de estilo, component: tags }
             - name: video
