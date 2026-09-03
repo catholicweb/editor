@@ -318,9 +318,8 @@ const editingTitle = computed(() => {
 .source-link {
   font-size: 12px;
   font-weight: 500;
-  color: var(--pe-accent);
+  opacity: 0.8;
   cursor: pointer;
-  transition: color var(--pe-transition);
 }
 .source-link:hover {
   color: var(--pe-accent-hover);
@@ -413,8 +412,8 @@ fieldset.object-field legend {
   border: none;
   background: transparent;
   cursor: pointer;
-  font-size: 12px;
-  padding: 2px 6px;
+  font-size: 18px;
+  padding: 2px 4px;
   border-radius: var(--pe-radius-sm);
   transition: background var(--pe-transition), color var(--pe-transition);
 }
@@ -565,8 +564,9 @@ fieldset.object-field legend {
 
 .modal-body {
   padding: 10px 0;
-  height: calc(100vh - 100px);
-  overflow-y: auto;
+  min-height: calc(100vh - 100px);
+  padding-bottom: 100px;
+  /*overflow-y: auto;*/
 }
 
 /* Object item modal preview (when modal editing is enabled) */

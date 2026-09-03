@@ -314,7 +314,8 @@ async function searchMisasAPI(lat, lon) {
         distance: userLocation.value ? calculateDistance(userLocation.value.lat, userLocation.value.lon, parish.lat, parish.long) : null,
         events: sortMassesByTime(parish.mass || []), // Events from the parish API, sorted by hour
         source: 'misas.org', // Mark source for merging
-        image: parish.pic ? [`https://misas.org/images/${parish.pic}`] : undefined,
+        images: parish.pic ? [`https://misas.org/images/${parish.pic}`] : undefined,
+        town: parish.loc,
         address: addr || undefined,
       };
     });
@@ -433,7 +434,7 @@ async function selectPlace(place) {
     id: place.id,
     name: place.name,
     geo: place.geo,
-    image: place.image,
+    images: place.images,
     address: place.address,
   });
 
@@ -515,16 +516,17 @@ function closeModal() {
                 >
                   <span class="toggle-thumb"></span>
                 </button>
-                <span>Importar también eventos</span>
+                <span>Importar también horario de mísas</span>
               </label>
             </div>
 
             <div v-for="(place, idx) in discoveredPlaces" :key="idx" class="place-item">
               <div class="place-info">
-                <strong>{{ place.name }} - <span class="place-distance">{{ formatDistance(place.distance) }}</span></strong>
+                <strong>{{ place.name }} <span v-if="place.town">({{ place.town }})</span> - <span class="place-distance">{{ formatDistance(place.distance) }}</span></strong>
+                <!--<small>{{ place.address }}</small>-->
                 <!-- Show every event, labelled like the weekly list (recurrenceLabel) -->
                 <div v-if="place.events && place.events.length > 0" class="place-events">
-                  <small class="events-title">Eventos conocidos:</small>
+                  <small class="events-title">Horario de misas conocidas:</small>
                   <ul>
                     <li v-for="(event, i) in place.events" :key="i">
                       <span>{{ event.time }}</span>

@@ -320,14 +320,15 @@ components:
           # Layout
           { value: "3d", label: "Efecto 3D" },
           { value: "horizontal", label: "Horizontal (fila única)" },
+          { value: "vertical", label: "Vertial (cuadrícula)" },
           { value: "carousel", label: "Carrusel" },
           { value: "masonry", label: "Masonry (teselas de distintos tamaños)" },
           # Size
-          { value: "tiny", label: "Elementos muy pequeños" },
-          { value: "small", label: "Elementos pequeños" },
-          { value: "medium", label: "Elementos medianos" },
-          { value: "large", label: "Elementos grandes" },
-          { value: "xl", label: "Elementos muy grandes" },
+          { value: "tiny", label: "Elementos muy pequeños (xs)" },
+          { value: "small", label: "Elementos pequeños (s)" },
+          { value: "medium", label: "Elementos medianos (m)" },
+          { value: "large", label: "Elementos grandes (l)" },
+          { value: "xl", label: "Elementos muy grandes (xl)" },
           # Spacing
           { value: "dense", label: "Gaps estrechos" },
           { value: "spacious", label: "Gaps anchos" },
@@ -513,13 +514,13 @@ components:
     fields:
         - { name: id, label: Identificador, type: uuid, hidden: true }
         - { name: title, label: Título, type: string }
-        - { name: description, label: Subtitulo, type: string }
+        #- { name: description, label: Subtitulo, type: string }
         - { name: image, label: Imagen, type: image }
         #- { name: hideHero, label: Esconder cabezera por defecto, type: boolean, default: false }
         - name: sections
-          label: Secciones de la página
+          label: Secciones
           type: block
-          list: { collapsible: { collapsed: true, summary: "{fields.title}" },  modal: true }
+          list: { collapsible: { collapsed: true, summary: "{fields.title}" },  modal: false }
           blocks:
             - name: accordion
               label: FAQ
@@ -553,6 +554,7 @@ components:
                 - { name: tags, label: Opciones de estilo, component: tags }
             - name: text
               label: Texto
+              modal: true # enabling this is a pending TODO
               fields:
                 - { name: title, type: string, label: Titulo sección }
                 - { name: html, label: Texto largo, type: rich-text }
@@ -586,7 +588,7 @@ components:
               label: Podcast católicos
               fields:
                 - { name: title, type: string, label: Titulo sección, default: "Descubre tu fe" }
-                - { name: links, label: Podcast, component: podcast }
+                - { name: links, label: Podcast a incluir, component: podcast }
                 - { name: tags, label: Opciones de estilo, component: tags }
             - name: video-channel
               label: Canal de Youtube
@@ -821,14 +823,14 @@ content:
       #- { name: shadow, label: "Intensidad de sombras", component: shadowSelect, options: { themeRole: shadow } }
       - { name: buttonStyle, label: "Estilo de botones", component: buttonStyle, options: { themeRole: buttonStyle } }
 
-      - name: styles
-        label: Estilos para cada elemento
-        type: object
-        list: { collapsible: { collapsed: true, summary: "{fields.selector}" } }
-        fields:
-          - { name: selector, label: "Lista de elementos", component: selector }
-          - { name: cssClass, label: "Efecto a aplicar", component: effect }
-          - { name: scroll, label: "Aplicar al hacer desplazar (transición)", type: boolean, default: false }
+      #- name: styles
+      #  label: Estilos para cada elemento
+      #  type: object
+      #  list: { collapsible: { collapsed: true, summary: "{fields.selector}" } }
+      #  fields:
+      #    - { name: selector, label: "Lista de elementos", component: selector }
+      #    - { name: cssClass, label: "Efecto a aplicar", component: effect }
+      #    - { name: scroll, label: "Aplicar al hacer desplazar (transición)", type: boolean, default: false }
 
       # `preview` is a custom field type rendered by Preview.vue
       # (see FieldRenderer's `field.type === 'preview'` branch)
