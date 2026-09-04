@@ -7,6 +7,7 @@ import FieldsGroup from './FieldsGroup.vue';
 import { state, isLoggedIn, isDirty, currentData, login, redeemMagic, loadSavedSession, initBeforeUnloadHandler, openEntry, saveCurrent, restoreConfig, DEFAULTS, applyNerdyConfig } from '../lib/store.js';
 import UserAvatar from './UserAvatar.vue';
 import PeIcon from './PeIcon.vue';
+import Preview from './Preview.vue';
 import VersionHistoryModal from './VersionHistoryModal.vue';
 
 // Parse deep link from URL parameter (e.g., ?edit=site.collaborators)
@@ -195,6 +196,7 @@ function onRestore({ config }) {
 const isCalendarDoc = computed(() =>
   (state.currentEntry?.fields || []).some((f) => f.type === 'calendario')
 );
+const showPreviewSide = computed(() => state.currentEntry?.tabPath === 'theme');
 </script>
 
 <template>
@@ -240,7 +242,7 @@ const isCalendarDoc = computed(() =>
       </div>
     </header>
 
-    <div class="editor-body">
+    <div class="editor-body" :class="{ 'with-preview': showPreviewSide }">
     <aside class="sidebar">
       <FieldBrowser />
     </aside>
@@ -270,7 +272,10 @@ const isCalendarDoc = computed(() =>
       </div>
     </main>
 
-    </div><!-- /editor-body -->
+    <aside v-if="showPreviewSide" class="side-preview">
+      <Preview />
+    </aside>
+  </div>
 
     <VersionHistoryModal
       v-if="versionsOpen"
@@ -353,10 +358,34 @@ const isCalendarDoc = computed(() =>
 
 .editor-body {
   flex: 1;
-  min-height: 0; /* lets the main panel scroll instead of pushing a page scrollbar */
+  min-height: 0;
   display: flex;
   overflow: hidden;
   position: relative;
+}
+.editor-body.with-preview {
+  display: grid;
+  grid-template-columns: 164px 1fr 420px;
+  gap: 1rem;
+  overflow-y: auto;
+}
+.with-preview .document .preview-root { display: none; }
+.side-preview {
+  border-left: 1px solid var(--vp-c-divider, #e2e2e3);
+  padding-left: 1rem;
+  height: 100%;
+  overflow-y: auto;
+}
+@media (max-width: 1023px) {
+  .editor-body.with-preview {
+    grid-template-columns: 1fr;
+  }
+  .side-preview {
+    border-left: none;
+    border-top: 1px solid var(--vp-c-divider, #e2e2e3);
+    padding-left: 0;
+    padding-top: 1rem;
+  }
 }
 
 /* ---------- Sidebar ---------- */

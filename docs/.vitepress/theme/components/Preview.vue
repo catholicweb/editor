@@ -52,15 +52,4 @@ watch(
   border-radius: 8px;
   display: block;
 }
-@media (min-width: 1024px) {
-  .preview-root {
-    position: fixed;
-    top: 5rem;
-    right: 1rem;
-    width: 420px;
-    z-index: 50;
-    margin: 0;
-    float: none;
-  }
-}
 </style>
