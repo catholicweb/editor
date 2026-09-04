@@ -52,4 +52,14 @@ watch(
   border-radius: 8px;
   display: block;
 }
+@media (min-width: 1024px) {
+  .preview-root {
+    position: sticky;
+    top: 1rem;
+    float: right;
+    width: 420px;
+    margin-left: 1rem;
+    margin-top: 0;
+  }
+}
 </style>
