@@ -136,246 +136,247 @@ components:
   "vibe":
     "description": "Master preset. Unlike other fields, 'value' here is an object mapping field-name -> the value to pre-fill on that field, not a direct CSS token. Applying a vibe just does Object.assign(formState, vibe.value); the user can still tweak any individual field afterward — vibe selection is a starting point, not a lock."
     "type": select
-    "options": [
-      {
-        "label": "Clásica",
-        "value": {
-          "accentHue": 350,
-          "fontPair": "Playfair Display|Source Sans 3",
-          "typeScale": "large",
-          "radius": 0.25,
-          "spacingDensity": 1,
-          "motionIntensity": 2,
-          "imageTreatment": "natural",
-          "headerFooterStyle": "solid-bar-light|straight",
-          "surfaceStyle": "soft"
+    "options":
+      values: [
+        {
+          "label": "Clásica",
+          "value": '{
+            "accentHue": 350,
+            "fontPair": "Playfair Display|Source Sans 3",
+            "typeScale": "large",
+            "radius": 0.25,
+            "spacingDensity": 1,
+            "motionIntensity": 2,
+            "imageTreatment": "natural",
+            "headerFooterStyle": "solid-bar-light|straight",
+            "surfaceStyle": "soft"
+          }'
+        },
+        {
+          "label": "Serena",
+          "value": '{
+            "accentHue": 200,
+            "fontPair": "Lora|Karla",
+            "typeScale": "default",
+            "radius": 0.5,
+            "spacingDensity": 1.2,
+            "motionIntensity": 2,
+            "imageTreatment": "natural",
+            "headerFooterStyle": "minimal-centered|wave",
+            "surfaceStyle": "flat"
+          }'
+        },
+        {
+          "label": "Cálida",
+          "value": '{
+            "accentHue": 30,
+            "fontPair": "Bitter|Mulish",
+            "typeScale": "default",
+            "radius": 0.6,
+            "spacingDensity": 1.1,
+            "motionIntensity": 5,
+            "imageTreatment": "warm-filter",
+            "headerFooterStyle": "hero-split|wave",
+            "surfaceStyle": "soft"
+          }'
+        },
+        {
+          "label": "Luminosa",
+          "value": '{
+            "accentHue": 45,
+            "fontPair": "Outfit|Manrope",
+            "typeScale": "compact",
+            "radius": 0.8,
+            "spacingDensity": 1.15,
+            "motionIntensity": 8,
+            "imageTreatment": "warm-filter",
+            "headerFooterStyle": "hero-overlay-dark|angle",
+            "surfaceStyle": "soft"
+          }'
+        },
+        {
+          "label": "Moderna",
+          "value": '{
+            "accentHue": 230,
+            "fontPair": "Space Grotesk|Inter",
+            "typeScale": "compact",
+            "radius": 0.15,
+            "spacingDensity": 0.95,
+            "motionIntensity": 5,
+            "imageTreatment": "grayscale",
+            "headerFooterStyle": "solid-bar-dark|straight",
+            "surfaceStyle": "bold"
+          }'
+        },
+        {
+          "label": "Solemne",
+          "value": '{
+            "accentHue": 270,
+            "fontPair": "Cinzel|Cormorant",
+            "typeScale": "large",
+            "radius": 0,
+            "spacingDensity": 1.2,
+            "motionIntensity": 1,
+            "imageTreatment": "grayscale",
+            "headerFooterStyle": "hero-overlay-dark|straight",
+            "surfaceStyle": "bold"
+          }'
+        },
+        {
+          "label": "Rústica",
+          "value": '{
+            "accentHue": 90,
+            "fontPair": "Zilla Slab|Zilla Slab",
+            "typeScale": "default",
+            "radius": 0.3,
+            "spacingDensity": 1.1,
+            "motionIntensity": 3,
+            "imageTreatment": "warm-filter",
+            "headerFooterStyle": "hero-split|straight",
+            "surfaceStyle": "soft"
+          }'
+        },
+        {
+          "label": "Minimalista",
+          "value": '{
+            "accentHue": 0,
+            "fontPair": "Inter|Inter",
+            "typeScale": "compact",
+            "radius": 0.1,
+            "spacingDensity": 1.3,
+            "motionIntensity": 0,
+            "imageTreatment": "grayscale",
+            "headerFooterStyle": "minimal-centered|straight",
+            "surfaceStyle": "flat"
+          }'
+        },
+        {
+          "label": "Elegante",
+          "value": '{
+            "accentHue": 320,
+            "fontPair": "Cormorant Garamond|Nunito Sans",
+            "typeScale": "large",
+            "radius": 0.4,
+            "spacingDensity": 1.15,
+            "motionIntensity": 6,
+            "imageTreatment": "duotone-accent",
+            "headerFooterStyle": "hero-split|wave",
+            "surfaceStyle": "flat"
+          }'
+        },
+        {
+          "label": "Vibrante",
+          "value": '{
+            "accentHue": 15,
+            "fontPair": "Poppins|Poppins",
+            "typeScale": "compact",
+            "radius": 1,
+            "spacingDensity": 1,
+            "motionIntensity": 9,
+            "imageTreatment": "duotone-accent",
+            "headerFooterStyle": "hero-overlay-dark|angle",
+            "surfaceStyle": "bold"
+          }'
+        },
+        {
+          "label": "Íntima",
+          "value": '{
+            "accentHue": 340,
+            "fontPair": "Crimson Pro|Inter",
+            "typeScale": "default",
+            "radius": 0.35,
+            "spacingDensity": 1.25,
+            "motionIntensity": 2,
+            "imageTreatment": "natural",
+            "headerFooterStyle": "minimal-centered|straight",
+            "surfaceStyle": "soft"
+          }'
+        },
+        {
+          "label": "Editorial",
+          "value": '{
+            "accentHue": 220,
+            "fontPair": "Fraunces|Nunito",
+            "typeScale": "large",
+            "radius": 0.2,
+            "spacingDensity": 1.1,
+            "motionIntensity": 4,
+            "imageTreatment": "grayscale",
+            "headerFooterStyle": "solid-bar-light|straight",
+            "surfaceStyle": "flat"
+          }'
+        },
+        {
+          "label": "Artesanal",
+          "value": '{
+            "accentHue": 60,
+            "fontPair": "Alegreya|Alegreya Sans",
+            "typeScale": "default",
+            "radius": 0.45,
+            "spacingDensity": 1.1,
+            "motionIntensity": 4,
+            "imageTreatment": "warm-filter",
+            "headerFooterStyle": "hero-split|wave",
+            "surfaceStyle": "soft"
+          }'
+        },
+        {
+          "label": "Contemporánea",
+          "value": '{
+            "accentHue": 250,
+            "fontPair": "Josefin Sans|Nunito Sans",
+            "typeScale": "compact",
+            "radius": 0.7,
+            "spacingDensity": 1,
+            "motionIntensity": 6,
+            "imageTreatment": "natural",
+            "headerFooterStyle": "solid-bar-dark|angle",
+            "surfaceStyle": "soft"
+          }'
+        },
+        {
+          "label": "Romántica",
+          "value": '{
+            "accentHue": 330,
+            "fontPair": "Great Vibes|Nunito Sans",
+            "typeScale": "large",
+            "radius": 0.6,
+            "spacingDensity": 1.2,
+            "motionIntensity": 7,
+            "imageTreatment": "warm-filter",
+            "headerFooterStyle": "hero-overlay-dark|wave",
+            "surfaceStyle": "flat"
+          }'
+        },
+        {
+          "label": "Monástica",
+          "value": '{
+            "accentHue": 25,
+            "fontPair": "EB Garamond|EB Garamond",
+            "typeScale": "default",
+            "radius": 0,
+            "spacingDensity": 1.3,
+            "motionIntensity": 0,
+            "imageTreatment": "grayscale",
+            "headerFooterStyle": "minimal-centered|straight",
+            "surfaceStyle": "flat"
+          }'
+        },
+        {
+          "label": "Fresca",
+          "value": '{
+            "accentHue": 160,
+            "fontPair": "Montserrat|Open Sans",
+            "typeScale": "default",
+            "radius": 0.9,
+            "spacingDensity": 1.05,
+            "motionIntensity": 8,
+            "imageTreatment": "natural",
+            "headerFooterStyle": "hero-split|wave",
+            "surfaceStyle": "soft"
+          }'
         }
-      },
-      {
-        "label": "Serena",
-        "value": {
-          "accentHue": 200,
-          "fontPair": "Lora|Karla",
-          "typeScale": "default",
-          "radius": 0.5,
-          "spacingDensity": 1.2,
-          "motionIntensity": 2,
-          "imageTreatment": "natural",
-          "headerFooterStyle": "minimal-centered|wave",
-          "surfaceStyle": "flat"
-        }
-      },
-      {
-        "label": "Cálida",
-        "value": {
-          "accentHue": 30,
-          "fontPair": "Bitter|Mulish",
-          "typeScale": "default",
-          "radius": 0.6,
-          "spacingDensity": 1.1,
-          "motionIntensity": 5,
-          "imageTreatment": "warm-filter",
-          "headerFooterStyle": "hero-split|wave",
-          "surfaceStyle": "soft"
-        }
-      },
-      {
-        "label": "Luminosa",
-        "value": {
-          "accentHue": 45,
-          "fontPair": "Outfit|Manrope",
-          "typeScale": "compact",
-          "radius": 0.8,
-          "spacingDensity": 1.15,
-          "motionIntensity": 8,
-          "imageTreatment": "warm-filter",
-          "headerFooterStyle": "hero-overlay-dark|angle",
-          "surfaceStyle": "soft"
-        }
-      },
-      {
-        "label": "Moderna",
-        "value": {
-          "accentHue": 230,
-          "fontPair": "Space Grotesk|Inter",
-          "typeScale": "compact",
-          "radius": 0.15,
-          "spacingDensity": 0.95,
-          "motionIntensity": 5,
-          "imageTreatment": "grayscale",
-          "headerFooterStyle": "solid-bar-dark|straight",
-          "surfaceStyle": "bold"
-        }
-      },
-      {
-        "label": "Solemne",
-        "value": {
-          "accentHue": 270,
-          "fontPair": "Cinzel|Cormorant",
-          "typeScale": "large",
-          "radius": 0,
-          "spacingDensity": 1.2,
-          "motionIntensity": 1,
-          "imageTreatment": "grayscale",
-          "headerFooterStyle": "hero-overlay-dark|straight",
-          "surfaceStyle": "bold"
-        }
-      },
-      {
-        "label": "Rústica",
-        "value": {
-          "accentHue": 90,
-          "fontPair": "Zilla Slab|Zilla Slab",
-          "typeScale": "default",
-          "radius": 0.3,
-          "spacingDensity": 1.1,
-          "motionIntensity": 3,
-          "imageTreatment": "warm-filter",
-          "headerFooterStyle": "hero-split|straight",
-          "surfaceStyle": "soft"
-        }
-      },
-      {
-        "label": "Minimalista",
-        "value": {
-          "accentHue": 0,
-          "fontPair": "Inter|Inter",
-          "typeScale": "compact",
-          "radius": 0.1,
-          "spacingDensity": 1.3,
-          "motionIntensity": 0,
-          "imageTreatment": "grayscale",
-          "headerFooterStyle": "minimal-centered|straight",
-          "surfaceStyle": "flat"
-        }
-      },
-      {
-        "label": "Elegante",
-        "value": {
-          "accentHue": 320,
-          "fontPair": "Cormorant Garamond|Nunito Sans",
-          "typeScale": "large",
-          "radius": 0.4,
-          "spacingDensity": 1.15,
-          "motionIntensity": 6,
-          "imageTreatment": "duotone-accent",
-          "headerFooterStyle": "hero-split|wave",
-          "surfaceStyle": "flat"
-        }
-      },
-      {
-        "label": "Vibrante",
-        "value": {
-          "accentHue": 15,
-          "fontPair": "Poppins|Poppins",
-          "typeScale": "compact",
-          "radius": 1,
-          "spacingDensity": 1,
-          "motionIntensity": 9,
-          "imageTreatment": "duotone-accent",
-          "headerFooterStyle": "hero-overlay-dark|angle",
-          "surfaceStyle": "bold"
-        }
-      },
-      {
-        "label": "Íntima",
-        "value": {
-          "accentHue": 340,
-          "fontPair": "Crimson Pro|Inter",
-          "typeScale": "default",
-          "radius": 0.35,
-          "spacingDensity": 1.25,
-          "motionIntensity": 2,
-          "imageTreatment": "natural",
-          "headerFooterStyle": "minimal-centered|straight",
-          "surfaceStyle": "soft"
-        }
-      },
-      {
-        "label": "Editorial",
-        "value": {
-          "accentHue": 220,
-          "fontPair": "Fraunces|Nunito",
-          "typeScale": "large",
-          "radius": 0.2,
-          "spacingDensity": 1.1,
-          "motionIntensity": 4,
-          "imageTreatment": "grayscale",
-          "headerFooterStyle": "solid-bar-light|straight",
-          "surfaceStyle": "flat"
-        }
-      },
-      {
-        "label": "Artesanal",
-        "value": {
-          "accentHue": 60,
-          "fontPair": "Alegreya|Alegreya Sans",
-          "typeScale": "default",
-          "radius": 0.45,
-          "spacingDensity": 1.1,
-          "motionIntensity": 4,
-          "imageTreatment": "warm-filter",
-          "headerFooterStyle": "hero-split|wave",
-          "surfaceStyle": "soft"
-        }
-      },
-      {
-        "label": "Contemporánea",
-        "value": {
-          "accentHue": 250,
-          "fontPair": "Josefin Sans|Nunito Sans",
-          "typeScale": "compact",
-          "radius": 0.7,
-          "spacingDensity": 1,
-          "motionIntensity": 6,
-          "imageTreatment": "natural",
-          "headerFooterStyle": "solid-bar-dark|angle",
-          "surfaceStyle": "soft"
-        }
-      },
-      {
-        "label": "Romántica",
-        "value": {
-          "accentHue": 330,
-          "fontPair": "Great Vibes|Nunito Sans",
-          "typeScale": "large",
-          "radius": 0.6,
-          "spacingDensity": 1.2,
-          "motionIntensity": 7,
-          "imageTreatment": "warm-filter",
-          "headerFooterStyle": "hero-overlay-dark|wave",
-          "surfaceStyle": "flat"
-        }
-      },
-      {
-        "label": "Monástica",
-        "value": {
-          "accentHue": 25,
-          "fontPair": "EB Garamond|EB Garamond",
-          "typeScale": "default",
-          "radius": 0,
-          "spacingDensity": 1.3,
-          "motionIntensity": 0,
-          "imageTreatment": "grayscale",
-          "headerFooterStyle": "minimal-centered|straight",
-          "surfaceStyle": "flat"
-        }
-      },
-      {
-        "label": "Fresca",
-        "value": {
-          "accentHue": 160,
-          "fontPair": "Montserrat|Open Sans",
-          "typeScale": "default",
-          "radius": 0.9,
-          "spacingDensity": 1.05,
-          "motionIntensity": 8,
-          "imageTreatment": "natural",
-          "headerFooterStyle": "hero-split|wave",
-          "surfaceStyle": "soft"
-        }
-      }
-    ]
+      ]
   
   "accentHue":
     "label": "tono de color"
@@ -474,6 +475,14 @@ components:
         {
           "value": "Cormorant SC|Lato",
           "label": "Versalitas elegantes + sans clásica"
+        },
+        {
+          "value": "Basque Smile|Open Sans",
+          "label": "Euskaldun"
+        },
+        {
+          "value": "Story Script|Quicksand",
+          "label": "Vocacional"
         }
       ]
 
@@ -482,6 +491,7 @@ components:
     "description": "Controls clamp()-based heading size scale. Independent of every other field — not derived from fontPair or spacingDensity, since neither reliably predicts the right heading scale (a font's ideal size is about its own character; a layout's density doesn't have to match its heading size). Not rendered as a selector in the guided flow: `vibe` sets it, and it's here mainly for power users / an advanced panel."
     "type": select
     "hidden": true
+    "default": null
     "options":
       "values":
         [
@@ -501,6 +511,7 @@ components:
   "headerFooterStyle":
     "description": "Layout + section-divider shape as one token: 'layoutId|dividerShape'. These always read as a single structural decision, so they're chosen together instead of as two separate fields. Power users can type any 'layoutId|dividerShape' combination even if not listed."
     "type": select
+    "default": null
     "options": 
       values: [
         {
@@ -550,6 +561,7 @@ components:
     "min": 0,
     "max": 1.5,
     "step": 0.05,
+    "default": null,
     "marks": [
       {
         "value": 0,
@@ -569,7 +581,7 @@ components:
     "min": 0.8,
     "max": 1.4,
     "step": 0.05,
-    "default": 1,
+    "default": null,
     "marks": [
       {
         "value": 0.8,
@@ -588,7 +600,7 @@ components:
     "min": 0,
     "max": 10,
     "step": 1,
-    "default": 5,
+    "default": null,
     "marks": [
       {
         "value": 0,
@@ -741,7 +753,7 @@ components:
           - { name: title, label: Título, type: string }
           - { name: description, label: Subtitulo, type: string }
           - { name: image, label: Imagen, type: image }
-          - { name: type, label: tipo de bloque, component: blocktype }
+          #- { name: type, label: tipo de bloque, component: blocktype }
   event:
     label: Evento
     type: object
@@ -1056,13 +1068,13 @@ content:
       - { name: image, label: Imagen del sitio, type: image }
       - { name: icon, label: Icono del sitio, type: image }
 
-      - { name: vibe, component: vibe }
-      - { name: accentHue, component: accentHue, options: { themeRole: accent } }
-      - { name: fontPair, component: fontPair, options: { themeRole: heading } }
-      - { name: headerFooterStyle, component: headerFooterStyle }
-      - { name: radius, component: radius, options: { themeRole: radius } }
-      - { name: vispacingDensity, component: spacingDensity }
-      - { name: surfaceStyle, component: surfaceStyle }
-      - { name: motionIntensity, component: motionIntensity }
-      - { name: imageTreatment, component: imageTreatment }
+      - { name: vibe, label: "Tema global (vibe)", component: vibe }
+      - { name: accentHue, label: "Tono de color", component: accentHue, options: { themeRole: accent } }
+      - { name: fontPair, label: "Tipografía", component: fontPair, options: { themeRole: font } }
+      - { name: headerFooterStyle, label: "Estilo de cabezera", component: headerFooterStyle }
+      - { name: radius, label: "Redondeo de esquinas", component: radius, options: { themeRole: radius } }
+      - { name: spacingDensity, label: "Espaciado de elementos", component: spacingDensity }
+      - { name: surfaceStyle, label: "Estilos de superficie", component: surfaceStyle }
+      - { name: motionIntensity, label: "Dinamismo, efectos visuales", component: motionIntensity }
+      - { name: imageTreatment, label: "Filtros de imagen", component: imageTreatment }
 

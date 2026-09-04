@@ -659,7 +659,7 @@ textarea.auto-grow {
 .slider-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  margin-top: -10px;
 }
 .slider-input {
   width: 100%;
@@ -668,12 +668,14 @@ textarea.auto-grow {
 .slider-marks {
   position: relative;
   height: 16px;
-  margin-top: 2px;
+  margin-top: 0px;
+  transform: translateY(-80%);
 }
 .slider-mark {
   position: absolute;
   font-size: 10px;
   color: var(--pe-muted);
+  min-width: max-content;
 }
 
 /* ---- hue selector ---- */
