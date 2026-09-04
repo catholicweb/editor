@@ -15,6 +15,7 @@ import { computed, watch, ref } from 'vue';
 import { state } from '../lib/store.js';
 
 const iframeEl = ref(null);
+let postTimer = null;
 
 const isDev = import.meta.env?.DEV === true;
 
@@ -27,11 +28,14 @@ const iframeUrl = computed(() => {
 watch(
   () => state.config?.theme,
   (theme) => {
-    if (iframeEl.value && iframeEl.value.contentWindow && theme) {
-      const targetOrigin = isDev ? 'http://localhost:5174' : `https://${state.slug || 'demo'}.parroquia.app`;
-      const plainTheme = JSON.parse(JSON.stringify(theme));
-      iframeEl.value.contentWindow.postMessage({ theme: plainTheme }, targetOrigin);
-    }
+    clearTimeout(postTimer);
+    postTimer = setTimeout(() => {
+      if (iframeEl.value && iframeEl.value.contentWindow && theme) {
+        const targetOrigin = isDev ? 'http://localhost:5174' : `https://${state.slug || 'demo'}.parroquia.app`;
+        const plainTheme = JSON.parse(JSON.stringify(theme));
+        iframeEl.value.contentWindow.postMessage({ theme: plainTheme }, targetOrigin);
+      }
+    }, 300);
   },
   { immediate: true, deep: true }
 );
