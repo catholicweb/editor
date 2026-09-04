@@ -9,7 +9,7 @@ import * as versions from './versions.js';
 import {
   sanitizeFontName, validHexColor, adjustColor,
   RADIUS_PRESETS, SHADOW_PRESETS,
-  buildThemeStylesCss, applyThemeStylesPreview, loadedFonts
+  buildThemeStylesCss, loadedFonts
 } from './theme-preview.js';
 
 // Autosave: debounce timer per file
@@ -375,8 +375,6 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug, e
     // Apply fonts from config
     applyFontsFromConfig();
 
-    // Apply theme.styles CSS preview (idea: style-preview)
-    applyThemeStylesPreview(state.config?.theme?.styles);
 
     // Apply radius/shadow/buttonStyle design tokens from config (live preview)
     applyDesignTokensFromConfig();
@@ -526,11 +524,6 @@ watch(() => themeValue('heading'), (newFont) => {
 watch([() => themeValue('radius'), () => themeValue('shadow'), () => themeValue('buttonStyle')], () => {
   applyDesignTokensFromConfig();
 });
-
-// Watch theme.styles array directly (not via themeRole) for live preview.
-watch(() => state.config?.theme?.styles, () => {
-  applyThemeStylesPreview(state.config?.theme?.styles);
-}, { deep: true });
 
 // Accept only #RGB / #RRGGBB hex colors; anything else is rejected so a
 // malicious or malformed config value can't inject into CSS or produce NaN.
@@ -856,7 +849,6 @@ export async function saveCurrent({ keepalive = false } = {}) {
       // calling directly is immediate and safe).
       applyAccentColorFromConfig();
       applyFontsFromConfig();
-      applyThemeStylesPreview(state.config?.theme?.styles);
       applyDesignTokensFromConfig();
       state.baselineConfig = plainSnapshot(state.config);
     }
@@ -916,7 +908,6 @@ export async function restoreConfig(newConfig) {
   // theme watches would also fire, but calling directly is immediate and safe).
   applyAccentColorFromConfig();
   applyFontsFromConfig();
-  applyThemeStylesPreview(state.config?.theme?.styles);
   applyDesignTokensFromConfig();
 
   state.error = '';
@@ -1061,7 +1052,6 @@ export async function refreshConfig() {
     }
     applyAccentColorFromConfig();
     applyFontsFromConfig();
-    applyThemeStylesPreview(state.config?.theme?.styles);
     applyDesignTokensFromConfig();
 
     // Resnapshot the patch baseline against the adopted tree and align the

@@ -73,21 +73,6 @@ export function buildThemeStylesCss(styles) {
   return css;
 }
 
-export function applyThemeStylesPreview(styles) {
-  let styleEl = document.getElementById('theme-preview-styles');
-  const css = buildThemeStylesCss(styles);
-  if (css) {
-    if (!styleEl) {
-      styleEl = document.createElement('style');
-      styleEl.id = 'theme-preview-styles';
-      document.head.appendChild(styleEl);
-    }
-    styleEl.textContent = '/* theme-preview (idea: style-preview) */\n' + css;
-  } else {
-    if (styleEl) styleEl.remove();
-  }
-}
-
 // ----- Font / theme-value helpers -----
 export function sanitizeFontName(name) {
   return String(name || '').replace(/[^A-Za-z0-9 ]/g, '').trim();
