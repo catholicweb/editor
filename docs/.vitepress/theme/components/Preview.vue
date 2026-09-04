@@ -3,7 +3,7 @@
     <iframe
       ref="iframeEl"
       :src="iframeUrl"
-      sandbox="allow-scripts"
+      sandbox="allow-scripts allow-same-origin"
       title="Vista previa del sitio"
       class="preview-iframe"
     />
