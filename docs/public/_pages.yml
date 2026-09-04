@@ -119,39 +119,6 @@ components:
           { value: "two-row", label: "Dos filas (logo arriba, menú abajo)" },
           { value: "solid-dark", label: "Oscura y sólida" },
         ]
-  radiusSelect:
-    label: "Redondez de elementos"
-    type: select
-    options:
-      values:
-        [
-          { value: "sharp", label: "Esquinas rectas" },
-          { value: "soft", label: "Redondeo suave" },
-          { value: "rounded", label: "Redondeo amplio" },
-          { value: "pill", label: "Forma de píldora (muy redondeado)" },
-        ]
-  shadowSelect:
-    label: "Intensidad de sombras"
-    type: select
-    options:
-      values:
-        [
-          { value: "none", label: "Sin sombra (plano)" },
-          { value: "light", label: "Sombra suave" },
-          { value: "medium", label: "Sombra media" },
-          { value: "strong", label: "Sombra intensa" },
-        ]
-  buttonStyle:
-    label: "Estilo de botones"
-    type: select
-    options:
-      values:
-        [
-          { value: "solid", label: "Sólido (con relleno de color)" },
-          { value: "outline", label: "Contorno (solo borde)" },
-          { value: "soft", label: "Suave / claro" },
-          { value: "pill", label: "Forma de píldora (muy redondeado)" },
-        ]
   footerStyle:
     label: "Estilo de pie de página"
     type: select
@@ -163,139 +130,520 @@ components:
           { value: "minimal", label: "Minimalista (solo lo esencial)" },
           { value: "expanded", label: "Amplio (todo el detalle)" },
         ]
-  font:
-    label: Tipo letra
-    type: select
-    options:
-      creatable: true
-      value: [
-        # Sans-serif — UI & body text workhorses
-        "Inter",
-        "Roboto",
-        "Open Sans",
-        "Lato",
-        "Montserrat",
-        "Poppins",
-        "Nunito",
-        "Nunito Sans",
-        "Mulish",
-        "Work Sans",
-        "Source Sans 3",
-        "Rubik",
-        "Karla",
-        "DM Sans",
-        "Manrope",
-        "Outfit",
-        "Plus Jakarta Sans",
-        "Figtree",
-        "Instrument Sans",
-        "Urbanist",
-        "Sora",
-        "Space Grotesk",
-        "IBM Plex Sans",
-        "PT Sans",
-        "Quicksand",
-        "Raleway",
-        "Barlow",
-        "Hind",
-        "Cabin",
-        "Arimo",
-        "Ubuntu",
-        "Fira Sans",
-        "Varela Round",
-        "Exo 2",
-        "Archivo",
-        "Dosis",
-        "Noto Sans",
-        "Be Vietnam Pro",
-        "Monda",
 
-        # Serif — editorial & elegant
-        "Playfair Display",
-        "Merriweather",
-        "Lora",
-        "PT Serif",
-        "Source Serif 4",
-        "Libre Baskerville",
-        "Crimson Pro",
-        "Cormorant Garamond",
-        "EB Garamond",
-        "Bitter",
-        "Domine",
-        "Noto Serif",
-        "Spectral",
-        "Vollkorn",
-        "Zilla Slab",
-        "Roboto Slab",
-        "Bree Serif",
-        "DM Serif Display",
-        "Fraunces",
 
-        # Display / headline
-        "Oswald",
-        "Bebas Neue",
-        "Abril Fatface",
-        "Josefin Sans",
-        "Archivo Black",
-        "Fjalla One",
-        "Anton",
-        "Unbounded",
-        "Basque Smile",
+  ## DESING page. Each top-level key is a selector field. 'value' = design token / preset id we inject into Tailwind config or CSS vars. 'label' = user-facing Spanish label. Slider fields use min/max/step + optional 'marks' (snap points shown on the slider, still valid values). Power users can type a custom value matching the same shape (documented per field).",
+  "vibe":
+    "description": "Master preset. Unlike other fields, 'value' here is an object mapping field-name -> the value to pre-fill on that field, not a direct CSS token. Applying a vibe just does Object.assign(formState, vibe.value); the user can still tweak any individual field afterward — vibe selection is a starting point, not a lock."
+    "type": select
+    "options": [
+      {
+        "label": "Clásica",
+        "value": {
+          "accentHue": 350,
+          "fontPair": "Playfair Display|Source Sans 3",
+          "typeScale": "large",
+          "radius": 0.25,
+          "spacingDensity": 1,
+          "motionIntensity": 2,
+          "imageTreatment": "natural",
+          "headerFooterStyle": "solid-bar-light|straight",
+          "surfaceStyle": "soft"
+        }
+      },
+      {
+        "label": "Serena",
+        "value": {
+          "accentHue": 200,
+          "fontPair": "Lora|Karla",
+          "typeScale": "default",
+          "radius": 0.5,
+          "spacingDensity": 1.2,
+          "motionIntensity": 2,
+          "imageTreatment": "natural",
+          "headerFooterStyle": "minimal-centered|wave",
+          "surfaceStyle": "flat"
+        }
+      },
+      {
+        "label": "Cálida",
+        "value": {
+          "accentHue": 30,
+          "fontPair": "Bitter|Mulish",
+          "typeScale": "default",
+          "radius": 0.6,
+          "spacingDensity": 1.1,
+          "motionIntensity": 5,
+          "imageTreatment": "warm-filter",
+          "headerFooterStyle": "hero-split|wave",
+          "surfaceStyle": "soft"
+        }
+      },
+      {
+        "label": "Luminosa",
+        "value": {
+          "accentHue": 45,
+          "fontPair": "Outfit|Manrope",
+          "typeScale": "compact",
+          "radius": 0.8,
+          "spacingDensity": 1.15,
+          "motionIntensity": 8,
+          "imageTreatment": "warm-filter",
+          "headerFooterStyle": "hero-overlay-dark|angle",
+          "surfaceStyle": "soft"
+        }
+      },
+      {
+        "label": "Moderna",
+        "value": {
+          "accentHue": 230,
+          "fontPair": "Space Grotesk|Inter",
+          "typeScale": "compact",
+          "radius": 0.15,
+          "spacingDensity": 0.95,
+          "motionIntensity": 5,
+          "imageTreatment": "grayscale",
+          "headerFooterStyle": "solid-bar-dark|straight",
+          "surfaceStyle": "bold"
+        }
+      },
+      {
+        "label": "Solemne",
+        "value": {
+          "accentHue": 270,
+          "fontPair": "Cinzel|Cormorant",
+          "typeScale": "large",
+          "radius": 0,
+          "spacingDensity": 1.2,
+          "motionIntensity": 1,
+          "imageTreatment": "grayscale",
+          "headerFooterStyle": "hero-overlay-dark|straight",
+          "surfaceStyle": "bold"
+        }
+      },
+      {
+        "label": "Rústica",
+        "value": {
+          "accentHue": 90,
+          "fontPair": "Zilla Slab|Zilla Slab",
+          "typeScale": "default",
+          "radius": 0.3,
+          "spacingDensity": 1.1,
+          "motionIntensity": 3,
+          "imageTreatment": "warm-filter",
+          "headerFooterStyle": "hero-split|straight",
+          "surfaceStyle": "soft"
+        }
+      },
+      {
+        "label": "Minimalista",
+        "value": {
+          "accentHue": 0,
+          "fontPair": "Inter|Inter",
+          "typeScale": "compact",
+          "radius": 0.1,
+          "spacingDensity": 1.3,
+          "motionIntensity": 0,
+          "imageTreatment": "grayscale",
+          "headerFooterStyle": "minimal-centered|straight",
+          "surfaceStyle": "flat"
+        }
+      },
+      {
+        "label": "Elegante",
+        "value": {
+          "accentHue": 320,
+          "fontPair": "Cormorant Garamond|Nunito Sans",
+          "typeScale": "large",
+          "radius": 0.4,
+          "spacingDensity": 1.15,
+          "motionIntensity": 6,
+          "imageTreatment": "duotone-accent",
+          "headerFooterStyle": "hero-split|wave",
+          "surfaceStyle": "flat"
+        }
+      },
+      {
+        "label": "Vibrante",
+        "value": {
+          "accentHue": 15,
+          "fontPair": "Poppins|Poppins",
+          "typeScale": "compact",
+          "radius": 1,
+          "spacingDensity": 1,
+          "motionIntensity": 9,
+          "imageTreatment": "duotone-accent",
+          "headerFooterStyle": "hero-overlay-dark|angle",
+          "surfaceStyle": "bold"
+        }
+      },
+      {
+        "label": "Íntima",
+        "value": {
+          "accentHue": 340,
+          "fontPair": "Crimson Pro|Inter",
+          "typeScale": "default",
+          "radius": 0.35,
+          "spacingDensity": 1.25,
+          "motionIntensity": 2,
+          "imageTreatment": "natural",
+          "headerFooterStyle": "minimal-centered|straight",
+          "surfaceStyle": "soft"
+        }
+      },
+      {
+        "label": "Editorial",
+        "value": {
+          "accentHue": 220,
+          "fontPair": "Fraunces|Nunito",
+          "typeScale": "large",
+          "radius": 0.2,
+          "spacingDensity": 1.1,
+          "motionIntensity": 4,
+          "imageTreatment": "grayscale",
+          "headerFooterStyle": "solid-bar-light|straight",
+          "surfaceStyle": "flat"
+        }
+      },
+      {
+        "label": "Artesanal",
+        "value": {
+          "accentHue": 60,
+          "fontPair": "Alegreya|Alegreya Sans",
+          "typeScale": "default",
+          "radius": 0.45,
+          "spacingDensity": 1.1,
+          "motionIntensity": 4,
+          "imageTreatment": "warm-filter",
+          "headerFooterStyle": "hero-split|wave",
+          "surfaceStyle": "soft"
+        }
+      },
+      {
+        "label": "Contemporánea",
+        "value": {
+          "accentHue": 250,
+          "fontPair": "Josefin Sans|Nunito Sans",
+          "typeScale": "compact",
+          "radius": 0.7,
+          "spacingDensity": 1,
+          "motionIntensity": 6,
+          "imageTreatment": "natural",
+          "headerFooterStyle": "solid-bar-dark|angle",
+          "surfaceStyle": "soft"
+        }
+      },
+      {
+        "label": "Romántica",
+        "value": {
+          "accentHue": 330,
+          "fontPair": "Great Vibes|Nunito Sans",
+          "typeScale": "large",
+          "radius": 0.6,
+          "spacingDensity": 1.2,
+          "motionIntensity": 7,
+          "imageTreatment": "warm-filter",
+          "headerFooterStyle": "hero-overlay-dark|wave",
+          "surfaceStyle": "flat"
+        }
+      },
+      {
+        "label": "Monástica",
+        "value": {
+          "accentHue": 25,
+          "fontPair": "EB Garamond|EB Garamond",
+          "typeScale": "default",
+          "radius": 0,
+          "spacingDensity": 1.3,
+          "motionIntensity": 0,
+          "imageTreatment": "grayscale",
+          "headerFooterStyle": "minimal-centered|straight",
+          "surfaceStyle": "flat"
+        }
+      },
+      {
+        "label": "Fresca",
+        "value": {
+          "accentHue": 160,
+          "fontPair": "Montserrat|Open Sans",
+          "typeScale": "default",
+          "radius": 0.9,
+          "spacingDensity": 1.05,
+          "motionIntensity": 8,
+          "imageTreatment": "natural",
+          "headerFooterStyle": "hero-split|wave",
+          "surfaceStyle": "soft"
+        }
+      }
+    ]
+  
+  "accentHue":
+    "label": "tono de color"
+    "description": "OKLCH hue angle, 0-360. Backend derives a full ramp (accent-50..900) at fixed lightness/chroma curve from this single number. Slider UI; marks below are just suggested stops, any int 0-360 is valid."
+    "type": hue
+    "min": 0
+    "max": 360
+    "step": 1
+  
+  "fontPair":
+    "label": "Tipografía"
+    "description": "Title + body chosen together as one unit, never independently."
+    "type": select
+    "options":
+      values: [
+        {
+          "value": "Playfair Display|Source Sans 3",
+          "label": "Serif elegante + sans cercana"
+        },
+        {
+          "value": "Lora|Karla",
+          "label": "Serif editorial + sans limpia"
+        },
+        {
+          "value": "Cormorant Garamond|Nunito Sans",
+          "label": "Serif fina + sans redondeada"
+        },
+        {
+          "value": "Merriweather|Merriweather",
+          "label": "Serif clásica (todo el sitio)"
+        },
+        {
+          "value": "Libre Baskerville|Work Sans",
+          "label": "Serif tradicional + sans moderna"
+        },
+        {
+          "value": "Crimson Pro|Inter",
+          "label": "Serif de lectura + sans neutra"
+        },
+        {
+          "value": "Fraunces|Nunito",
+          "label": "Serif con carácter + sans suave"
+        },
+        {
+          "value": "EB Garamond|EB Garamond",
+          "label": "Serif renacentista (todo el sitio)"
+        },
+        {
+          "value": "Poppins|Poppins",
+          "label": "Sans geométrica (todo el sitio)"
+        },
+        {
+          "value": "Montserrat|Open Sans",
+          "label": "Sans geométrica + sans clásica"
+        },
+        {
+          "value": "Space Grotesk|Inter",
+          "label": "Sans técnica + sans neutra"
+        },
+        {
+          "value": "Outfit|Manrope",
+          "label": "Sans contemporánea + sans neutra"
+        },
+        {
+          "value": "Josefin Sans|Nunito Sans",
+          "label": "Sans art déco + sans suave"
+        },
+        {
+          "value": "Bitter|Mulish",
+          "label": "Slab cálida + sans ligera"
+        },
+        {
+          "value": "Roboto Slab|Roboto",
+          "label": "Slab robusta + sans compañera"
+        },
+        {
+          "value": "Zilla Slab|Zilla Slab",
+          "label": "Slab de lectura (todo el sitio)"
+        },
+        {
+          "value": "Cinzel|Cormorant",
+          "label": "Mayúsculas clásicas + serif fina"
+        },
+        {
+          "value": "Alegreya|Alegreya Sans",
+          "label": "Serif expresiva + sans compañera"
+        },
+        {
+          "value": "Great Vibes|Nunito Sans",
+          "label": "Caligráfica + sans neutra"
+        },
+        {
+          "value": "Dancing Script|Karla",
+          "label": "Manuscrita + sans limpia"
+        },
+        {
+          "value": "Cormorant SC|Lato",
+          "label": "Versalitas elegantes + sans clásica"
+        }
+      ]
 
-        # Handwriting / script (accent use only)
-        "Caveat",
-        "Dancing Script",
-        "Sacramento",
-        "Tangerine",
-        "Pacifico",
-        "Lobster",
-        "Kalam",
-        "Pangolin"
+  "typeScale":
+    "label": ""
+    "description": "Controls clamp()-based heading size scale. Independent of every other field — not derived from fontPair or spacingDensity, since neither reliably predicts the right heading scale (a font's ideal size is about its own character; a layout's density doesn't have to match its heading size). Not rendered as a selector in the guided flow: `vibe` sets it, and it's here mainly for power users / an advanced panel."
+    "type": select
+    "hidden": true
+    "options":
+      "values":
+        [
+          {
+            "value": "compact",
+            "label": "Compacto"
+          },
+          {
+            "value": "default",
+            "label": "Estándar"
+          },
+          {
+            "value": "large",
+            "label": "Grande / editorial"
+          },
+        ]
+  "headerFooterStyle":
+    "description": "Layout + section-divider shape as one token: 'layoutId|dividerShape'. These always read as a single structural decision, so they're chosen together instead of as two separate fields. Power users can type any 'layoutId|dividerShape' combination even if not listed."
+    "type": select
+    "options": 
+      values: [
+        {
+          "value": "solid-bar-light|straight",
+          "label": "Barra sólida clara, secciones rectas"
+        },
+        {
+          "value": "minimal-centered|wave",
+          "label": "Minimalista centrado, secciones en ola"
+        },
+        {
+          "value": "hero-split|wave",
+          "label": "Imagen a un lado, secciones en ola"
+        },
+        {
+          "value": "hero-overlay-dark|angle",
+          "label": "Foto de fondo superpuesta, secciones diagonales"
+        },
+        {
+          "value": "solid-bar-dark|straight",
+          "label": "Barra sólida oscura, secciones rectas"
+        },
+        {
+          "value": "hero-overlay-dark|straight",
+          "label": "Foto de fondo superpuesta, secciones rectas"
+        },
+        {
+          "value": "hero-split|straight",
+          "label": "Imagen a un lado, secciones rectas"
+        },
+        {
+          "value": "minimal-centered|straight",
+          "label": "Minimalista centrado, secciones rectas"
+        },
+        {
+          "value": "solid-bar-dark|angle",
+          "label": "Barra sólida oscura, secciones diagonales"
+        },
+        {
+          "value": "hero-overlay-dark|wave",
+          "label": "Foto de fondo superpuesta, secciones en ola"
+        }
+    ]
+  "radius": {
+    "description": "Base radius in rem, drives --radius-sm/md/lg/xl via a fixed multiplier scale off this value.",
+    "type": slider,
+    "min": 0,
+    "max": 1.5,
+    "step": 0.05,
+    "marks": [
+      {
+        "value": 0,
+        "label": "Esquinas rectas"
+      },
+      {
+        "value": 1.5,
+        "label": "Muy redondeado"
+      }
+    ],
+    "customValueHint": "float, rem units, 0-1.5 (values above ~1 mostly visible on buttons/small elements)"
+  }
+  "spacingDensity": {
+    "label": "Espaciado",
+    "description": "Multiplier applied across the Tailwind spacing scale.",
+    "type": "slider",
+    "min": 0.8,
+    "max": 1.4,
+    "step": 0.05,
+    "default": 1,
+    "marks": [
+      {
+        "value": 0.8,
+        "label": "Compacto"
+      },
+      {
+        "value": 1.4,
+        "label": "Espacioso"
+      }
+    ],
+    "customValueHint": "float multiplier, 0.8-1.4"
+  }
+  "motionIntensity": {
+    "description": "Single 0-10 dial driving ALL motion: animation magnitude (duration/distance/scale), which elements get a scroll-reveal effect and how many, and the hover effect. Low = fewer elements, subtler effects. High = more elements, more dramatic effects (blur-in headings, slide-in quotes, combined zoom+glow hover). Implemented with pure CSS scroll-driven animations (animation-timeline: view()), wrapped in @supports so unsupported browsers just render static content — no JS, fails silently. 0 disables motion entirely.",
+    "type": "slider",
+    "min": 0,
+    "max": 10,
+    "step": 1,
+    "default": 5,
+    "marks": [
+      {
+        "value": 0,
+        "label": "Sin animaciones"
+      },
+      {
+        "value": 10,
+        "label": "Dramático"
+      }
+    ],
+    "customValueHint": "integer 0-10"
+  }
+  "imageTreatment":
+    "description": "Applied consistently to content photos."
+    "type": "select"
+    "options":
+      values: [
+      {
+        "value": "natural",
+        "label": "Natural"
+      },
+      {
+        "value": "duotone-accent",
+        "label": "Duotono con color de acento"
+      },
+      {
+        "value": "grayscale",
+        "label": "Blanco y negro"
+      },
+      {
+        "value": "warm-filter",
+        "label": "Filtro cálido"
+      }
+    ]
+  surfaceStyle":
+    "description": "Shadow depth + button fill as one coherent choice — these two properties read as a single 'flat vs. dimensional' design decision, and letting them vary independently risks incoherent combos (e.g. bold shadows + outline buttons rarely looks intentional)."
+    "type": "select"
+    "options":
+      values: [
+        {
+          "value": "flat",
+          "label": "Plana (sin sombra, botones de contorno)"
+        },
+        {
+          "value": "soft",
+          "label": "Suave (sombra sutil, botones rellenos)"
+        },
+        {
+          "value": "bold",
+          "label": "Marcada (sombra fuerte, botones rellenos)"
+        }
       ]
 
 
-  selector:
-    label: Selector
-    type: select
-    options:
-      creatable: true
-      multiple: true
-      values:
-        [
-          { value: "h1", label: "Título (h1)" },
-          { value: "h2", label: "Subtítulo (h2)" },
-          { value: "h3", label: "Sección (h3)" },
-          { value: "h4", label: "Título pequeño (h4)" },
-          { value: "h5", label: "Titular menor (h5)" },
-          { value: "p", label: "Párrafo" },
-          { value: "img", label: "Imagen" },
-          { value: "blockquote", label: "Cita" },
-          { value: "a", label: "Enlace" },
-          { value: "ul", label: "Lista con viñetas" },
-          { value: "ol", label: "Lista numerada" },
-          { value: "li", label: "Elemento de lista" },
-          { value: "button", label: "Botón" },
-          { value: "div", label: "Contenedor (div)" },
-          { value: "span", label: "Texto inline" },
-          { value: "strong", label: "Negrita (strong)" },
-          { value: "em", label: "Cursiva (em)" },
-          { value: "section", label: "Sección" },
-          { value: "table", label: "Tabla" },
-          { value: "tr", label: "Fila de tabla" },
-          { value: "td", label: "Celda de tabla" },
-          { value: "th", label: "Celda cabecera" },
-          { value: "form", label: "Formulario" },
-          { value: "input", label: "Campo de entrada" },
-          { value: "label", label: "Etiqueta" },
-          { value: "select", label: "Lista desplegable" },
-          { value: "option", label: "Opción" },
-          { value: "textarea", label: "Área de texto" },
-          { value: "iframe", label: "Marco insertado" },
-          { value: "header", label: "Cabecera" },
-          { value: "footer", label: "Pie de página" },
-          { value: "nav", label: "Navegación" },
-          { value: "article", label: "Artículo" },
-        ]
+
   blocktype:
     label: Selector
     type: select
@@ -364,100 +712,6 @@ components:
           { value: "week4", label: "4ª semana del mes" },
           { value: "week5", label: "5ª semana del mes" },
           { value: "never", label: "Nunca (no se repite)" },
-        ]
-  effect:
-    label: Efectos CSS
-    type: select
-    options:
-      creatable: true
-      multiple: true
-      values:
-        [
-          ## --- Opacidad ---
-          { value: "opacity: 0;", label: "Invisible (opacidad 0%)" },
-          { value: "opacity: 0.5;", label: "Semitransparente (opacidad 50%)" },
-          { value: "opacity: 0.8;", label: "Casi opaco (opacidad 80%)" },
-
-          ## --- Escala ---
-          { value: "transform: scale(0.8);", label: "Reducir tamaño (80%)" },
-          { value: "transform: scale(1.2);", label: "Aumentar tamaño (120%)" },
-          { value: "transform: scaleX(1.5);", label: "Ensanchar (150%)" },
-          { value: "transform: scaleY(0.5);", label: "Comprimir vertical (50%)" },
-
-          ## --- Rotación ---
-          { value: "transform: rotate(6deg);", label: "Rotar 6°" },
-          { value: "transform: rotate(-6deg);", label: "Rotar -6°" },
-          { value: "transform: rotate(90deg);", label: "Rotar 90°" },
-          { value: "transform: rotate(180deg);", label: "Rotar 180°" },
-
-          ## --- Posición / desplazamiento ---
-          { value: "transform: translateX(-20%);", label: "Desplazar izquierda" },
-          { value: "transform: translateX(20%);", label: "Desplazar derecha" },
-          { value: "transform: translateY(-20%);", label: "Desplazar arriba" },
-          { value: "transform: translateY(20%);", label: "Desplazar abajo" },
-          { value: "transform: translate(-50%, -50%);", label: "Centrar" },
-
-          ## --- Filtros ---
-          { value: "filter: blur(5px);", label: "Desenfocar (5px)" },
-          { value: "filter: brightness(1.2);", label: "Más brillo (120%)" },
-          { value: "filter: brightness(0.7);", label: "Oscurecer (70%)" },
-          { value: "filter: contrast(150%);", label: "Más contraste (150%)" },
-          { value: "filter: grayscale(100%);", label: "Escala de grises" },
-          { value: "filter: sepia(100%);", label: "Sepia" },
-          { value: "filter: saturate(200%);", label: "Más saturación" },
-          { value: "filter: invert(100%);", label: "Invertir colores" },
-          { value: "filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));", label: "Sombra suave" },
-
-          ## --- Bordes y esquinas ---
-          { value: "border-radius: 8px;", label: "Esquinas redondeadas" },
-          { value: "border-radius: 9999px;", label: "Esquinas totalmente redondeadas" },
-          { value: "border: 2px solid rgb(var(--color-accent));", label: "Borde de acento" },
-
-          ## --- Sombras ---
-          { value: "box-shadow: 0 4px 6px rgba(0,0,0,0.1);", label: "Sombra ligera" },
-          { value: "box-shadow: 0 10px 20px rgba(0,0,0,0.25);", label: "Sombra pronunciada" },
-
-          ## --- Tipografía ---
-          { value: "font-weight: bold;", label: "Negrita" },
-          { value: "font-style: italic;", label: "Cursiva" },
-          { value: "text-decoration: underline;", label: "Subrayado" },
-          { value: "text-transform: uppercase;", label: "Mayúsculas" },
-          { value: "letter-spacing: 2px;", label: "Espaciado entre letras" },
-          { value: "text-align: center;", label: "Centrar texto" },
-
-          ## --- Color ---
-          { value: "color: rgb(var(--color-accent));", label: "Color de acento" },
-          { value: "background-color: rgb(var(--color-accent));", label: "Fondo de acento" },
-
-          ## --- Interacción / cursor ---
-          { value: "cursor: pointer;", label: "Cursor de mano" },
-          { value: "pointer-events: none;", label: "Deshabilitar interacción" },
-          { value: "user-select: none;", label: "Deshabilitar selección de texto" },
-
-          ## --- Visibilidad / display ---
-          { value: "display: none;", label: "Ocultar elemento" },
-          { value: "visibility: hidden;", label: "Ocultar (mantener espacio)" },
-
-          ## --- Transición (para que los cambios se animen) ---
-          { value: "transition: all 0.3s ease;", label: "Transición suave" },
-
-          ## --- Padding (alineado a la escala de Tailwind) ---
-          { value: "padding: 0.5rem;", label: "Relleno pequeño" },
-          { value: "padding: 1rem;", label: "Relleno medio" },
-          { value: "padding: 2rem;", label: "Relleno grande" },
-          { value: "padding-top: 1.5rem;", label: "Espacio arriba" },
-          { value: "padding-bottom: 1.5rem;", label: "Espacio abajo" },
-
-          ## --- Margin ---
-          { value: "margin: 0;", label: "Sin margen" },
-          { value: "margin: 0 auto;", label: "Centrar horizontalmente" },
-          { value: "margin-top: 2rem;", label: "Margen arriba" },
-          { value: "margin-bottom: 2rem;", label: "Margen abajo" },
-
-          ## --- Tamaño de texto ---
-          { value: "font-size: 0.875rem;", label: "Texto pequeño" },
-          { value: "font-size: 1.25rem;", label: "Texto grande" },
-          { value: "font-size: 2rem;", label: "Texto extra grande" },
         ]
   hero:
     label: Hero
@@ -801,41 +1055,14 @@ content:
     fields:
       - { name: image, label: Imagen del sitio, type: image }
       - { name: icon, label: Icono del sitio, type: image }
-      - name: accentColor
-        label: "Color elementos acentuados"
-        type: color
-        options: { themeRole: accent }
-      #- name: accentPrimary
-      #  label: "Color secundario"
-      #  type: color
-      #  options: { themeRole: primary }
-      - name: headingFont
-        label: "Tipo de letra de los titulos"
-        component: font
-        options: { themeRole: heading }
-      - name: bodyFont
-        label: "Tipo de letra del cuerpo"
-        component: font
-        options: { themeRole: body }
-      - { name: navStyle, label: "Estilo de la barrra de navegación", component: navigationBar }
-      - { name: footerStyle, label: "Estilo de pie de página", component: footerStyle }
-      - { name: radius, label: "Redondez de elementos", component: radiusSelect, options: { themeRole: radius } }
-      #- { name: shadow, label: "Intensidad de sombras", component: shadowSelect, options: { themeRole: shadow } }
-      - { name: buttonStyle, label: "Estilo de botones", component: buttonStyle, options: { themeRole: buttonStyle } }
 
-      #- name: styles
-      #  label: Estilos para cada elemento
-      #  type: object
-      #  list: { collapsible: { collapsed: true, summary: "{fields.selector}" } }
-      #  fields:
-      #    - { name: selector, label: "Lista de elementos", component: selector }
-      #    - { name: cssClass, label: "Efecto a aplicar", component: effect }
-      #    - { name: scroll, label: "Aplicar al hacer desplazar (transición)", type: boolean, default: false }
+      - { name: vibe, component: vibe }
+      - { name: accentHue, component: accentHue, options: { themeRole: accent } }
+      - { name: fontPair, component: fontPair, options: { themeRole: heading } }
+      - { name: headerFooterStyle, component: headerFooterStyle }
+      - { name: radius, component: radius, options: { themeRole: radius } }
+      - { name: vispacingDensity, component: spacingDensity }
+      - { name: surfaceStyle, component: surfaceStyle }
+      - { name: motionIntensity, component: motionIntensity }
+      - { name: imageTreatment, component: imageTreatment }
 
-      # `preview` is a custom field type rendered by Preview.vue
-      # (see FieldRenderer's `field.type === 'preview'` branch)
-      #- name: preview
-      #  type: preview
-      #  label: Visualiza los estilos
-      #  options:
-      #    styles: "theme"   # location of the 
