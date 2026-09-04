@@ -16,7 +16,10 @@ import { state } from '../lib/store.js';
 
 const iframeEl = ref(null);
 
+const isDev = import.meta.env?.DEV === true;
+
 const iframeUrl = computed(() => {
+  if (isDev) return 'http://localhost:5174';
   const slug = state.slug || 'demo';
   return `https://${slug}.parroquia.app`;
 });
@@ -25,7 +28,8 @@ watch(
   () => state.config?.theme,
   (theme) => {
     if (iframeEl.value && iframeEl.value.contentWindow && theme) {
-      iframeEl.value.contentWindow.postMessage({ theme }, `https://${state.slug || 'demo'}.parroquia.app`);
+      const targetOrigin = isDev ? 'http://localhost:5174' : `https://${state.slug || 'demo'}.parroquia.app`;
+      iframeEl.value.contentWindow.postMessage({ theme }, targetOrigin);
     }
   },
   { immediate: true, deep: true }
