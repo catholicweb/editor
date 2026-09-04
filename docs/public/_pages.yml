@@ -623,9 +623,9 @@ components:
         "label": "Filtro cálido"
       }
     ]
-  surfaceStyle":
+  surfaceStyle:
     "description": "Shadow depth + button fill as one coherent choice — these two properties read as a single 'flat vs. dimensional' design decision, and letting them vary independently risks incoherent combos (e.g. bold shadows + outline buttons rarely looks intentional)."
-    "type": "select"
+    "type": select
     "options":
       values: [
         {

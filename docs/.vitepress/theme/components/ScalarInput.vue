@@ -235,9 +235,8 @@ function updateRefDropdownPosition() {
       @input="set(Number($event.target.value))"
       class="slider-input"
     />
-    <span class="slider-value">{{ modelValue ?? (field.default ?? field.min ?? 0) }}</span>
     <div v-if="field.marks && field.marks.length" class="slider-marks">
-      <span v-for="m in field.marks" :key="m.value" class="slider-mark" :style="{ left: ((m.value - (field.min ?? 0)) / ((field.max ?? 100) - (field.min ?? 0))) * 100 + '%' }">
+      <span v-for="(m, i) in field.marks" :key="m.value" class="slider-mark" :style="{ left: ((m.value - (field.min ?? 0)) / ((field.max ?? 100) - (field.min ?? 0))) * 100 + '%', transform: i === 0 ? 'translateX(0)' : (i === field.marks.length - 1 ? 'translateX(-100%)' : 'translateX(-50%)') }">
         <span class="slider-mark-label">{{ m.label }}</span>
       </span>
     </div>
@@ -666,10 +665,6 @@ textarea.auto-grow {
   width: 100%;
   accent-color: var(--pe-accent);
 }
-.slider-value {
-  font-size: 12px;
-  color: var(--pe-muted);
-}
 .slider-marks {
   position: relative;
   height: 16px;
@@ -677,7 +672,6 @@ textarea.auto-grow {
 }
 .slider-mark {
   position: absolute;
-  transform: translateX(-50%);
   font-size: 10px;
   color: var(--pe-muted);
 }
