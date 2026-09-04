@@ -64,7 +64,7 @@ export function resolveFieldDef(raw, components) {
     if (comp) base = resolveFieldDef({ ...comp }, components);
   }
   const out = { ...base };
-  for (const k of ['label', 'type', 'list', 'hidden', 'default']) {
+  for (const k of ['label', 'type', 'list', 'hidden', 'default', 'min', 'max', 'step', 'marks', 'customValueHint', 'description']) {
     if (raw[k] !== undefined) out[k] = raw[k];
   }
   // Options are MERGED, not replaced: a field that uses `component:` can add its
