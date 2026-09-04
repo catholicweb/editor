@@ -29,7 +29,8 @@ watch(
   (theme) => {
     if (iframeEl.value && iframeEl.value.contentWindow && theme) {
       const targetOrigin = isDev ? 'http://localhost:5174' : `https://${state.slug || 'demo'}.parroquia.app`;
-      iframeEl.value.contentWindow.postMessage({ theme }, targetOrigin);
+      const plainTheme = JSON.parse(JSON.stringify(theme));
+      iframeEl.value.contentWindow.postMessage({ theme: plainTheme }, targetOrigin);
     }
   },
   { immediate: true, deep: true }
