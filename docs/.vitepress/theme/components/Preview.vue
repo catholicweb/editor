@@ -54,12 +54,13 @@ watch(
 }
 @media (min-width: 1024px) {
   .preview-root {
-    position: sticky;
-    top: 1rem;
-    float: right;
+    position: fixed;
+    top: 5rem;
+    right: 1rem;
     width: 420px;
-    margin-left: 1rem;
-    margin-top: 0;
+    z-index: 50;
+    margin: 0;
+    float: none;
   }
 }
 </style>

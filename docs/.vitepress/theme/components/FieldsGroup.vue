@@ -28,10 +28,6 @@ const visible = computed(() => props.fields.filter((f) => !f.hidden));
   flex-direction: column;
   gap: 18px;
 }
-.fields-group:has(.preview-root) {
-  width: calc(100% - 460px);
-  float: left;
-}
 .advanced {
   border: 1px dashed var(--pe-border-strong);
   border-radius: var(--pe-radius);
