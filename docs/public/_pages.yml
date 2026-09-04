@@ -1078,3 +1078,11 @@ content:
       - { name: motionIntensity, label: "Dinamismo, efectos visuales", component: motionIntensity }
       - { name: imageTreatment, label: "Filtros de imagen", component: imageTreatment }
 
+      # `preview` is a custom field type rendered by Preview.vue
+      # (see FieldRenderer's `field.type === 'preview'` branch)
+      - name: preview
+        type: preview
+        label: Visualiza los estilos
+        options:
+          styles: "theme"
+
