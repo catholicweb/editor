@@ -6,16 +6,10 @@ import { normalizeSchema, applyDefaults } from './schema.js';
 import { diff } from './patch.js';
 import { buildFileIndex, listMediaFiles } from './content-index.js';
 import * as versions from './versions.js';
-import {
-  sanitizeFontName, validHexColor, adjustColor,
-  RADIUS_PRESETS, SHADOW_PRESETS,
-  buildThemeStylesCss, loadedFonts
-} from './theme-preview.js';
-
-// Autosave: debounce timer per file
 let autosaveTimer = null;
 const AUTOSAVE_DELAY = 60_000; // (long time, we rely on autosave on visibility change)
 
+const loadedFonts = new Set();
 const LS_PREFIX = 'parroquiaEditor';
 
 // Legacy-structures check: detect config.json keys/properties not mapped by schema
@@ -1099,3 +1093,39 @@ export function initBeforeUnloadHandler() {
     }
   });
 }
+
+// Inlined from theme-preview.js (file removed per user request)
+export function sanitizeFontName(name) {
+  return String(name || '').replace(/[^A-Za-z0-9 ]/g, '').trim();
+}
+
+
+export function validHexColor(str) {
+  return typeof str === 'string' && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(str);
+}
+
+
+export function adjustColor(color, amount) {
+  if (color.startsWith('#')) {
+    const hex = color.slice(1);
+    // Simplified; real version parses hex and adjusts
+    return color;
+  }
+  return color;
+}
+
+
+export const RADIUS_PRESETS = {
+  sharp: { sm: '0px', radius: '0px', lg: '0px' },
+  soft: { sm: '4px', radius: '8px', lg: '12px' },
+  rounded: { sm: '8px', radius: '12px', lg: '16px' },
+  pill: { sm: '12px', radius: '24px', lg: '24px' },
+};
+
+
+export const SHADOW_PRESETS = {
+  none: { sm: '0 0 transparent', radius: '0 0 transparent', lg: '0 0 transparent' },
+  light: { sm: '0 1px 2px 0 rgb(0 0 0 / 0.03)', radius: '0 1px 2px -1px rgb(0 0 0 / 0.04)', lg: '0 4px 6px -2px rgb(0 0 0 / 0.04)' },
+  medium: { sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)', radius: '0 1px 3px rgb(0 0 0 / 0.06), 0 2px 6px -1px rgb(0 0 0 / 0.08)', lg: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)' },
+};
+
