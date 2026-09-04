@@ -37,7 +37,7 @@ watch(
       }
     }, 300);
   },
-  { immediate: true, deep: true }
+  { deep: true }
 );
 </script>
 
