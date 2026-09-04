@@ -224,6 +224,25 @@ function updateRefDropdownPosition() {
     @input="set($event.target.value === '' ? null : Number($event.target.value))"
   />
 
+  <!-- slider -->
+  <div v-else-if="field.type === 'slider'" class="slider-field">
+    <input
+      type="range"
+      :min="field.min ?? 0"
+      :max="field.max ?? 100"
+      :step="field.step ?? 1"
+      :value="modelValue ?? (field.default ?? field.min ?? 0)"
+      @input="set(Number($event.target.value))"
+      class="slider-input"
+    />
+    <span class="slider-value">{{ modelValue ?? (field.default ?? field.min ?? 0) }}</span>
+    <div v-if="field.marks && field.marks.length" class="slider-marks">
+      <span v-for="m in field.marks" :key="m.value" class="slider-mark" :style="{ left: ((m.value - (field.min ?? 0)) / ((field.max ?? 100) - (field.min ?? 0))) * 100 + '%' }">
+        <span class="slider-mark-label">{{ m.label }}</span>
+      </span>
+    </div>
+  </div>
+
   <!-- boolean (toggle switch) -->
   <label v-else-if="field.type === 'boolean'" class="toggle-row">
     <button
@@ -253,6 +272,23 @@ function updateRefDropdownPosition() {
       @input="set($event.target.value)"
       placeholder="#000000"
     />
+  </div>
+
+  <!-- hue selector -->
+  <div v-else-if="field.type === 'hue'" class="hue-field">
+    <div class="hue-row">
+      <input
+        type="range"
+        min="0"
+        max="360"
+        step="1"
+        :value="modelValue ?? 250"
+        @input="set(Number($event.target.value))"
+        class="hue-slider"
+      />
+      <span class="hue-preview" :style="{ background: 'hsl(' + (modelValue ?? 250) + ', 100%, 50%)' }"></span>
+    </div>
+    <span class="hue-value">{{ modelValue ?? 250 }}°</span>
   </div>
 
   <!-- date -->
@@ -618,5 +654,90 @@ textarea.auto-grow {
   background: var(--pe-bg) !important;
   color: var(--pe-muted);
   cursor: default;
+}
+
+/* ---- slider ---- */
+.slider-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.slider-input {
+  width: 100%;
+  accent-color: var(--pe-accent);
+}
+.slider-value {
+  font-size: 12px;
+  color: var(--pe-muted);
+}
+.slider-marks {
+  position: relative;
+  height: 16px;
+  margin-top: 2px;
+}
+.slider-mark {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--pe-muted);
+}
+
+/* ---- hue selector ---- */
+.hue-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hue-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.hue-slider {
+  appearance: none;
+  width: 100%;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(
+    to right,
+    hsl(0, 100%, 50%),
+    hsl(60, 100%, 50%),
+    hsl(120, 100%, 50%),
+    hsl(180, 100%, 50%),
+    hsl(240, 100%, 50%),
+    hsl(300, 100%, 50%),
+    hsl(360, 100%, 50%)
+  );
+  outline: none;
+}
+.hue-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #ccc;
+  cursor: pointer;
+}
+.hue-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #ccc;
+  cursor: pointer;
+}
+.hue-preview {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 2px solid var(--pe-border);
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.hue-value {
+  font-size: 12px;
+  color: var(--pe-muted);
 }
 </style>
