@@ -365,18 +365,29 @@ const showPreviewSide = computed(() => state.currentEntry?.tabPath === 'theme');
 }
 .editor-body.with-preview {
   display: grid;
-  grid-template-columns: 164px 1fr 420px;
+  grid-template-columns: 164px 1fr 1fr;
   gap: 1rem;
   overflow-y: auto;
 }
 .with-preview .document .preview-root { display: none; }
 .side-preview {
   border-left: 1px solid var(--vp-c-divider, #e2e2e3);
-  padding-left: 1rem;
+  padding: 1rem;
   height: 100%;
   overflow-y: auto;
 }
 @media (max-width: 1023px) {
+  .editor-body.with-preview {
+    grid-template-columns: 164px 1fr 1fr;
+  }
+  .side-preview {
+    border-left: 1px solid var(--vp-c-divider, #e2e2e3);
+    border-top: none;
+    padding-left: 1rem;
+    padding-top: 0;
+  }
+}
+@media (max-width: 860px) {
   .editor-body.with-preview {
     grid-template-columns: 1fr;
   }
