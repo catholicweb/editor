@@ -483,6 +483,10 @@ components:
         {
           "value": "Story Script|Quicksand",
           "label": "Vocacional"
+        },
+        {
+          "value": "Merriweather|Montserrat",
+          "label": "Corazón"
         }
       ]
 
@@ -556,11 +560,11 @@ components:
         }
     ]
   "radius": {
-    "description": "Base radius in rem, drives --radius-sm/md/lg/xl via a fixed multiplier scale off this value.",
+    "description": "radius multiplier",
     "type": slider,
     "min": 0,
-    "max": 1.5,
-    "step": 0.05,
+    "max": 10,
+    "step": 0.1,
     "default": null,
     "marks": [
       {
@@ -568,7 +572,7 @@ components:
         "label": "Esquinas rectas"
       },
       {
-        "value": 1.5,
+        "value": 10,
         "label": "Muy redondeado"
       }
     ],
@@ -578,17 +582,17 @@ components:
     "label": "Espaciado",
     "description": "Multiplier applied across the Tailwind spacing scale.",
     "type": "slider",
-    "min": 0.8,
-    "max": 1.4,
+    "min": 0.4,
+    "max": 1.8,
     "step": 0.05,
     "default": null,
     "marks": [
       {
-        "value": 0.8,
+        "value": 0.4,
         "label": "Compacto"
       },
       {
-        "value": 1.4,
+        "value": 1.8,
         "label": "Espacioso"
       }
     ],
@@ -1068,21 +1072,13 @@ content:
       - { name: image, label: Imagen del sitio, type: image }
       - { name: icon, label: Icono del sitio, type: image }
 
-      - { name: vibe, label: "Tema global (vibe)", component: vibe }
+      #- { name: vibe, label: "Tema global (vibe)", component: vibe }
       - { name: accentHue, label: "Tono de color", component: accentHue, options: { themeRole: accent } }
       - { name: fontPair, label: "Tipografía", component: fontPair, options: { themeRole: font } }
-      - { name: headerFooterStyle, label: "Estilo de cabezera", component: headerFooterStyle }
+      #- { name: headerFooterStyle, label: "Estilo de cabezera", component: headerFooterStyle }
       - { name: radius, label: "Redondeo de esquinas", component: radius, options: { themeRole: radius } }
       - { name: spacingDensity, label: "Espaciado de elementos", component: spacingDensity }
-      - { name: surfaceStyle, label: "Estilos de superficie", component: surfaceStyle }
-      - { name: motionIntensity, label: "Dinamismo, efectos visuales", component: motionIntensity }
-      - { name: imageTreatment, label: "Filtros de imagen", component: imageTreatment }
-
-      # `preview` is a custom field type rendered by Preview.vue
-      # (see FieldRenderer's `field.type === 'preview'` branch)
-      - name: preview
-        type: preview
-        label: Visualiza los estilos
-        options:
-          styles: "theme"
+      #- { name: surfaceStyle, label: "Estilos de superficie", component: surfaceStyle }
+      #- { name: motionIntensity, label: "Dinamismo, efectos visuales", component: motionIntensity }
+      #- { name: imageTreatment, label: "Filtros de imagen", component: imageTreatment }
 

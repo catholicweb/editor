@@ -285,9 +285,8 @@ function updateRefDropdownPosition() {
         @input="set(Number($event.target.value))"
         class="hue-slider"
       />
-      <span class="hue-preview" :style="{ background: 'hsl(' + (modelValue ?? 250) + ', 100%, 50%)' }"></span>
+      <span class="hue-preview" :style="{ background: 'oklch(64% 0.2 '+(modelValue ?? 250)+')' }">{{ modelValue ?? 250 }}°</span>
     </div>
-    <span class="hue-value">{{ modelValue ?? 250 }}°</span>
   </div>
 
   <!-- date -->
@@ -661,7 +660,8 @@ textarea.auto-grow {
   flex-direction: column;
   margin-top: -10px;
 }
-.slider-input {
+.slider-input.slider-input {
+  padding: 8px 0px;
   width: 100%;
   accent-color: var(--pe-accent);
 }
@@ -694,15 +694,16 @@ textarea.auto-grow {
   width: 100%;
   height: 12px;
   border-radius: 6px;
+  /* In modern browsers, you can specify OKLCH interpolation directly in the gradient */
   background: linear-gradient(
-    to right,
-    hsl(0, 100%, 50%),
-    hsl(60, 100%, 50%),
-    hsl(120, 100%, 50%),
-    hsl(180, 100%, 50%),
-    hsl(240, 100%, 50%),
-    hsl(300, 100%, 50%),
-    hsl(360, 100%, 50%)
+    to right in oklch,
+    oklch(64% 0.2 0),
+    oklch(64% 0.2 60),
+    oklch(64% 0.2 120),
+    oklch(64% 0.2 180),
+    oklch(64% 0.2 240),
+    oklch(64% 0.2 300),
+    oklch(64% 0.2 360)
   );
   outline: none;
 }
@@ -725,8 +726,11 @@ textarea.auto-grow {
   cursor: pointer;
 }
 .hue-preview {
-  width: 32px;
-  height: 32px;
+  width: 48px;
+  height: 48px;
+  font-size: small;
+  text-align: center;
+  align-content: center;
   border-radius: 6px;
   border: 2px solid var(--pe-border);
   flex-shrink: 0;
