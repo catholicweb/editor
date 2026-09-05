@@ -365,7 +365,6 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug, e
 
     // Apply accent hue from config (now a hue value, not hex RGB)
     applyAccentHueFromConfig();
-
     // Apply font pair from config ("Heading|Body")
     applyFontPairFromConfig();
 
@@ -476,13 +475,6 @@ function themeValue(role) {
   return t ? state.config?.[t.tabPath]?.[t.name] : undefined;
 }
 
-// Apply accent color from config
-function applyAccentColorFromConfig() {
-  const color = themeValue('accent');
-  if (color) {
-    applyAccentColor(color);
-  }
-}
 
 // Watch for accent hue changes in config (hue 0-360)
 watch(() => themeValue('accent'), (newHue) => {
@@ -558,13 +550,6 @@ function applyFontPair(pair) {
 function applyFontPairFromConfig() {
   const pair = themeValue('font');
   if (pair) applyFontPair(pair);
-}
-
-// Apply radius/shadow/buttonStyle design tokens to the editor's own CSS custom
-// properties so the editor previews the site's look at runtime.
-function applyDesignTokensFromConfig() {
-  // Dropped: radius / shadow / buttonStyle token injection.
-  // The preview iframe now handles visual styling.
 }
 
 async function fetchSchemaText(schemaUrl) {
@@ -819,9 +804,8 @@ export async function saveCurrent({ keepalive = false } = {}) {
       // Adopted config may carry different theme values (e.g. from another
       // editor); re-apply them now (the theme watches would also fire, but
       // calling directly is immediate and safe).
-      applyAccentColorFromConfig();
-      applyFontsFromConfig();
-      applyDesignTokensFromConfig();
+      applyAccentHueFromConfig();
+      applyFontPairFromConfig();
       state.baselineConfig = plainSnapshot(state.config);
     }
 
@@ -878,9 +862,8 @@ export async function restoreConfig(newConfig) {
 
   // Restored config may carry different theme values; re-apply them now (the
   // theme watches would also fire, but calling directly is immediate and safe).
-  applyAccentColorFromConfig();
-  applyFontsFromConfig();
-  applyDesignTokensFromConfig();
+  applyAccentHueFromConfig();
+  applyFontPairFromConfig();
 
   state.error = '';
   state.info = '';
@@ -1022,9 +1005,8 @@ export async function refreshConfig() {
       }
       applyDefaults(entry.fields, data);
     }
-    applyAccentColorFromConfig();
-    applyFontsFromConfig();
-    applyDesignTokensFromConfig();
+    applyAccentHueFromConfig();
+    applyFontPairFromConfig();
 
     // Resnapshot the patch baseline against the adopted tree and align the
     // whole-config dirty baseline so isDirty stays false and "Guardado." shows.
