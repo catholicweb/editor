@@ -363,15 +363,11 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug, e
       applyDefaults(entry.fields, state.config[entry.tabPath]);
     }
 
-    // Apply accent color from config
-    applyAccentColorFromConfig();
+    // Apply accent hue from config (now a hue value, not hex RGB)
+    applyAccentHueFromConfig();
 
-    // Apply fonts from config
-    applyFontsFromConfig();
-
-
-    // Apply radius/shadow/buttonStyle design tokens from config (live preview)
-    applyDesignTokensFromConfig();
+    // Apply font pair from config ("Heading|Body")
+    applyFontPairFromConfig();
 
     // Auto-open the first file if no file is currently open
     if (!state.currentEntry && state.fileIndex.length > 0) {
@@ -488,47 +484,34 @@ function applyAccentColorFromConfig() {
   }
 }
 
-// Watch for accent color changes in config
-watch(() => themeValue('accent'), (newColor) => {
-  if (newColor) {
-    applyAccentColor(newColor);
+// Watch for accent hue changes in config (hue 0-360)
+watch(() => themeValue('accent'), (newHue) => {
+  if (typeof newHue === 'number' || (typeof newHue === 'string' && !isNaN(Number(newHue)))) {
+    applyAccentHue(Number(newHue));
   }
 });
 
-// Watch for body font changes in config
-watch(() => themeValue('body'), (newFont) => {
-  const font = sanitizeFontName(newFont);
-  if (font) {
-    loadGoogleFont(font);
-    document.documentElement.style.setProperty('--pe-body-font', `"${font}", system-ui, -apple-system, sans-serif`);
-  }
+// Watch for font pair changes ("Heading|Body")
+watch(() => themeValue('font'), (newPair) => {
+  if (newPair) applyFontPair(newPair);
 });
 
-// Watch for heading font changes in config
-watch(() => themeValue('heading'), (newFont) => {
-  const font = sanitizeFontName(newFont);
-  if (font) {
-    loadGoogleFont(font);
-    document.documentElement.style.setProperty('--pe-heading-font', `"${font}", system-ui, -apple-system, sans-serif`);
-  }
-});
-
-// Watch for design-token changes (radius/shadow/buttonStyle) in config.
-// Any of the three changing re-applies the whole token set cheaply; it is idempotent.
-watch([() => themeValue('radius'), () => themeValue('shadow'), () => themeValue('buttonStyle')], () => {
-  applyDesignTokensFromConfig();
-});
-
-// Accept only #RGB / #RRGGBB hex colors; anything else is rejected so a
+// Accept hue numbers (0-360) for accent; anything non-numeric is rejected.
 // malicious or malformed config value can't inject into CSS or produce NaN.
 
 // Apply accent color to CSS variables
-function applyAccentColor(color) {
-  if (!validHexColor(color)) return;
+function applyAccentHue(hue) {
+  if (typeof hue !== 'number' || isNaN(hue)) return;
+  const h = Math.max(0, Math.min(360, hue));
   const root = document.documentElement;
-  root.style.setProperty('--pe-accent', color);
-  root.style.setProperty('--pe-accent-hover', adjustColor(color, -20));
-  root.style.setProperty('--pe-accent-soft', adjustColor(color, 90) + '1a');
+  root.style.setProperty('--pe-accent', `oklch(64% 0.2 ${h})`);
+}
+
+function applyAccentHueFromConfig() {
+  const hue = themeValue('accent');
+  if (typeof hue === 'number' || (typeof hue === 'string' && !isNaN(Number(hue)))) {
+    applyAccentHue(Number(hue));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -558,35 +541,30 @@ function loadGoogleFont(fontName) {
   loadedFonts.add(safeName);
 }
 
-// Apply body and heading fonts from config
-function applyFontsFromConfig() {
-  const bodyFont = sanitizeFontName(themeValue('body'));
-  const headingFont = sanitizeFontName(themeValue('heading'));
-
-  if (bodyFont) {
-    loadGoogleFont(bodyFont);
-    document.documentElement.style.setProperty('--pe-body-font', `"${bodyFont}", system-ui, -apple-system, sans-serif`);
+function applyFontPair(pair) {
+  if (!pair || typeof pair !== 'string') return;
+  const [head, body] = pair.split('|').map(s => sanitizeFontName(s.trim())).filter(Boolean);
+  const root = document.documentElement;
+  if (head) {
+    loadGoogleFont(head);
+    root.style.setProperty('--pe-heading-font', `"${head}", system-ui, -apple-system, sans-serif`);
   }
-
-  if (headingFont) {
-    loadGoogleFont(headingFont);
-    document.documentElement.style.setProperty('--pe-heading-font', `"${headingFont}", system-ui, -apple-system, sans-serif`);
+  if (body) {
+    loadGoogleFont(body);
+    root.style.setProperty('--pe-body-font', `"${body}", system-ui, -apple-system, sans-serif`);
   }
+}
+
+function applyFontPairFromConfig() {
+  const pair = themeValue('font');
+  if (pair) applyFontPair(pair);
 }
 
 // Apply radius/shadow/buttonStyle design tokens to the editor's own CSS custom
 // properties so the editor previews the site's look at runtime.
 function applyDesignTokensFromConfig() {
-  const rv = RADIUS_PRESETS[themeValue('radius')] || RADIUS_PRESETS.soft;
-  const sv = SHADOW_PRESETS[themeValue('shadow')] || SHADOW_PRESETS.medium;
-  const root = document.documentElement;
-  root.style.setProperty('--pe-radius-sm', rv.sm);
-  root.style.setProperty('--pe-radius', rv.radius);
-  root.style.setProperty('--pe-radius-lg', rv.lg);
-  root.style.setProperty('--pe-shadow-sm', sv.sm);
-  root.style.setProperty('--pe-shadow', sv.radius);
-  root.style.setProperty('--pe-shadow-lg', sv.lg);
-  root.dataset.themeButton = themeValue('buttonStyle') || 'solid';
+  // Dropped: radius / shadow / buttonStyle token injection.
+  // The preview iframe now handles visual styling.
 }
 
 async function fetchSchemaText(schemaUrl) {
