@@ -31,9 +31,24 @@ watch(
     clearTimeout(postTimer);
     postTimer = setTimeout(() => {
       if (iframeEl.value && iframeEl.value.contentWindow && theme) {
-        const targetOrigin = isDev ? 'http://localhost:5174' : `https://${state.slug || 'demo'}.parroquia.app`;
+        const targetOrigin = isDev ? 'http://localhost:5174' : `https://${state.slug || 'test'}.parroquia.app`;
         const plainTheme = JSON.parse(JSON.stringify(theme));
         iframeEl.value.contentWindow.postMessage({ theme: plainTheme }, targetOrigin);
+      }
+    }, 300);
+  },
+  { immediate: true, deep: true }
+);
+
+watch(
+  () => state.config?.pages.list,
+  (pages) => {
+    clearTimeout(postTimer);
+    postTimer = setTimeout(() => {
+      if (iframeEl.value && iframeEl.value.contentWindow && pages) {
+        const targetOrigin = isDev ? 'http://localhost:5174' : `https://${state.slug || 'test'}.parroquia.app`;
+        const plainPage = JSON.parse(JSON.stringify(pages[0]));
+        iframeEl.value.contentWindow.postMessage({ pages: plainPage }, targetOrigin);
       }
     }, 300);
   },

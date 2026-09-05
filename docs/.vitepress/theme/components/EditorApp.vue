@@ -196,7 +196,7 @@ function onRestore({ config }) {
 const isCalendarDoc = computed(() =>
   (state.currentEntry?.fields || []).some((f) => f.type === 'calendario')
 );
-const showPreviewSide = computed(() => state.currentEntry?.tabPath === 'theme');
+const showPreviewSide = computed(() => state.currentEntry?.tabPath === 'theme' ); // || state.currentEntry?.tabPath === 'pages'
 </script>
 
 <template>

@@ -586,13 +586,13 @@ components:
     "label": "Espaciado",
     "description": "Multiplier applied across the Tailwind spacing scale.",
     "type": "slider",
-    "min": 0,
-    "max": 4,
+    "min": 0.2,
+    "max": 2,
     "step": 0.1,
     "default": 1,
     "marks": [
       {
-        "value": 0,
+        "value": 0.2,
         "label": "Compacto"
       },
       {
@@ -600,7 +600,7 @@ components:
         "label": "Default"
       },
       {
-        "value": 4,
+        "value": 2,
         "label": "Espacioso"
       }
     ],
@@ -1055,7 +1055,7 @@ content:
       - name: list
         label: Lista de páginas
         component: page
-        list: { collapsible: { collapsed: true, summary: "{fields.title}" }, sort: "alphabetical", modal: true  }
+        list: { collapsible: { collapsed: true, summary: "{fields.title}" }, sort: "alphabetical", modal: false  }
       - { name: pageperlocatoin, label: Crear una página para cada templo, type: boolean, default: true }  
       - { name: pageperevent, label: Crear una página para cada evento de tipo, type: select, options: { source: "event-types.list", multiple: true, label: "{title}" }  }  
       - name: nav
