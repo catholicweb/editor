@@ -493,25 +493,25 @@ components:
   "typeScale":
     "label": ""
     "description": "Controls clamp()-based heading size scale. Independent of every other field — not derived from fontPair or spacingDensity, since neither reliably predicts the right heading scale (a font's ideal size is about its own character; a layout's density doesn't have to match its heading size). Not rendered as a selector in the guided flow: `vibe` sets it, and it's here mainly for power users / an advanced panel."
-    "type": select
-    "hidden": true
+    "type": slider
+    "min": 0
+    "max": 4
+    "step": 0.1
     "default": 1
-    "options":
-      "values":
-        [
-          {
-            "value": "compact",
-            "label": "Compacto"
-          },
-          {
-            "value": "default",
-            "label": "Estándar"
-          },
-          {
-            "value": "large",
-            "label": "Grande / editorial"
-          },
-        ]
+    "marks": [
+      {
+        "value": 0,
+        "label": "Compacto"
+      },
+      {
+        "value": 1,
+        "label": "Default"
+      },
+      {
+        "value": 4,
+        "label": "Espaciado"
+      }
+    ]
   "headerFooterStyle":
     "description": "Layout + section-divider shape as one token: 'layoutId|dividerShape'. These always read as a single structural decision, so they're chosen together instead of as two separate fields. Power users can type any 'layoutId|dividerShape' combination even if not listed."
     "type": select
@@ -563,16 +563,20 @@ components:
     "description": "radius multiplier",
     "type": slider,
     "min": 0,
-    "max": 10,
+    "max": 4,
     "step": 0.1,
     "default": 1,
     "marks": [
       {
         "value": 0,
-        "label": "Esquinas rectas"
+        "label": "Recto"
       },
       {
-        "value": 10,
+        "value": 1,
+        "label": "Default"
+      },
+      {
+        "value": 4,
         "label": "Muy redondeado"
       }
     ],
@@ -582,17 +586,21 @@ components:
     "label": "Espaciado",
     "description": "Multiplier applied across the Tailwind spacing scale.",
     "type": "slider",
-    "min": 0.4,
-    "max": 1.8,
-    "step": 0.05,
+    "min": 0,
+    "max": 4,
+    "step": 0.1,
     "default": 1,
     "marks": [
       {
-        "value": 0.4,
+        "value": 0,
         "label": "Compacto"
       },
       {
-        "value": 1.8,
+        "value": 1,
+        "label": "Default"
+      },
+      {
+        "value": 4,
         "label": "Espacioso"
       }
     ],
@@ -1076,7 +1084,7 @@ content:
       - { name: accentHue, label: "Tono de color", component: accentHue, options: { themeRole: accent } }
       - { name: fontPair, label: "Tipografía", component: fontPair, options: { themeRole: font } }
       #- { name: headerFooterStyle, label: "Estilo de cabezera", component: headerFooterStyle }
-      - { name: radius, label: "Redondeo de esquinas", component: radius, options: { themeRole: radius } }
+      - { name: radius, label: "Redondeo de esquinas", component: radius }
       - { name: spacingDensity, label: "Espaciado de elementos", component: spacingDensity }
       #- { name: surfaceStyle, label: "Estilos de superficie", component: surfaceStyle }
       #- { name: motionIntensity, label: "Dinamismo, efectos visuales", component: motionIntensity }
