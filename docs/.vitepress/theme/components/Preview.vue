@@ -37,23 +37,26 @@ watch(
       }
     }, 300);
   },
-  { deep: true }
+  { immediate: true, deep: true }
 );
 </script>
 
 <style scoped>
 .preview-root {
-  padding: 1rem;
+  padding: 0rem;
+  height: 100%;
   border: 1px solid var(--vp-c-divider, #e2e2e3);
-  border-radius: 12px;
   background: var(--vp-c-bg, #fff);
   margin-top: 0.5rem;
+  overflow: hidden;
 }
 .preview-iframe {
   width: 100%;
-  height: 480px;
+  height: 100%;
+  min-height: 500px;
   border: none;
   border-radius: 8px;
   display: block;
+  overflow: hidden;
 }
 </style>

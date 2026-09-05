@@ -495,7 +495,7 @@ components:
     "description": "Controls clamp()-based heading size scale. Independent of every other field — not derived from fontPair or spacingDensity, since neither reliably predicts the right heading scale (a font's ideal size is about its own character; a layout's density doesn't have to match its heading size). Not rendered as a selector in the guided flow: `vibe` sets it, and it's here mainly for power users / an advanced panel."
     "type": select
     "hidden": true
-    "default": null
+    "default": 1
     "options":
       "values":
         [
@@ -565,7 +565,7 @@ components:
     "min": 0,
     "max": 10,
     "step": 0.1,
-    "default": null,
+    "default": 1,
     "marks": [
       {
         "value": 0,
@@ -585,7 +585,7 @@ components:
     "min": 0.4,
     "max": 1.8,
     "step": 0.05,
-    "default": null,
+    "default": 1,
     "marks": [
       {
         "value": 0.4,
@@ -604,7 +604,7 @@ components:
     "min": 0,
     "max": 10,
     "step": 1,
-    "default": null,
+    "default": 0,
     "marks": [
       {
         "value": 0,

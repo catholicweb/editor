@@ -242,7 +242,7 @@ const showPreviewSide = computed(() => state.currentEntry?.tabPath === 'theme');
       </div>
     </header>
 
-    <div class="editor-body" :class="{ 'with-preview': showPreviewSide }">
+    <div class="editor-body">
     <aside class="sidebar">
       <FieldBrowser />
     </aside>
@@ -255,26 +255,25 @@ const showPreviewSide = computed(() => state.currentEntry?.tabPath === 'theme');
         <p v-if="state.info" class="info banner">{{ state.info }}</p>
       </transition>
 
-      <div
-        v-if="state.currentEntry"
-        class="document"
-        :class="{ 'document-wide': isCalendarDoc }"
-      >
-        <FieldsGroup :fields="state.currentEntry.fields" :container="currentData" />
-        <div v-if="state.currentEntry?.contentName === 'nerdy'" class="nerdy-actions" style="margin-top: 1rem; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; background: #fafafa;">
-          <div v-if="!state.nerdyValid" style="color: #c00; font-weight: bold; margin-bottom: 0.5rem;">JSON inválido — corrige antes de aplicar.</div>
-          <button type="button" :disabled="!state.nerdyValid" @click="applyNerdyConfig()" style="padding: 0.5rem 1rem; font-size: 1rem;">Apply / Guardar cambios</button>
+      <div :class="{ 'with-preview': showPreviewSide }">
+        <div
+          v-if="state.currentEntry"
+          class="document"
+          :class="{ 'document-wide': isCalendarDoc }"
+        >
+          <FieldsGroup :fields="state.currentEntry.fields" :container="currentData" />
+          <div v-if="state.currentEntry?.contentName === 'nerdy'" class="nerdy-actions" style="margin-top: 1rem; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; background: #fafafa;">
+            <div v-if="!state.nerdyValid" style="color: #c00; font-weight: bold; margin-bottom: 0.5rem;">JSON inválido — corrige antes de aplicar.</div>
+            <button type="button" :disabled="!state.nerdyValid" @click="applyNerdyConfig()" style="padding: 0.5rem 1rem; font-size: 1rem;">Apply / Guardar cambios</button>
+          </div>
+        </div>
+        <div v-if="showPreviewSide" style="height: 100%; overflow: hidden;">
+          <Preview />
         </div>
       </div>
-      <div v-else class="empty-state">
-        <div class="empty-icon">📄</div>
-        <p>Selecciona una sección para empezar a editar.</p>
-      </div>
+
     </main>
 
-    <aside v-if="showPreviewSide" class="side-preview">
-      <Preview />
-    </aside>
   </div>
 
     <VersionHistoryModal
@@ -363,39 +362,12 @@ const showPreviewSide = computed(() => state.currentEntry?.tabPath === 'theme');
   overflow: hidden;
   position: relative;
 }
-.editor-body.with-preview {
-  display: grid;
-  grid-template-columns: 164px 1fr 1fr;
-  gap: 1rem;
-  overflow-y: auto;
-}
-.with-preview .document .preview-root { display: none; }
-.side-preview {
-  border-left: 1px solid var(--vp-c-divider, #e2e2e3);
-  padding: 1rem;
-  height: 100%;
-  overflow-y: auto;
-}
-@media (max-width: 1023px) {
-  .editor-body.with-preview {
-    grid-template-columns: 164px 1fr 1fr;
-  }
-  .side-preview {
-    border-left: 1px solid var(--vp-c-divider, #e2e2e3);
-    border-top: none;
-    padding-left: 1rem;
-    padding-top: 0;
-  }
-}
-@media (max-width: 860px) {
-  .editor-body.with-preview {
-    grid-template-columns: 1fr;
-  }
-  .side-preview {
-    border-left: none;
-    border-top: 1px solid var(--vp-c-divider, #e2e2e3);
-    padding-left: 0;
-    padding-top: 1rem;
+
+@media (min-width: 860px) {
+  .with-preview {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
   }
 }
 
