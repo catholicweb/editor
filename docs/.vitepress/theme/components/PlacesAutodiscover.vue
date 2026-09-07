@@ -61,7 +61,7 @@ async function getUserLocation() {
 // Fetch with a client-side timeout (AbortController) so a slow/ungovernable
 // upstream (Photon, quick-find lambda) can never leave the modal stuck on the spinner.
 async function fetchWikimediaImages(lat, lon) {
-  const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=geosearch&ggscoord=${lat}|${lon}&ggsradius=50&ggsnamespace=6&ggslimit=20&prop=imageinfo|coordinates&iiprop=url|extmetadata&format=json`;
+  const url = `https://commons.wikimedia.org/w/api.php?action=query&origin=*&generator=geosearch&ggscoord=${lat}|${lon}&ggsradius=500&ggsnamespace=6&ggslimit=20&prop=imageinfo|coordinates&iiprop=url|extmetadata&format=json`;
   try {
     const res = await fetchWithTimeout(url, 10000);
     if (!res.ok) return [];
@@ -176,6 +176,8 @@ function bboxFromRadius(lat, lon, radiusKm) {
   return [lon - lonDelta, lat - latDelta, lon + lonDelta, lat + latDelta].join(',');
 }
 
+const photonLocationFilter = ['amenity:place_of_worship','building:church','building:chapel','place:village'].map(t => `&osm_tag=${t}` ).join()
+
 async function discoverPlacesByName(query) {
   if (!query || !query.trim()) return [];
   const q = encodeURIComponent(query.trim());
@@ -183,7 +185,9 @@ async function discoverPlacesByName(query) {
   const lon = userLocation.value?.lon;
   const bias = (lat != null && lon != null) ? `&lat=${lat}&lon=${lon}&location_bias_scale=0.1` : '';
   const bbox = (lat != null && lon != null) ? `&bbox=${bboxFromRadius(lat, lon, 50)}` : '';
-  const url = `https://photon.komoot.io/api/?q=${q}&osm_tag=amenity:place_of_worship&osm_tag=building:church&osm_tag=building:chapel&limit=10${bias}${bbox}`;
+  
+
+  const url = `https://photon.komoot.io/api/?q=${q}&limit=10${photonLocationFilter}${bias}${bbox}`;
   try {
     const res = await fetchWithTimeout(url, 10000);
     if (!res.ok) return [];
@@ -203,7 +207,7 @@ function bboxAround(lat, lon, km = 15) {
 }
 
 async function discoverPlaces(lat, lon) {
-  const url = `https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}&osm_tag=amenity:place_of_worship&osm_tag=building:church&osm_tag=building:chapel&radius=20&limit=50`;
+  const url = `https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}${photonLocationFilter}&radius=20&limit=50`;
   try {
     const res = await fetchWithTimeout(url, 10000);
     if (!res.ok) return [];
@@ -377,7 +381,6 @@ async function searchMisasAPI(lat, lon) {
         events: sortMassesByTime(parish.mass || []), // Events from the parish API, sorted by hour
         source: 'misas.org', // Mark source for merging
         images: parish.pic ? [`https://misas.org/images/${parish.pic}`] : undefined,
-        town: parish.loc,
         address: addr || undefined,
       };
     });
@@ -613,28 +616,29 @@ function closeModal() {
             <div v-for="(place, idx) in discoveredPlaces" :key="idx" class="place-item">
               <div class="place-info">
                 <strong>{{ place.name }} - <span class="place-distance">{{ formatDistance(place.distance) }}</span></strong>
+                <small v-if="place.address" class="place-address" style="color:var(--pe-fg-muted);font-size:11px;display:block;margin-top:2px;">{{ place.address }}</small>
                 <!-- Show every event, labelled like the weekly list (recurrenceLabel) -->
                 <div v-if="place.events && place.events.length > 0" class="place-events">
                   <small class="events-title">Horario de misas conocidas:</small>
                   <ul>
                     <li v-for="(event, i) in place.events" :key="i">
+                      <span>Misa: </span>
                       <span>{{ event.time }}</span>
                       <span class="event-rec">{{ recurrenceLabel(mapMassDays(event.days)) }}</span>
                     </li>
                   </ul>
                 </div>
-                <small v-if="place.address" class="place-address" style="color:var(--pe-fg-muted);font-size:11px;display:block;margin-top:2px;">{{ place.address }}</small>
               </div>
               <button type="button" class="select-btn" @click="selectPlace(place)">
                 Añadir
               </button>
             </div>
+          </div>
 
-            <!-- Buscar por nombre -->
-            <div class="search-by-name" style="margin-top:12px;padding-top:12px;border-top:1px solid #ddd;display:flex;gap:6px;align-items:center;">
-              <input v-model="searchName" @keyup.enter="searchByName" type="text" placeholder="Buscar por nombre..." style="flex:1;padding:6px 8px;border:1px solid var(--pe-border);border-radius:var(--pe-radius-sm);font-size:13px;background:var(--pe-panel);" />
-              <button type="button" @click="searchByName" style="padding:6px 12px;border:1px solid var(--pe-accent);border-radius:var(--pe-radius-sm);background:var(--pe-accent-soft);color:var(--pe-accent);font-weight:600;cursor:pointer;font-size:12px;">Buscar</button>
-            </div>
+          <!-- Buscar por nombre -->
+          <div class="search-by-name" style="margin-top:12px;padding-top:12px;display:flex;gap:6px;align-items:center;">
+            <input v-model="searchName" @keyup.enter="searchByName" type="text" placeholder="Buscar por nombre..." style="flex:1;padding:6px 8px;border:1px solid var(--pe-border);border-radius:var(--pe-radius-sm);font-size:13px;background:var(--pe-panel);" />
+            <button type="button" @click="searchByName" style="padding:6px 12px;border:1px solid var(--pe-accent);border-radius:var(--pe-radius-sm);background:var(--pe-accent-soft);color:var(--pe-accent);font-weight:600;cursor:pointer;font-size:12px;">Buscar</button>
           </div>
         </div>
       </div>
