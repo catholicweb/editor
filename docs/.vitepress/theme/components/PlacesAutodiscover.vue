@@ -59,6 +59,36 @@ async function getUserLocation() {
 
 // Fetch with a client-side timeout (AbortController) so a slow/ungovernable
 // upstream (Overpass, quick-find lambda) can never leave the modal stuck on the spinner.
+async function fetchWikimediaImages(lat, lon) {
+  const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=geosearch&ggscoord=${lat}|${lon}&ggsradius=50&ggsnamespace=6&ggslimit=20&prop=imageinfo|coordinates&iiprop=url|extmetadata&format=json`;
+  try {
+    const res = await fetchWithTimeout(url, 10000);
+    if (!res.ok) return [];
+    const data = await res.json();
+    const images = [];
+    if (data.query && data.query.pages) {
+      for (const page of Object.values(data.query.pages)) {
+        if (page.imageinfo && page.imageinfo[0]) {
+          let imgUrl = page.imageinfo[0].url;
+          const artistVal = page.imageinfo[0].extmetadata && page.imageinfo[0].extmetadata.Artist && page.imageinfo[0].extmetadata.Artist.value;
+          if (artistVal && imgUrl) {
+            const m = String(artistVal).match(/User:([^"<>]+)/);
+            if (m && m[1]) {
+              const photographer = m[1].trim();
+              const sep = imgUrl.includes('?') ? '&' : '?';
+              imgUrl = imgUrl + sep + 'photographer=' + encodeURIComponent(photographer);
+            }
+          }
+          if (imgUrl) images.push(imgUrl);
+        }
+      }
+    }
+    return images;
+  } catch (e) {
+    return [];
+  }
+}
+
 function fetchWithTimeout(url, ms) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
@@ -428,6 +458,25 @@ function cleanPlaceName(name){
 }
 
 async function selectPlace(place) {
+  // Remove from discovered list immediately for better perceived behaviour
+  const idx = discoveredPlaces.value.indexOf(place);
+  if (idx !== -1) {
+    discoveredPlaces.value.splice(idx, 1);
+  }
+
+  // Fetch Wikimedia images near the place and merge with pre-existing images
+  if (place.lat != null && place.lon != null) {
+    try {
+      const fetched = await fetchWikimediaImages(place.lat, place.lon);
+      const existing = Array.isArray(place.images) ? place.images : [];
+      place.images = existing.concat(fetched);
+    } catch (e) {
+      if (!Array.isArray(place.images)) place.images = [];
+    }
+  } else if (!Array.isArray(place.images)) {
+    place.images = [];
+  }
+
   // Add the place to the configured list field of this tab's container.
   const list = ensurePath(props.container, listPath, () => []);
   list.push({
@@ -437,12 +486,6 @@ async function selectPlace(place) {
     images: place.images,
     address: place.address,
   });
-
-  // Remove from discovered list
-  const idx = discoveredPlaces.value.indexOf(place);
-  if (idx !== -1) {
-    discoveredPlaces.value.splice(idx, 1);
-  }
 
   // Import events if checkbox is checked
   if (importEvents.value) {
