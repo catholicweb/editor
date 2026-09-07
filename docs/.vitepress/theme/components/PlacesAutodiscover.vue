@@ -32,6 +32,7 @@ const discoveredPlaces = ref([]);
 const userLocation = ref(null);
 const importEvents = ref(true); // Checkbox for importing events
 const isImportingEvents = ref(false);
+const searchName = ref('');
 
 // Get user's current location
 async function getUserLocation() {
@@ -157,6 +158,23 @@ function mergeMassesByTime(existingMasses, newMasses) {
 }
 
 // Call overpass-api.de to find nearby places of worship
+async function discoverPlacesByName(query) {
+  if (!query || !query.trim()) return [];
+  const q = query.trim();
+  const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(`[out:json][timeout:5];(node["amenity"="place_of_worship"]["name"~"${q}"](around:15000,0,0);way["amenity"="place_of_worship"]["name"~"${q}"](around:15000,0,0););out center;`)}`;
+  // Actually use broad search without geo radius when searching by name; use bbox or just no around
+  // Better: just filter by name globally but limit
+  const url2 = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(`[out:json][timeout:10];(node["amenity"="place_of_worship"]["name"~"${q}"];way["amenity"="place_of_worship"]["name"~"${q}"];);out center;`)}`;
+  try {
+    const res = await fetchWithTimeout(url2, 10000);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.elements || [];
+  } catch (e) {
+    return [];
+  }
+}
+
 async function discoverPlaces(lat, lon) {
   // Overpass API query to find places of worship AND church buildings within 15km
   const query = `
@@ -451,6 +469,21 @@ async function startAutodiscover() {
   }
 }
 
+async function searchByName() {
+  const q = searchName.value.trim();
+  if (!q) return;
+  isLoading.value = true;
+  error.value = '';
+  try {
+    const elements = await discoverPlacesByName(q);
+    discoveredPlaces.value = formatPlaces(elements);
+  } catch (err) {
+    error.value = err.message || String(err);
+  } finally {
+    isLoading.value = false;
+  }
+}
+
 function cleanPlaceName(name){
   if (!name) return ''
   const str = name.replaceAll('Iglesia','').replaceAll('Parroquia','').replaceAll(' de ',' ')
@@ -581,6 +614,12 @@ function closeModal() {
               <button type="button" class="select-btn" @click="selectPlace(place)">
                 Añadir
               </button>
+            </div>
+
+            <!-- Buscar por nombre -->
+            <div class="search-by-name" style="margin-top:12px;padding-top:12px;border-top:1px solid #ddd;display:flex;gap:6px;align-items:center;">
+              <input v-model="searchName" @keyup.enter="searchByName" type="text" placeholder="Buscar por nombre..." style="flex:1;padding:6px 8px;border:1px solid var(--pe-border);border-radius:var(--pe-radius-sm);font-size:13px;background:var(--pe-panel);" />
+              <button type="button" @click="searchByName" style="padding:6px 12px;border:1px solid var(--pe-accent);border-radius:var(--pe-radius-sm);background:var(--pe-accent-soft);color:var(--pe-accent);font-weight:600;cursor:pointer;font-size:12px;">Buscar</button>
             </div>
           </div>
         </div>
