@@ -310,7 +310,7 @@ function updateRefDropdownPosition() {
     <template v-if="multiple">
       <div class="image-grid">
         <div v-for="(p, i) in (Array.isArray(modelValue)? modelValue : [modelValue].filter(Boolean))" :key="i" class="image-thumb">
-          <img v-if="imagePreviewUrl(p)" :src="imagePreviewUrl(p)" />
+          <img v-if="imagePreviewUrl(p)" :src="imagePreviewUrl(p)" loading="lazy" />
           <div class="image-actions">
             <button type="button" @click="openPicker(i)">Cambiar</button>
             <button type="button" class="del" @click="removeImageAt(i)" :aria-label="'Eliminar'" title="Eliminar"><PeIcon name="trash" :size="14" /></button>
@@ -321,7 +321,7 @@ function updateRefDropdownPosition() {
     </template>
     <template v-else>
       <div class="image-single">
-        <img v-if="imagePreviewUrl(modelValue)" :src="imagePreviewUrl(modelValue)" class="preview" />
+        <img v-if="imagePreviewUrl(modelValue)" :src="imagePreviewUrl(modelValue)" class="preview" loading="lazy" />
         <div class="image-actions">
           <button type="button" @click="openPicker()">{{ modelValue ? 'Cambiar imagen' : 'Elegir imagen' }}</button>
           <button v-if="modelValue" type="button" @click="set('')">Quitar</button>

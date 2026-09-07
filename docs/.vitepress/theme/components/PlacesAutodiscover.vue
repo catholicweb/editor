@@ -59,7 +59,7 @@ async function getUserLocation() {
 }
 
 // Fetch with a client-side timeout (AbortController) so a slow/ungovernable
-// upstream (Overpass, quick-find lambda) can never leave the modal stuck on the spinner.
+// upstream (Photon, quick-find lambda) can never leave the modal stuck on the spinner.
 async function fetchWikimediaImages(lat, lon) {
   const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=geosearch&ggscoord=${lat}|${lon}&ggsradius=50&ggsnamespace=6&ggslimit=20&prop=imageinfo|coordinates&iiprop=url|extmetadata&format=json`;
   try {
@@ -71,6 +71,19 @@ async function fetchWikimediaImages(lat, lon) {
       for (const page of Object.values(data.query.pages)) {
         if (page.imageinfo && page.imageinfo[0]) {
           let imgUrl = page.imageinfo[0].url;
+          // Use 250px thumbnail from Wikimedia Commons
+          try {
+            const u = new URL(imgUrl);
+            const p = u.pathname.split('/');
+            const idx = p.indexOf('commons');
+            if (idx !== -1 && p.length >= idx + 3) {
+              const after = p.slice(idx + 1);
+              const hash1 = after[0];
+              const hash2 = after[1];
+              const filename = after[after.length - 1];
+              imgUrl = `https://upload.wikimedia.org/wikipedia/commons/thumb/${hash1}/${hash2}/${filename}/250px-${filename}`;
+            }
+          } catch (e) { /* keep original */ }
           const artistVal = page.imageinfo[0].extmetadata && page.imageinfo[0].extmetadata.Artist && page.imageinfo[0].extmetadata.Artist.value;
           if (artistVal && imgUrl) {
             const m = String(artistVal).match(/User:([^"<>]+)/);
@@ -157,47 +170,48 @@ function mergeMassesByTime(existingMasses, newMasses) {
   return existingMasses;
 }
 
-// Call overpass-api.de to find nearby places of worship
+function bboxFromRadius(lat, lon, radiusKm) {
+  const latDelta = radiusKm / 111;
+  const lonDelta = radiusKm / (111 * Math.cos(lat * Math.PI / 180));
+  return [lon - lonDelta, lat - latDelta, lon + lonDelta, lat + latDelta].join(',');
+}
+
 async function discoverPlacesByName(query) {
   if (!query || !query.trim()) return [];
-  const q = query.trim();
-  const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(`[out:json][timeout:5];(node["amenity"="place_of_worship"]["name"~"${q}"](around:15000,0,0);way["amenity"="place_of_worship"]["name"~"${q}"](around:15000,0,0););out center;`)}`;
-  // Actually use broad search without geo radius when searching by name; use bbox or just no around
-  // Better: just filter by name globally but limit
-  const url2 = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(`[out:json][timeout:10];(node["amenity"="place_of_worship"]["name"~"${q}"];way["amenity"="place_of_worship"]["name"~"${q}"];);out center;`)}`;
+  const q = encodeURIComponent(query.trim());
+  const lat = userLocation.value?.lat;
+  const lon = userLocation.value?.lon;
+  const bias = (lat != null && lon != null) ? `&lat=${lat}&lon=${lon}&location_bias_scale=0.1` : '';
+  const bbox = (lat != null && lon != null) ? `&bbox=${bboxFromRadius(lat, lon, 50)}` : '';
+  const url = `https://photon.komoot.io/api/?q=${q}&osm_tag=amenity:place_of_worship&osm_tag=building:church&osm_tag=building:chapel&limit=10${bias}${bbox}`;
   try {
-    const res = await fetchWithTimeout(url2, 10000);
+    const res = await fetchWithTimeout(url, 10000);
     if (!res.ok) return [];
     const data = await res.json();
-    return data.elements || [];
+    return data.features || [];
   } catch (e) {
     return [];
   }
 }
 
+function bboxAround(lat, lon, km = 15) {
+  // Approx ~0.009 deg per km at 43° lat; scale slightly for longitude
+  const d = km * 0.009;
+  const minLat = lat - d, maxLat = lat + d;
+  const minLon = lon - d / Math.cos(lat * Math.PI / 180), maxLon = lon + d / Math.cos(lat * Math.PI / 180);
+  return `${minLon},${minLat},${maxLon},${maxLat}`;
+}
+
 async function discoverPlaces(lat, lon) {
-  // Overpass API query to find places of worship AND church buildings within 15km
-  const query = `
-    [out:json][timeout:5];
-    (
-      node["amenity"="place_of_worship"](around:15000,${lat},${lon});
-      way["amenity"="place_of_worship"](around:15000,${lat},${lon});
-      node["building"="church"](around:15000,${lat},${lon});
-      way["building"="church"](around:15000,${lat},${lon});
-    );
-    out center;
-  `;
-
-  const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
-
-  const response = await fetchWithTimeout(url, 10000);
-  if (!response.ok) {
-    return []
-    //throw new Error('No se pudo conectar con Overpass API');
+  const url = `https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}&osm_tag=amenity:place_of_worship&osm_tag=building:church&osm_tag=building:chapel&radius=20&limit=50`;
+  try {
+    const res = await fetchWithTimeout(url, 10000);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.features || [];
+  } catch (e) {
+    return [];
   }
-
-  const data = await response.json();
-  return data.elements || [];
 }
 
 // Calculate distance between two points in km (Haversine formula)
@@ -280,35 +294,35 @@ function formatPlaces(elements) {
   const userLat = userLocation.value?.lat;
   const userLon = userLocation.value?.lon;
 
-  for (const el of elements) {
-    let lat, lon;
-    if (el.type === 'node' && el.tags) {
-      lat = el.lat;
-      lon = el.lon;
-    } else if (el.type === 'way' && el.center && el.tags) {
-      lat = el.center.lat;
-      lon = el.center.lon;
+  for (const el of elements || []) {
+    let lat, lon, tags, name, addr;
+    // Photon FeatureCollection response (only source after Overpass removal)
+    if (el.geometry && el.geometry.coordinates) {
+      lon = el.geometry.coordinates[0];
+      lat = el.geometry.coordinates[1];
+      tags = el.properties || {};
+      name = tags.name || tags.name_en || tags.name_local || 'Sin nombre';
+      addr = (tags.street || '') + (tags.locality ? ', ' + tags.locality : '') + (tags.city ? ', ' + tags.city : '') + (tags.postcode ? ' ' + tags.postcode : '');
     } else {
       continue;
     }
 
     // Filter out non-Catholic places
-    if (!isCatholicPlace(el.tags)) {
+    if (!isCatholicPlace(tags)) {
       continue;
     }
 
     const distance = (userLat && userLon) ? calculateDistance(userLat, userLon, lat, lon) : null;
 
-    const addr = (el.tags['addr:street'] || '') + (el.tags['addr:housenumber'] ? ' ' + el.tags['addr:housenumber'] : '') + (el.tags['addr:city'] ? ', ' + el.tags['addr:city'] : '');
     places.push({
       id: generateId(),
-      name: cleanPlaceName(el.tags.name) || 'Sin nombre',
+      name: cleanPlaceName(name) || 'Sin nombre',
       geo: `${lat}, ${lon}`,
       lat: lat,
       lon: lon,
-      type: el.tags.religion || el.tags.denomination || 'unknown',
+      type: tags.religion || tags.denomination || (tags.building ? tags.building : 'unknown'),
       distance: distance,
-      events: [], // Initialize with empty events array
+      events: [],
       address: addr || undefined,
     });
   }
@@ -448,7 +462,7 @@ async function startAutodiscover() {
     // Call both APIs in parallel
     const [osmElements, misasPlaces] = await Promise.all([
       discoverPlaces(lat, lon).catch(err => {
-        console.error('Overpass API error:', err);
+        console.error('Photon API error:', err);
         return []; // Return empty on error
       }),
       searchMisasAPI(lat, lon).catch(err => {
@@ -598,8 +612,7 @@ function closeModal() {
 
             <div v-for="(place, idx) in discoveredPlaces" :key="idx" class="place-item">
               <div class="place-info">
-                <strong>{{ place.name }} <span v-if="place.town">({{ place.town }})</span> - <span class="place-distance">{{ formatDistance(place.distance) }}</span></strong>
-                <!--<small>{{ place.address }}</small>-->
+                <strong>{{ place.name }} - <span class="place-distance">{{ formatDistance(place.distance) }}</span></strong>
                 <!-- Show every event, labelled like the weekly list (recurrenceLabel) -->
                 <div v-if="place.events && place.events.length > 0" class="place-events">
                   <small class="events-title">Horario de misas conocidas:</small>
@@ -610,6 +623,7 @@ function closeModal() {
                     </li>
                   </ul>
                 </div>
+                <small v-if="place.address" class="place-address" style="color:var(--pe-fg-muted);font-size:11px;display:block;margin-top:2px;">{{ place.address }}</small>
               </div>
               <button type="button" class="select-btn" @click="selectPlace(place)">
                 Añadir
