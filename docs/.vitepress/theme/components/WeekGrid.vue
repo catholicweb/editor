@@ -240,7 +240,7 @@ const eventsByType = computed(() => {
     });
   }
   const sortedKeys = Object.keys(groups).sort((a, b) => typeLabel(a).localeCompare(typeLabel(b)));
-  return sortedKeys.map(k => ({ key: k, label: typeLabel(k), events: groups[k] }));
+  return sortedKeys.map(k => ({ key: k, label: typeLabel(k), events: groups[k]?.sort((a, b) => a.timeStr.localeCompare(b.timeStr) ) ?? [] }));
 });
 function onAlldayClick(dayIndex, occs) {
   if (occs.length) emit('edit-event', occs[0].eventIndex);
