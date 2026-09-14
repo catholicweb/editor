@@ -30,6 +30,7 @@ const lastEmitted = ref(props.modelValue ?? '');
 let lastHtml = ''; // HTML snapshot of the editable as last rendered/synced
 
 function renderHtml(mdText) {
+  if (Array.isArray(mdText)) mdText = mdText[0] ?? ''
   return md.render(mdText ?? '');
 }
 function renderInto(html) {

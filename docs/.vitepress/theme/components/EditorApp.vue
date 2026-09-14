@@ -389,6 +389,7 @@ const showPreviewSide = computed(() => state.currentEntry?.tabPath === 'theme' )
   padding: 36px 36px 96px;
   min-width: 0;
   position: relative;
+  padding-bottom: 250px !important;
 }
 
 /* ---------- Banners ---------- */

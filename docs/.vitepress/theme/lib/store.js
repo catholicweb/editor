@@ -282,10 +282,18 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug, e
     // Fetch the schema (unless a switch reuses the shared one), config.json
     // (directly — it is always named config.json, so there is no file-listing
     // dependency), the media listing and the identity in parallel.
+    // Tracks whether config.json fetch/parse genuinely failed (network error,
+    // bad JSON) as opposed to the file legitimately not existing yet (a fresh
+    // site). See the guard below — conflating the two would let the eager
+    // backfill PUT silently overwrite a real config with a blank one on a
+    // transient failure.
+    let configLoadFailed = false;
+
     const [schemaText, configText, { files } = { files: [] }, who] = await Promise.all([
       fetchSchema ? fetchSchemaText(schemaUrl) : Promise.resolve(null),
       api.getFileText(state.dataBase, resolvedSlug, 'config.json').catch((err) => {
         console.error('Failed to fetch config during login:', err);
+        configLoadFailed = true;
         return null;
       }),
       api.listFiles(apiBase, resolvedSlug).catch(() => ({ files: [] })),
@@ -316,7 +324,16 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug, e
         config = JSON.parse(configText);
       } catch (err) {
         console.error('Failed to parse config during login:', err);
+        configLoadFailed = true;
       }
+    }
+
+    // A failed fetch/parse is NOT the same as "no config exists yet" — do not
+    // fall through and treat this site as blank. Doing so would let the eager
+    // backfill PUT further down write an empty/defaulted config over whatever
+    // is actually on the server. Abort login instead; the user can retry.
+    if (configLoadFailed) {
+      throw new Error('No se pudo cargar la configuración existente (config.json). Comprueba tu conexión e inténtalo de nuevo.');
     }
 
     // Create a configLoader callback that uses state.config
@@ -363,10 +380,8 @@ export async function login({ apiBase, dataBase, schemaUrl, editorToken, slug, e
       applyDefaults(entry.fields, state.config[entry.tabPath]);
     }
 
-    // Apply accent hue from config (now a hue value, not hex RGB)
-    applyAccentHueFromConfig();
-    // Apply font pair from config ("Heading|Body")
-    applyFontPairFromConfig();
+    // Apply config style
+    applyStyleFromConfig();
 
     // Auto-open the first file if no file is currently open
     if (!state.currentEntry && state.fileIndex.length > 0) {
@@ -479,13 +494,24 @@ function themeValue(role) {
 // Watch for accent hue changes in config (hue 0-360)
 watch(() => themeValue('accent'), (newHue) => {
   if (typeof newHue === 'number' || (typeof newHue === 'string' && !isNaN(Number(newHue)))) {
-    applyAccentHue(Number(newHue));
+    // Never let a hue-apply failure (e.g. no documentElement mid-teardown)
+    // escape the watcher uncaught — mirrors applyStyleFromConfig's guarding.
+    try {
+      applyAccentHue(Number(newHue));
+    } catch (e) {
+      console.warn('accent hue apply failed', e);
+    }
   }
 });
 
 // Watch for font pair changes ("Heading|Body")
 watch(() => themeValue('font'), (newPair) => {
-  if (newPair) applyFontPair(newPair);
+  if (!newPair) return;
+  try {
+    applyFontPair(newPair);
+  } catch (e) {
+    console.warn('font pair apply failed', e);
+  }
 });
 
 // Accept hue numbers (0-360) for accent; anything non-numeric is rejected.
@@ -494,6 +520,7 @@ watch(() => themeValue('font'), (newPair) => {
 // Apply accent color to CSS variables
 function applyAccentHue(hue) {
   if (typeof hue !== 'number' || isNaN(hue)) return;
+  if (typeof document === 'undefined' || !document.documentElement) return;
   const h = Math.max(0, Math.min(360, hue));
   const root = document.documentElement;
   root.style.setProperty('--pe-accent', `oklch(64% 0.2 ${h})`);
@@ -504,6 +531,12 @@ function applyAccentHueFromConfig() {
   if (typeof hue === 'number' || (typeof hue === 'string' && !isNaN(Number(hue)))) {
     applyAccentHue(Number(hue));
   }
+}
+
+
+function applyStyleFromConfig(){
+  try { applyAccentHueFromConfig(); } catch (e) { console.warn('accent hue refresh failed', e); }
+  try { applyFontPairFromConfig(); } catch (e) { console.warn('font pair refresh failed', e); }
 }
 
 // ---------------------------------------------------------------------------
@@ -520,6 +553,7 @@ function applyAccentHueFromConfig() {
 function loadGoogleFont(fontName) {
   const safeName = sanitizeFontName(fontName);
   if (!safeName || loadedFonts.has(safeName)) return;
+  if (typeof document === 'undefined' || !document.head) return;
 
   // Sanitize font name for URL (replace spaces with +)
   const fontFamily = safeName.replace(/ /g, '+');
@@ -535,6 +569,7 @@ function loadGoogleFont(fontName) {
 
 function applyFontPair(pair) {
   if (!pair || typeof pair !== 'string') return;
+  if (typeof document === 'undefined' || !document.documentElement) return;
   const [head, body] = pair.split('|').map(s => sanitizeFontName(s.trim())).filter(Boolean);
   const root = document.documentElement;
   if (head) {
@@ -694,7 +729,16 @@ export async function openEntry(entry) {
     if (!state.config && entry.fileToken) {
       const text = await api.getFileText(state.dataBase, state.slug, entry.fileToken);
       if (text) {
-        state.config = JSON.parse(text);
+        try {
+          state.config = JSON.parse(text);
+        } catch (err) {
+          // Degrade to an empty config rather than aborting the whole entry
+          // open via the outer catch (which would leave currentEntry unset
+          // and the tab stuck unopenable). Surface the problem instead.
+          console.error('Failed to parse config while opening entry:', err);
+          state.error = 'No se pudo leer la configuración guardada; se abrió una copia vacía.';
+          state.config = {};
+        }
       }
     }
 
@@ -760,6 +804,8 @@ export async function saveCurrent({ keepalive = false } = {}) {
     }
 
     let mergedData; // config to adopt once the save is confirmed (for PATCH: server's merged result)
+    let skippedOps = 0; // ops the server couldn't apply (e.g. a concurrently-removed
+    // item) — must be surfaced, never silently swallowed alongside "Guardado."
 
     if (!state.fullPutDone) {
       // First save since load: a full PUT. This persists the schema-backfilled
@@ -785,6 +831,16 @@ export async function saveCurrent({ keepalive = false } = {}) {
       }
       const res = await api.patchFile(state.apiBase, state.slug, state.editorToken, ops, { keepalive });
       mergedData = res && res.data;
+      skippedOps = (res && res.skipped) || 0;
+      if (!mergedData) {
+        // Server confirmed the patch but didn't echo a merged doc back. We're
+        // about to advance state.savedText (below) to mark this clean, so the
+        // patch baseline must move with it — otherwise the next save's diff()
+        // would be computed against a stale pre-save baseline. Our own
+        // just-submitted snapshot is the best available stand-in for the
+        // server's true state.
+        state.baselineConfig = snapshot;
+      }
     }
 
     // Only advance the whole-config dirty baseline after a CONFIRMED save, so a
@@ -804,14 +860,24 @@ export async function saveCurrent({ keepalive = false } = {}) {
       // Adopted config may carry different theme values (e.g. from another
       // editor); re-apply them now (the theme watches would also fire, but
       // calling directly is immediate and safe).
-      applyAccentHueFromConfig();
-      applyFontPairFromConfig();
+      applyStyleFromConfig();
       state.baselineConfig = plainSnapshot(state.config);
     }
 
     state.savedText = serializeCurrent();
     lastSavedAt = Date.now();
-    state.status = 'Guardado.';
+    if (skippedOps > 0) {
+      // The server applied the patch but couldn't apply every op (e.g. a
+      // concurrent edit removed the same item, or — historically — a list
+      // field that didn't exist yet server-side). state.config was just
+      // adopted from the server's authoritative result, so nothing is lost
+      // *silently* anymore, but the user's edit may not have landed and they
+      // should know to check and possibly redo it.
+      console.warn(`[save] server skipped ${skippedOps} op(s); some changes may not have been applied.`);
+      state.status = `Guardado con avisos: ${skippedOps} cambio(s) no se pudieron aplicar. Revisa los datos.`;
+    } else {
+      state.status = 'Guardado.';
+    }
 
     // Snapshot the saved config as a version (fire-and-forget). Deliberately NOT
     // awaited: on the keepalive on-leave flush we must not block the page unload
@@ -862,8 +928,7 @@ export async function restoreConfig(newConfig) {
 
   // Restored config may carry different theme values; re-apply them now (the
   // theme watches would also fire, but calling directly is immediate and safe).
-  applyAccentHueFromConfig();
-  applyFontPairFromConfig();
+  applyStyleFromConfig();
 
   state.error = '';
   state.info = '';
@@ -1005,8 +1070,7 @@ export async function refreshConfig() {
       }
       applyDefaults(entry.fields, data);
     }
-    applyAccentHueFromConfig();
-    applyFontPairFromConfig();
+    applyStyleFromConfig();
 
     // Resnapshot the patch baseline against the adopted tree and align the
     // whole-config dirty baseline so isDirty stays false and "Guardado." shows.
@@ -1088,4 +1152,3 @@ export const SHADOW_PRESETS = {
   light: { sm: '0 1px 2px 0 rgb(0 0 0 / 0.03)', radius: '0 1px 2px -1px rgb(0 0 0 / 0.04)', lg: '0 4px 6px -2px rgb(0 0 0 / 0.04)' },
   medium: { sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)', radius: '0 1px 3px rgb(0 0 0 / 0.06), 0 2px 6px -1px rgb(0 0 0 / 0.08)', lg: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)' },
 };
-

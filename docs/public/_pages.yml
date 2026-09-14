@@ -716,6 +716,7 @@ components:
     type: select
     options:
       multiple: true
+      creatable: true
       values:
         [
           { value: "mo", label: "Lunes" },
@@ -773,10 +774,10 @@ components:
       - { name: title, label: Título/Nombre del evento, type: string }
       - { name: images, label: Imagenes, type: image, options: { multiple: true } }
       - { name: description, label: Descripción, type: rich-text }
-      - { name: location, label: Lugar, component: location }
+      - { name: location, label: Lugar, component: location, options: { creatable: true } }
       - { name: date, label: Fecha, type: date }
       - { name: times, label: Hora, component: times }
-      - { name: rrule, label: Se repite, component: rrule }
+      - { name: rrule, label: Se repite, component: rrule, options: { creatable: true } }
       - { name: duration, label: Duración (min), type: number }
       #- { name: celebrants, label: Celebrantes, type: select, options: {  multiple: true, source: "info.collaborators" } }
   exception:

@@ -477,6 +477,7 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
   box-sizing: border-box;
   flex: 1;
   min-height: 0;
+  padding-bottom: 250px;
 }
 .event-section {
   display: flex;
