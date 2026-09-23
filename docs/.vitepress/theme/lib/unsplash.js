@@ -74,6 +74,7 @@ export function hasReligiousTerm(query) {
 export function catholicBiasQuery(rawQuery) {
   const q = String(rawQuery || '').trim();
   if (!q) return '';
+  return q
   return hasReligiousTerm(q) ? q : `catholic ${q}`;
 }
 

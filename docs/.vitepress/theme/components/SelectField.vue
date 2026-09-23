@@ -55,7 +55,7 @@ function labelFor(val) {
 
 const selectedList = computed(() => {
   if (multiple) {
-    return Array.isArray(props.modelValue) ? props.modelValue.filter((v) => v !== '') : [];
+    return Array.isArray(props.modelValue) ? props.modelValue.filter((v) => v !== '') : [props.modelValue].filter(Boolean);
   }
   // Single: return array with one item (for chip rendering)
   // Check for empty array/string to avoid showing "[]" as a tag

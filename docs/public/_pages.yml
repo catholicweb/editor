@@ -64,7 +64,9 @@ components:
           { value: "https://open.spotify.com/show/1OUhu57FCAscICoEMwyONY?si=5f7ea6ad49394828", label: "Liturgia de las horas (litur pro)" },
           { value: "https://open.spotify.com/show/6mpihPJzRA61GEdomhzGqq?si=b59a6acf96104988", label: "Jose Camacho Cotto" },
           { value: "https://open.spotify.com/show/1XWvEFBoCvahdELmEXgSfL", label: "Rezar Hoy" },
-          { value: "https://sallebarne.eus", label: "Egunez Egun (SalleBARNE)" },          
+          { value: "https://sallebarne.eus", label: "Egunez Egun (SalleBARNE)" },
+          { value: "https://www.youtube.com/watch?v=ESNa1vdHcYY", label: "Santuario de Lourdes en directo" },
+          { value: "https://www.youtube.com/watch?v=03pYP2Nmreo", label: "Vaticano en directo" },
         ]
   languages:
     label: "Idioma"
@@ -679,6 +681,8 @@ components:
     type: select
     options:
       source: "info.places"
+      multiple: true
+      creatable: true
   tags:
     label: Opciones
     type: select
@@ -774,11 +778,11 @@ components:
       - { name: title, label: Título/Nombre del evento, type: string }
       - { name: images, label: Imagenes, type: image, options: { multiple: true } }
       - { name: description, label: Descripción, type: rich-text }
-      - { name: location, label: Lugar, component: location, options: { creatable: true } }
+      - { name: location, label: Lugar, component: location }
       - { name: date, label: Fecha, type: date }
       - { name: times, label: Hora, component: times }
       - { name: rrule, label: Se repite, component: rrule, options: { creatable: true } }
-      - { name: duration, label: Duración (min), type: number }
+      #- { name: duration, label: Duración (min), type: number }
       #- { name: celebrants, label: Celebrantes, type: select, options: {  multiple: true, source: "info.collaborators" } }
   exception:
     label: Excepción
@@ -928,12 +932,13 @@ components:
                 - { name: title, type: string, label: Titulo sección, default: "Nuestro equipo parroquial" }
                 - { name: tags, label: Opciones de estilo, component: tags }
             - name: links
-              label: Enlaces internos
+              label: Enlaces
               fields:
                 - { name: title, type: string, label: Titulo sección }
                 - name: links
+                  label: "Lista de enlaces"
                   type: select
-                  options: { source: "pages.list", multiple: true, label: "{title}" }
+                  options: { source: "pages.list", multiple: true, label: "{title}", creatable: true }
                 - { name: tags, label: Opciones de estilo, component: tags }
 
 

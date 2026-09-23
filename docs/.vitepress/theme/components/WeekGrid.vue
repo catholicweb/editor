@@ -20,7 +20,7 @@ const props = defineProps({
   weekStart: { type: Object, required: true }, // controlled by CalendarEditor
 });
 const emit = defineEmits(['edit-event', 'add-event', 'edit-occurrence', 'update:weekStart']);
-const viewMode = ref('list');
+const viewMode = ref('byType');
 
 const weekStart = computed(() => props.weekStart);
 
@@ -265,9 +265,10 @@ function onAlldayClick(dayIndex, occs) {
       <!--<h3 class="range">{{ formatWeekRange(weekStart) }}</h3>-->
       
       <div class="nav">
+        <button :class="{ active: viewMode === 'byType' }" @click="viewMode = 'byType'">Lista</button>
         <button :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">Día</button>
         <!--<button :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">Tabla</button>-->
-        <button :class="{ active: viewMode === 'byType' }" @click="viewMode = 'byType'">Lista</button>
+        
       </div>
       <button class="add-event" @click="emit('add-event', {})">+ Evento</button>
     </div>
