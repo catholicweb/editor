@@ -515,51 +515,23 @@ components:
       }
     ]
   "headerFooterStyle":
-    "description": "Layout + section-divider shape as one token: 'layoutId|dividerShape'. These always read as a single structural decision, so they're chosen together instead of as two separate fields. Power users can type any 'layoutId|dividerShape' combination even if not listed."
-    "type": select
-    "default": null
-    "options": 
+    type: select
+    default: null
+    options: 
+      multiple: true
       values: [
-        {
-          "value": "solid-bar-light|straight",
-          "label": "Barra sólida clara, secciones rectas"
-        },
-        {
-          "value": "minimal-centered|wave",
-          "label": "Minimalista centrado, secciones en ola"
-        },
-        {
-          "value": "hero-split|wave",
-          "label": "Imagen a un lado, secciones en ola"
-        },
-        {
-          "value": "hero-overlay-dark|angle",
-          "label": "Foto de fondo superpuesta, secciones diagonales"
-        },
-        {
-          "value": "solid-bar-dark|straight",
-          "label": "Barra sólida oscura, secciones rectas"
-        },
-        {
-          "value": "hero-overlay-dark|straight",
-          "label": "Foto de fondo superpuesta, secciones rectas"
-        },
-        {
-          "value": "hero-split|straight",
-          "label": "Imagen a un lado, secciones rectas"
-        },
-        {
-          "value": "minimal-centered|straight",
-          "label": "Minimalista centrado, secciones rectas"
-        },
-        {
-          "value": "solid-bar-dark|angle",
-          "label": "Barra sólida oscura, secciones diagonales"
-        },
-        {
-          "value": "hero-overlay-dark|wave",
-          "label": "Foto de fondo superpuesta, secciones en ola"
-        }
+        { "value": "showEvents", "label": "showEvents: EventCards under the bar"},
+        { "value": "hideHero", "label": "hideHero: no hero / event cards (frontmatter hideHero wins)"},
+        { "value": "heroBg", "label": "heroBg: page image behind the header (implies overlay)"},
+        { "value": "overlay", "label": "Overlay: bar floats over the hero/events instead of sitting above it"},
+        { "value": "transparent", "label": "transparent: glass, or a gradient scrim when floating over an image"},
+        { "value": "sticky", "label": "sticky: stick to the top (with overlay: turns glass once scrolled)"},
+        { "value": "display", "label": "display: big / bold / font-heading typography"},
+        { "value": "compact", "label": "compact: shorter bar"},
+        { "value": "accent", "label": "accent: with '!transparent': solid bar tinted with theme.accentHue"},
+        { "value": "align:left", "label": "align-left left align text"},
+        { "value": "scheme:light", "label": "scheme-light light theme"},
+        { "value": "scheme:dark", "label": "scheme-dark dark theme"}
     ]
   "radius": {
     "description": "radius multiplier",
@@ -1089,7 +1061,7 @@ content:
       #- { name: vibe, label: "Tema global (vibe)", component: vibe }
       - { name: accentHue, label: "Tono de color", component: accentHue, options: { themeRole: accent } }
       - { name: fontPair, label: "Tipografía", component: fontPair, options: { themeRole: font } }
-      #- { name: headerFooterStyle, label: "Estilo de cabezera", component: headerFooterStyle }
+      - { name: navStyle, label: "Estilo de cabezera", component: headerFooterStyle }
       - { name: radius, label: "Redondeo de esquinas", component: radius }
       - { name: spacingDensity, label: "Espaciado de elementos", component: spacingDensity }
       #- { name: surfaceStyle, label: "Estilos de superficie", component: surfaceStyle }
