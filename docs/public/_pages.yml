@@ -35,6 +35,7 @@ components:
           { value: "weekday,times,skip,locations,byday-weekday+byweek+notes", label: "Laborable/Festivo > Horas > Lugares > Notas " },
           { value: "title,locations,skip,times,byday+byweek+notes", label: "Título > Lugares > Horas > Días" },
           { value: "byday,times,skip,title,notes", label: "Día > Hora > Titulo > Notas" },
+          { value: "title,weekday,skip,times,byday-weekday+byweek+notes", label: "Titulo > Día > Horas > Notas" },
         ]
         # { value: "title""dates" "times""locations""byday""language""notes""weekday""byweek""empty"
   times:
