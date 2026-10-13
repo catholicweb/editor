@@ -2,9 +2,11 @@
 import { computed, ref, nextTick } from 'vue';
 import WeekGrid from './WeekGrid.vue';
 import EventEditorModal from './EventEditorModal.vue';
+import EventTypeEditorModal from './EventTypeEditorModal.vue';
 import { newEvent, generateId, startOfWeek, getEventFields } from '../lib/calendar.js';
 import { state } from '../lib/store.js';
 import { resolvePath } from '../lib/schema.js';
+import { addEventType, removeEventType } from '../lib/event-types.js';
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -115,6 +117,39 @@ function closeModal() {
   editingIndex.value = null;
   presetOccurrence.value = null;
 }
+
+// Event-type modal -----------------------------------------------------
+const editingTypeId = ref(null);
+const newTypeId = ref(null); // a type created in this session, discarded if left unnamed
+const editingType = computed(() =>
+  editingTypeId.value === null ? null : eventTypes.value.find((t) => t && t.id === editingTypeId.value) ?? null
+);
+function editType(id) {
+  newTypeId.value = null;
+  editingTypeId.value = id;
+}
+function addType() {
+  const t = addEventType(state.config, eventTypesPath);
+  newTypeId.value = t.id;
+  editingTypeId.value = t.id;
+}
+function closeTypeModal() {
+  const t = editingType.value;
+  // A type that was just created and never named is dropped instead of being
+  // left behind as a nameless entry.
+  if (t && t.id === newTypeId.value && !String(t.label ?? '').trim()) {
+    removeEventType(state.config, t.id, { events: value.value[listKey] || [], path: eventTypesPath });
+  }
+  newTypeId.value = null;
+  editingTypeId.value = null;
+}
+function removeType() {
+  const t = editingType.value;
+  if (!t) return;
+  removeEventType(state.config, t.id, { events: value.value[listKey] || [], path: eventTypesPath });
+  newTypeId.value = null;
+  editingTypeId.value = null;
+}
 </script>
 
 <template>
@@ -129,6 +164,8 @@ function closeModal() {
       @edit-event="editEvent"
       @edit-occurrence="editOccurrence"
       @add-event="addEvent"
+      @edit-type="editType"
+      @add-type="addType"
     />
 
     <EventEditorModal
@@ -144,6 +181,15 @@ function closeModal() {
       @remove="removeEvent"
       @duplicate="duplicateEvent"
       @save="saveEvent"
+    />
+
+    <EventTypeEditorModal
+      v-if="editingType"
+      :key="editingType.id"
+      :type="editingType"
+      :events="value[listKey] || []"
+      @close="closeTypeModal"
+      @remove="removeType"
     />
   </div>
 </template>
