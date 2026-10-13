@@ -11,6 +11,7 @@ import {
 } from '../lib/calendar.js';
 import { state } from '../lib/store.js';
 import PeIcon from './PeIcon.vue';
+import { typeGroups, resolvePageMode, pageModeBadge } from '../lib/event-types.js';
 
 const props = defineProps({
   events: { type: Array, required: true },
@@ -19,7 +20,7 @@ const props = defineProps({
   eventTypes: { type: Array, default: () => [] },
   weekStart: { type: Object, required: true }, // controlled by CalendarEditor
 });
-const emit = defineEmits(['edit-event', 'add-event', 'edit-occurrence', 'update:weekStart']);
+const emit = defineEmits(['edit-event', 'add-event', 'edit-occurrence', 'update:weekStart', 'edit-type', 'add-type']);
 const viewMode = ref('byType');
 
 const weekStart = computed(() => props.weekStart);
@@ -203,45 +204,88 @@ function typeStyle(id) {
   return t || {};
 }
 
-const eventsByType = computed(() => {
-  const groups = {};
-  for (let i = 0; i < (props.events || []).length; i++) {
-    const ev = props.events[i];
-    const key = ev.type || 'sin-tipo';
-    if (!groups[key]) groups[key] = [];
-    const eff = mergeTypeDefaults(ev, props.eventTypes || []);
-    const style = resolveEventStyle(eff, props.celebrants || [], props.eventTypes || []);
-    let timeStr = '—';
-    const times = eff.times || (eff.time ? [eff.time] : []);
-    if (Array.isArray(times) && times.length) {
-      let t = String(times[0]);
-      if (t.includes('.')) t = t.replace('.', ':');
-      timeStr = t;
-    } else if (times != null) {
-      let t = String(times);
-      if (t.includes('.')) t = t.replace('.', ':');
-      timeStr = t;
-    } else if (eff.date) {
-      timeStr = eff.date + (eff.time ? ' ' + String(eff.time).replace('.', ':') : '');
-    }
-    const warn = (!eff.celebrants || !eff.celebrants.length) ? 'purple' : null;
-    groups[key].push({
-      ev,
-      index: i,
-      key,
-      label: typeLabel(key),
-      timeStr,
-      title: eff.title || 'Sin título',
-      location: eff.location || ev.location,
-      recur: eff.rrule ? recurrenceLabel(eff.rrule) : null,
-      style,
-      warn,
-      specific: !eff.rrule,
-    });
+// One row of the by-type list.
+function rowFor(ev, i) {
+  const eff = mergeTypeDefaults(ev, props.eventTypes || []);
+  const style = resolveEventStyle(eff, props.celebrants || [], props.eventTypes || []);
+  let timeStr = '—';
+  const times = eff.times || (eff.time ? [eff.time] : []);
+  if (Array.isArray(times) && times.length) {
+    let t = String(times[0]);
+    if (t.includes('.')) t = t.replace('.', ':');
+    timeStr = t;
+  } else if (times != null) {
+    let t = String(times);
+    if (t.includes('.')) t = t.replace('.', ':');
+    timeStr = t;
+  } else if (eff.date) {
+    timeStr = eff.date + (eff.time ? ' ' + String(eff.time).replace('.', ':') : '');
   }
-  const sortedKeys = Object.keys(groups).sort((a, b) => typeLabel(a).localeCompare(typeLabel(b)));
-  return sortedKeys.map(k => ({ key: k, label: typeLabel(k), events: groups[k]?.sort((a, b) => a.timeStr.localeCompare(b.timeStr) ) ?? [] }));
+  const warn = (!eff.celebrants || !eff.celebrants.length) ? 'purple' : null;
+  return {
+    ev,
+    index: i,
+    timeStr,
+    title: eff.title || 'Sin título',
+    location: eff.location || ev.location,
+    recur: eff.rrule ? recurrenceLabel(eff.rrule) : null,
+    style,
+    warn,
+    specific: !eff.rrule,
+  };
+}
+
+// Every defined type gets a group (even with no events yet), so it can be edited
+// and given its first event from its header.
+const eventsByType = computed(() => {
+  const legacyPages = state.config?.pages?.pageperevent;
+  return typeGroups(props.events || [], props.eventTypes || []).map((g) => {
+    const mode = g.type ? resolvePageMode(g.type, legacyPages) : 'none';
+    return {
+      key: g.key,
+      label: g.label,
+      type: g.type,
+      icon: g.type?.icon || '',
+      badge: pageModeBadge(mode),
+      addType: g.type ? g.type.id : null,
+      events: g.indexes
+        .map((i) => rowFor(props.events[i], i))
+        .sort((a, b) => a.timeStr.localeCompare(b.timeStr)),
+    };
+  });
 });
+
+// Collapsed groups are remembered per browser (keyed by type id).
+const COLLAPSED_KEY = 'pe-collapsed-event-types';
+function loadCollapsed() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(COLLAPSED_KEY) || '[]');
+    return new Set(Array.isArray(arr) ? arr.filter((k) => typeof k === 'string') : []);
+  } catch (_) {
+    return new Set();
+  }
+}
+const collapsed = ref(loadCollapsed());
+function saveCollapsed() {
+  try {
+    localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...collapsed.value]));
+  } catch (_) { /* storage unavailable: keep the in-memory state */ }
+}
+const isCollapsed = (key) => collapsed.value.has(key);
+function toggleGroup(key) {
+  const next = new Set(collapsed.value);
+  if (next.has(key)) next.delete(key);
+  else next.add(key);
+  collapsed.value = next;
+  saveCollapsed();
+}
+const allCollapsed = computed(
+  () => eventsByType.value.length > 0 && eventsByType.value.every((g) => collapsed.value.has(g.key))
+);
+function toggleAll() {
+  collapsed.value = allCollapsed.value ? new Set() : new Set(eventsByType.value.map((g) => g.key));
+  saveCollapsed();
+}
 function onAlldayClick(dayIndex, occs) {
   if (occs.length) emit('edit-event', occs[0].eventIndex);
   else {
@@ -273,7 +317,7 @@ function onAlldayClick(dayIndex, occs) {
       <button class="add-event" @click="emit('add-event', {})">+ Evento</button>
     </div>
 
-    <p v-if="!props.events?.length" class="empty-week">
+    <p v-if="!props.events?.length && viewMode !== 'byType'" class="empty-week">
       No hay eventos. Usa <strong>+ Evento</strong> para añadir.
     </p>
     
@@ -296,21 +340,47 @@ function onAlldayClick(dayIndex, occs) {
       </div>
     </div>
 
-    <!-- Event list grouped by type -->
+    <!-- Event list grouped by type: collapsible groups, inline type editing -->
     <div v-else-if="viewMode === 'byType'" class="event-list by-type">
-      <div v-for="group in eventsByType" :key="group.key" class="event-type-group">
-        <h4 class="day-header">{{ group.label }}</h4>
-        <div v-for="row in group.events" :key="row.ev.id || row.index" class="event-row" :class="{ specific: row.specific }" @click="emit('edit-event', row.index)">
-          <span class="event-time">{{ row.timeStr }}</span>
-          <span class="event-icon" v-if="row.style.icon" :class="[row.warn ? `ev ev-small warn-${row.warn}` : null]" :style="{ color: row.style.color || '#9aa0a6' }">
-            <PeIcon :name="row.style.icon" :size="16" />
-          </span>
-          <span class="event-type">{{ row.title }}</span>
-          <span class="event-location" v-if="row.location?.length">{{ formatLocation(row.location) }}</span>
-          <span class="event-rec" v-if="row.recur">{{ row.recur }}</span>
-          <span v-if="row.style.celebrantName" class="event-celebrant" :style="{ background: row.style.color }" :title="row.style.celebrantName"></span>
-        </div>
+      <div v-if="eventsByType.length > 1" class="list-tools">
+        <button class="link-btn" @click="toggleAll">{{ allCollapsed ? 'Expandir todo' : 'Colapsar todo' }}</button>
       </div>
+      <p v-if="!eventsByType.length" class="empty-week">
+        No hay eventos ni tipos de evento. Usa <strong>+ Evento</strong> o <strong>+ Tipo de evento</strong> para añadir.
+      </p>
+      <div v-for="group in eventsByType" :key="group.key" class="event-type-group">
+        <div class="type-head">
+          <button class="type-toggle" :aria-expanded="!isCollapsed(group.key)" @click="toggleGroup(group.key)">
+            <span class="chev" :class="{ open: !isCollapsed(group.key) }">▸</span>
+            <span v-if="group.icon" class="type-icon"><PeIcon :name="group.icon" :size="16" /></span>
+            <span class="type-name">{{ group.label }}</span>
+            <span class="type-count">{{ group.events.length }}</span>
+            <span v-if="group.badge" class="type-page">{{ group.badge }}</span>
+          </button>
+          <span class="type-actions">
+            <button v-if="group.type" class="type-action" title="Editar tipo de evento" aria-label="Editar tipo de evento" @click="emit('edit-type', group.type.id)">
+              <PeIcon name="pencil-square" :size="16" />
+            </button>
+            <button v-if="group.addType" class="type-action" title="Añadir evento de este tipo" aria-label="Añadir evento de este tipo" @click="emit('add-event', { type: group.addType })">
+              <PeIcon name="plus" :size="16" />
+            </button>
+          </span>
+        </div>
+        <template v-if="!isCollapsed(group.key)">
+          <p v-if="!group.events.length" class="type-empty">Sin eventos de este tipo.</p>
+          <div v-for="row in group.events" :key="row.ev.id || row.index" class="event-row" :class="{ specific: row.specific }" @click="emit('edit-event', row.index)">
+            <span class="event-time">{{ row.timeStr }}</span>
+            <span class="event-icon" v-if="row.style.icon" :class="[row.warn ? `ev ev-small warn-${row.warn}` : null]" :style="{ color: row.style.color || '#9aa0a6' }">
+              <PeIcon :name="row.style.icon" :size="16" />
+            </span>
+            <span class="event-type">{{ row.title }}</span>
+            <span class="event-location" v-if="row.location?.length">{{ formatLocation(row.location) }}</span>
+            <span class="event-rec" v-if="row.recur">{{ row.recur }}</span>
+            <span v-if="row.style.celebrantName" class="event-celebrant" :style="{ background: row.style.color }" :title="row.style.celebrantName"></span>
+          </div>
+        </template>
+      </div>
+      <button class="add-type" @click="emit('add-type')">+ Tipo de evento</button>
     </div>
 
     <!-- Event grid -->
@@ -693,6 +763,105 @@ function onAlldayClick(dayIndex, occs) {
 .event-warn.warn-purple { color: #9b59b6; }
 .event-warn.warn-red { color: var(--pe-danger); }
 .event-warn.warn-orange { color: #e8a838; }
+
+/* ---- by-type groups ---- */
+.event-type-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.type-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--pe-border);
+  padding-bottom: 2px;
+}
+.type-toggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 4px 2px;
+  text-align: left;
+  font: inherit;
+}
+.type-toggle:hover .type-name { text-decoration: underline; }
+.chev {
+  display: inline-block;
+  width: 12px;
+  font-size: 11px;
+  color: var(--pe-muted);
+  transition: transform var(--pe-transition);
+}
+.chev.open { transform: rotate(90deg); }
+.type-icon { display: flex; color: var(--pe-accent); }
+.type-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--pe-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.type-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--pe-muted);
+  background: var(--pe-hover);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+.type-page {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--pe-accent);
+  border: 1px solid var(--pe-accent);
+  border-radius: 999px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+.type-actions { display: flex; gap: 2px; flex-shrink: 0; }
+.type-action {
+  display: flex;
+  align-items: center;
+  border: none;
+  background: transparent;
+  color: var(--pe-muted);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--pe-radius-sm);
+}
+.type-action:hover { background: var(--pe-hover); color: var(--pe-text); }
+.type-empty { margin: 2px 8px; font-size: 12px; color: var(--pe-muted); }
+.list-tools { display: flex; justify-content: flex-end; }
+.link-btn {
+  border: none;
+  background: transparent;
+  color: var(--pe-accent);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+}
+.add-type {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border: 1px dashed var(--pe-border);
+  background: transparent;
+  color: var(--pe-accent);
+  border-radius: var(--pe-radius);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+}
+.add-type:hover { background: var(--pe-hover); }
 
 @media (min-width: 640px) {
   .grid {
