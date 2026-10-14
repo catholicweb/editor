@@ -1,15 +1,19 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import yaml from 'js-yaml';
+import { normalizeSchema } from '../docs/.vitepress/theme/lib/schema.js';
 import {
-  PAGE_MODES,
-  resolvePageMode,
-  setPageMode,
+  findFieldByPath,
   typeGroups,
+  typeDisplayLabel,
   addEventType,
   removeEventType,
   countEventsOfType,
-  typeDisplayLabel,
-  pageModeBadge,
 } from '../docs/.vitepress/theme/lib/event-types.js';
+
+// The real schema, so these tests also guard what pages.yml defines for types.
+const schema = await normalizeSchema(yaml.load(fs.readFileSync('docs/public/_pages.yml', 'utf8')));
+const listField = findFieldByPath(schema, 'event-types.list');
 
 const types = () => [
   { id: 'cat', label: 'Catequesis', icon: 'book-open', defaults: {} },
@@ -17,73 +21,37 @@ const types = () => [
   { id: 'mass', label: 'Misas', icon: '', defaults: {} },
 ];
 
-describe('resolvePageMode (mirrors web-template eventPages.js)', () => {
-  it('defaults to none', () => {
-    expect(resolvePageMode({ id: 'x' })).toBe('none');
-    expect(resolvePageMode({ id: 'x' }, [])).toBe('none');
+describe('event-types schema (pages.yml)', () => {
+  it('defines the event-types list with its item fields', () => {
+    expect(listField).toBeTruthy();
+    const names = listField.fields.map((f) => f.name);
+    expect(names).toEqual(expect.arrayContaining(['id', 'label', 'icon', 'pageMode', 'defaults']));
   });
-  it('infers event for types in the legacy pageperevent list', () => {
-    expect(resolvePageMode({ id: 'camp' }, ['camp'])).toBe('event');
-    expect(resolvePageMode({ id: 'Camp' }, ['camp'])).toBe('event');
+
+  it('offers exactly the three page modes, with no default (so legacy configs are not rewritten)', () => {
+    const f = listField.fields.find((x) => x.name === 'pageMode');
+    expect(f.type).toBe('select');
+    expect(f.options.values.map((v) => v.value)).toEqual(['none', 'type', 'event']);
+    expect(f.default).toBeUndefined();
   });
-  it('an explicit pageMode wins over the legacy list', () => {
-    expect(resolvePageMode({ id: 'camp', pageMode: 'none' }, ['camp'])).toBe('none');
-    expect(resolvePageMode({ id: 'camp', pageMode: 'type' }, ['camp'])).toBe('type');
-  });
-  it('ignores invalid values', () => {
-    expect(resolvePageMode({ id: 'camp', pageMode: '' }, ['camp'])).toBe('event');
-    expect(resolvePageMode({ id: 'camp', pageMode: 'bogus' }, [])).toBe('none');
+
+  it('the calendar block offers a filter that matches the events of the page\'s own type', () => {
+    const raw = yaml.load(fs.readFileSync('docs/public/_pages.yml', 'utf8'));
+    const values = raw.components.calendarFilter.options.values.map((v) => v.value);
+    expect(values).toContain('"type":"{type}"');
   });
 });
 
-describe('setPageMode', () => {
-  it('writes the mode and lists the type in pageperevent only for "event"', () => {
-    const config = { 'event-types': { list: types() }, pages: { list: [], pageperevent: ['mass'] } };
-    const camp = config['event-types'].list[1];
-    expect(setPageMode(config, camp, 'event')).toBe(true);
-    expect(camp.pageMode).toBe('event');
-    expect(config.pages.pageperevent).toEqual(['mass', 'camp']);
-    setPageMode(config, camp, 'event'); // idempotent
-    expect(config.pages.pageperevent).toEqual(['mass', 'camp']);
-    setPageMode(config, camp, 'type');
-    expect(camp.pageMode).toBe('type');
-    expect(config.pages.pageperevent).toEqual(['mass']);
-    setPageMode(config, camp, 'none');
-    expect(config.pages.pageperevent).toEqual(['mass']);
+describe('findFieldByPath', () => {
+  it('walks tab -> field -> nested field', () => {
+    expect(findFieldByPath(schema, 'event-types.list').name).toBe('list');
+    expect(findFieldByPath(schema, 'event-types.list.label').name).toBe('label');
   });
-
-  it('removing a legacy type from the list keeps the explicit mode authoritative', () => {
-    const config = { 'event-types': { list: types() }, pages: { pageperevent: ['camp'] } };
-    const camp = config['event-types'].list[1];
-    expect(resolvePageMode(camp, config.pages.pageperevent)).toBe('event');
-    setPageMode(config, camp, 'none');
-    expect(config.pages.pageperevent).toEqual([]);
-    expect(resolvePageMode(camp, config.pages.pageperevent)).toBe('none');
-  });
-
-  it('creates pages.pageperevent when it does not exist yet', () => {
-    const config = { 'event-types': { list: types() } };
-    setPageMode(config, config['event-types'].list[0], 'event');
-    expect(config.pages.pageperevent).toEqual(['cat']);
-  });
-
-  it('does not create pages.pageperevent just to remove from it', () => {
-    const config = { 'event-types': { list: types() } };
-    setPageMode(config, config['event-types'].list[0], 'type');
-    expect(config.pages).toBeUndefined();
-  });
-
-  it('rejects invalid modes without touching anything', () => {
-    const config = { 'event-types': { list: types() } };
-    const t = config['event-types'].list[0];
-    expect(setPageMode(config, t, 'bogus')).toBe(false);
-    expect(t.pageMode).toBeUndefined();
-  });
-
-  it('matches ids case-insensitively', () => {
-    const config = { pages: { pageperevent: ['Camp'] } };
-    setPageMode(config, { id: 'camp' }, 'type');
-    expect(config.pages.pageperevent).toEqual([]);
+  it('returns null for unknown paths', () => {
+    expect(findFieldByPath(schema, 'nope.list')).toBeNull();
+    expect(findFieldByPath(schema, 'event-types.nope')).toBeNull();
+    expect(findFieldByPath(null, 'event-types.list')).toBeNull();
+    expect(findFieldByPath(schema, '')).toBeNull();
   });
 });
 
@@ -105,10 +73,8 @@ describe('typeGroups', () => {
   it('keeps events with an unknown or empty type in their own groups', () => {
     const events = [{ type: 'gone' }, { type: '' }, {}];
     const groups = typeGroups(events, types());
-    const gone = groups.find((g) => g.key === 'gone');
-    const none = groups.find((g) => g.key === 'sin-tipo');
-    expect(gone).toMatchObject({ label: 'gone', type: null, indexes: [0] });
-    expect(none).toMatchObject({ label: 'Sin tipo', type: null, indexes: [1, 2] });
+    expect(groups.find((g) => g.key === 'gone')).toMatchObject({ label: 'gone', type: null, indexes: [0] });
+    expect(groups.find((g) => g.key === 'sin-tipo')).toMatchObject({ label: 'Sin tipo', type: null, indexes: [1, 2] });
   });
 
   it('labels a type without a name instead of showing its id', () => {
@@ -123,49 +89,45 @@ describe('typeGroups', () => {
 });
 
 describe('addEventType / removeEventType', () => {
-  it('adds an empty type with a unique lowercase id', () => {
+  it('builds the new type from the schema fields, with a unique id', () => {
     const config = { 'event-types': { list: types() } };
-    const a = addEventType(config);
-    const b = addEventType(config);
+    const a = addEventType(config, listField);
+    const b = addEventType(config, listField);
     expect(config['event-types'].list).toHaveLength(5);
-    expect(a).toMatchObject({ label: '', icon: '', defaults: {} });
+    expect(Object.keys(a).sort()).toEqual(listField.fields.map((f) => f.name).sort());
+    expect(a).toMatchObject({ label: '', icon: '', pageMode: '' });
     expect(a.id).toBeTruthy();
     expect(a.id).not.toBe(b.id);
-    expect(a.id).toBe(a.id.toLowerCase());
-    expect(a.pageMode).toBeUndefined(); // new types stay "unset" until chosen
+    expect(a.defaults).toBeTypeOf('object');
   });
 
   it('creates the list when the config has no event types', () => {
     const config = {};
-    const t = addEventType(config);
+    const t = addEventType(config, listField);
     expect(config['event-types'].list).toEqual([t]);
   });
 
+  it('does nothing when the schema has no event-types field', () => {
+    const config = {};
+    expect(addEventType(config, null)).toBeNull();
+    expect(config).toEqual({});
+  });
+
   it('refuses to remove a type that events still use', () => {
-    const config = { 'event-types': { list: types() }, pages: { pageperevent: ['cat'] } };
+    const config = { 'event-types': { list: types() } };
     const events = [{ type: 'cat' }];
     expect(countEventsOfType(events, 'cat')).toBe(1);
     expect(removeEventType(config, 'cat', { events })).toBe(false);
     expect(config['event-types'].list).toHaveLength(3);
   });
 
-  it('removes an unused type and drops it from pageperevent', () => {
-    const config = { 'event-types': { list: types() }, pages: { pageperevent: ['cat', 'mass'] } };
+  it('removes an unused type', () => {
+    const config = { 'event-types': { list: types() } };
     expect(removeEventType(config, 'cat', { events: [{ type: 'mass' }] })).toBe(true);
     expect(config['event-types'].list.map((t) => t.id)).toEqual(['camp', 'mass']);
-    expect(config.pages.pageperevent).toEqual(['mass']);
   });
 
   it('returns false for an unknown id', () => {
-    const config = { 'event-types': { list: types() } };
-    expect(removeEventType(config, 'nope')).toBe(false);
-  });
-});
-
-describe('misc', () => {
-  it('exports the three page modes', () => {
-    expect(PAGE_MODES).toEqual(['none', 'type', 'event']);
-    expect(pageModeBadge('none')).toBe('');
-    expect(pageModeBadge('type')).not.toBe('');
+    expect(removeEventType({ 'event-types': { list: types() } }, 'nope')).toBe(false);
   });
 });

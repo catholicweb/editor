@@ -6,7 +6,7 @@ import EventTypeEditorModal from './EventTypeEditorModal.vue';
 import { newEvent, generateId, startOfWeek, getEventFields } from '../lib/calendar.js';
 import { state } from '../lib/store.js';
 import { resolvePath } from '../lib/schema.js';
-import { addEventType, removeEventType } from '../lib/event-types.js';
+import { addEventType, removeEventType, findFieldByPath } from '../lib/event-types.js';
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -50,6 +50,12 @@ const eventTypes = computed(() => {
   const data = resolvePath(state.config, eventTypesPath);
   return Array.isArray(data) ? data : [];
 });
+
+// The schema's definition of an event type (pages.yml, tab `event-types`). The
+// type editor is generated from its fields, so type editing is only offered when
+// the schema defines them.
+const eventTypesField = computed(() => findFieldByPath(state.schema, eventTypesPath));
+const typesEditable = computed(() => !!eventTypesField.value?.fields?.length);
 
 // The week currently shown in the grid. Lifted here (not inside WeekGrid)
 // so the event-editor modal can expand "the next 25 occurrences" anchored at
@@ -129,7 +135,8 @@ function editType(id) {
   editingTypeId.value = id;
 }
 function addType() {
-  const t = addEventType(state.config, eventTypesPath);
+  const t = addEventType(state.config, eventTypesField.value, eventTypesPath);
+  if (!t) return;
   newTypeId.value = t.id;
   editingTypeId.value = t.id;
 }
@@ -159,6 +166,7 @@ function removeType() {
       :celebrants="value[celebrantsKey] || []"
       :defaults="value[defaultsKey] || {}"
       :event-types="eventTypes"
+      :types-editable="typesEditable"
       :week-start="weekStart"
       @update:week-start="weekStart = $event"
       @edit-event="editEvent"
@@ -184,9 +192,10 @@ function removeType() {
     />
 
     <EventTypeEditorModal
-      v-if="editingType"
+      v-if="editingType && typesEditable"
       :key="editingType.id"
       :type="editingType"
+      :fields="eventTypesField.fields"
       :events="value[listKey] || []"
       @close="closeTypeModal"
       @remove="removeType"
