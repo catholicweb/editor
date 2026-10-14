@@ -751,11 +751,11 @@ components:
     fields:
       - { name: title, label: Título/Nombre del evento, type: string }
       - { name: images, label: Imagenes, type: image, options: { multiple: true } }
-      - { name: description, label: Descripción, type: rich-text }
       - { name: location, label: Lugar, component: location }
-      - { name: date, label: Fecha, type: date }
+      - { name: date, label: Fecha inicio, type: date }
       - { name: times, label: Hora, component: times }
       - { name: rrule, label: Se repite, component: rrule, options: { creatable: true } }
+      - { name: description, label: Nota breve, type: string }
       #- { name: duration, label: Duración (min), type: number }
       #- { name: celebrants, label: Celebrantes, type: select, options: {  multiple: true, source: "info.collaborators" } }
   exception:
@@ -774,146 +774,149 @@ components:
         #- { name: description, label: Subtitulo, type: string }
         - { name: image, label: Imagen, type: image }
         #- { name: hideHero, label: Esconder cabezera por defecto, type: boolean, default: false }
-        - name: sections
-          label: Secciones
-          type: block
-          list: { collapsible: { collapsed: true, summary: "{fields.title}" },  modal: false }
-          blocks:
-            - name: accordion
-              label: FAQ
-              fields:
-                - { name: title, type: string, label: Titulo sección, default: "Preguntas frecuentes" }
-                - name: elements
-                  label: Preguntas y respuestas
-                  type: object
-                  list: { collapsible: { collapsed: true, summary: "{fields.title}" } }
-                  fields:
-                    - { name: title, label: Pregunta, type: string }
-                    - { name: html, label: Respuesta, type: rich-text }
-                - { name: tags, label: Opciones de estilo, component: tags }
-            - name: scrollyTelling
-              label: Narración interactiva
-              fields:
-                - { name: title, type: string, label: Titulo de la narración }
-                - name: elements
-                  label: Viñetas
-                  type: object
-                  list: { collapsible: { collapsed: true } }
-                  fields:
-                    - { name: text, label: Texto, type: rich-text }
-                    - { name: image, label: Imagen, type: image }
-                - { name: tags, label: Opciones de estilo, component: tags }
-            - name: gallery
-              label: Galeria de imagenes
-              fields:
-                - { name: title, type: string, label: Titulo sección }
-                - { name: images, type: image, label: Seleccion de imagenes, options: { multiple: true } }
-                - { name: tags, label: Opciones de estilo, component: tags }
-            - name: text
-              label: Texto
-              modal: true # enabling this is a pending TODO
-              fields:
-                - { name: title, type: string, label: Titulo sección }
-                - { name: html, label: Texto largo, type: rich-text }
-                - { name: tags, label: Opciones de estilo, component: tags }
-            - name: gospel
-              label: Evangelio del día
-              fields:
-                - { name: title, type: string, label: Titulo sección, default: "Evangelio de hoy" }
-                - { name: readings, label: Mostrar primera/segunda y salmo, type: boolean, default: false }
-                - { name: audio, label: Añadir audio, type: boolean, default: false }
-                - { name: images, label: Mostrar imagenes, type: boolean, default: true }
-                - { name: tags, label: Opciones de estilo, component: tags }
-            - name: calendar
-              label: Eventos
-              fields:
-                - { name: title, type: string, label: Titulo sección, default: "Nuestros eventos" }
-                - { name: filter, label: "Filtro. ¿Qué eventos quieres mostrar?", component: calendarFilter }
-                - { name: ordering, label: "Agrupación de eventos. ¿Cómo quieres agruparlos?", component: ordering }
-                #- { name: orderTabla, label: "Dividir en tablas según:", component: orderSelect }
-                #- { name: orderFila, label: "Dividir en filas según:", component: orderSelect }
-                #- { name: orderColumna, label: "Dividir en columnas según:", component: orderSelect }
-                #- { name: orderSubfila, label: "Dividir en subfila según:", component: orderSelect }
-                #- { name: orderNotas, label: "Añadir notas según:", component: orderSelect }
-                - { name: tags, label: Opciones de estilo, component: tags }
-            - name: video-gospel
-              label: Audios Nuevo Testamento
-              fields:
-                - { name: title, type: string, label: Titulo sección, default: "Audios Nuevo Testamento" }
-                - { name: tags, label: Opciones de estilo, component: tags }
-            - name: video-podcast
-              label: Podcast católicos
-              fields:
-                - { name: title, type: string, label: Titulo sección, default: "Descubre tu fe" }
-                - { name: links, label: Podcast a incluir, component: podcast }
-                - { name: tags, label: Opciones de estilo, component: tags }
-            - name: video-channel
-              label: Canal de Youtube
-              fields:
-                - { name: title, type: string, label: Titulo sección }
-                - { name: filter, label: Filtro. Incluir solo videos que contengan, type: string }
-                - { name: tags, label: Opciones de estilo, component: tags }
-            - name: video-instagram
-              label: Cuenta de instagram
-              fields:
-                - { name: title, type: string, label: Titulo sección }
-                - { name: filter, label: Filtro. Incluir solo posts que contengan, type: string }
-                - { name: tags, label: Opciones de estilo, component: tags }
-            - name: town
-              label: Lista de templos
-              fields:
-                - { name: title, type: string, label: Titulo sección, default: "Nuestros pueblos" }
-                - { name: filters, label: Filtros a mostrar, type: select, options: { multiple: true, creatable: true } }
-                - { name: tags, label: Opciones de estilo, component: tags }
-            - name: eventCards
-              label: Lista de grupos parroquiales
-              fields:
-                - { name: title, type: string, label: Titulo sección, default: "Nuestros parroquiales" }
-                - { name: eventsToShow, label: "Eventos/grupos a mostrar", type: select, options: { source: "event-types.list", multiple: true, label: "{title}" }  }  
-                - { name: filters, label: Filtros a mostrar, type: select, options: { multiple: true, creatable: true } }
-                - { name: tags, label: Opciones de estilo, component: tags }
-            - name: video
-              label: Lista de videos/audios
-              fields:
-                - { name: title, type: string, label: Titulo sección }
-                - { name: links, label: Enlaces externos, type: string, list: { collapsible: { collapsed: true } } }
-                - { name: tags, label: Opciones de estilo, component: tags }
-            - name: map
-              label: Mapa
-              fields:
-                - { name: title, type: string, label: Título sección, default: 'Ven a conocernos' }
-                - { name: geo, type: string, label: "Coordenadas (ej: 42.801941, -1.645660)" }
-                - { name: name, type: string, label: Nombre }
-                - { name: image, type: image, label: Imagen }
-                - { name: tags, label: Opciones de estilo, component: tags }
-            - name: fundraising
-              label: Campaña financiación
-              fields:
-                - { name: title, type: string, label: Titulo sección, default: "Ayudanos a llegar a más" }
-                - { name: name, type: string, label: "Nombre causa (ej: Nuevo tejado)" }
-                - { name: description, type: string, label: Descripcion }
-                - { name: raised, type: number, label: Recaudado hasta la fecha }
-                - { name: goal, type: number, label: Total a recaudar }
-                - { name: action, type: string, label: Nombre acción, hidden: true, default: Donar }
-                - { name: image, type: image, label: Imagen }
-                - { name: tags, label: Opciones de estilo, component: tags }
-            - name: hero
-              label: Cabezera de sección
-              component: hero
-            - name: team
-              label: Miembros del equipo
-              fields:
-                - { name: title, type: string, label: Titulo sección, default: "Nuestro equipo parroquial" }
-                - { name: tags, label: Opciones de estilo, component: tags }
-            - name: links
-              label: Enlaces
-              fields:
-                - { name: title, type: string, label: Titulo sección }
-                - name: links
-                  label: "Lista de enlaces"
-                  type: select
-                  options: { source: "pages.list", multiple: true, label: "{title}", creatable: true }
-                - { name: tags, label: Opciones de estilo, component: tags }
+        - { name: sections, label: Secciones, component: sections }
+
+  sections:
+    name: sections
+    label: Secciones
+    type: block
+    list: { collapsible: { collapsed: true, summary: "{fields.title}" },  modal: false }
+    blocks:
+      - name: accordion
+        label: FAQ
+        fields:
+          - { name: title, type: string, label: Titulo sección, default: "Preguntas frecuentes" }
+          - name: elements
+            label: Preguntas y respuestas
+            type: object
+            list: { collapsible: { collapsed: true, summary: "{fields.title}" } }
+            fields:
+              - { name: title, label: Pregunta, type: string }
+              - { name: html, label: Respuesta, type: rich-text }
+          - { name: tags, label: Opciones de estilo, component: tags }
+      - name: scrollyTelling
+        label: Narración interactiva
+        fields:
+          - { name: title, type: string, label: Titulo de la narración }
+          - name: elements
+            label: Viñetas
+            type: object
+            list: { collapsible: { collapsed: true } }
+            fields:
+              - { name: text, label: Texto, type: rich-text }
+              - { name: image, label: Imagen, type: image }
+          - { name: tags, label: Opciones de estilo, component: tags }
+      - name: gallery
+        label: Galeria de imagenes
+        fields:
+          - { name: title, type: string, label: Titulo sección }
+          - { name: images, type: image, label: Seleccion de imagenes, options: { multiple: true } }
+          - { name: tags, label: Opciones de estilo, component: tags }
+      - name: text
+        label: Texto
+        modal: true # enabling this is a pending TODO
+        fields:
+          - { name: title, type: string, label: Titulo sección }
+          - { name: html, label: Texto largo, type: rich-text }
+          - { name: tags, label: Opciones de estilo, component: tags }
+      - name: gospel
+        label: Evangelio del día
+        fields:
+          - { name: title, type: string, label: Titulo sección, default: "Evangelio de hoy" }
+          - { name: readings, label: Mostrar primera/segunda y salmo, type: boolean, default: false }
+          - { name: audio, label: Añadir audio, type: boolean, default: false }
+          - { name: images, label: Mostrar imagenes, type: boolean, default: true }
+          - { name: tags, label: Opciones de estilo, component: tags }
+      - name: calendar
+        label: Eventos
+        fields:
+          - { name: title, type: string, label: Titulo sección, default: "Nuestros eventos" }
+          - { name: filter, label: "Filtro. ¿Qué eventos quieres mostrar?", component: calendarFilter }
+          - { name: ordering, label: "Agrupación de eventos. ¿Cómo quieres agruparlos?", component: ordering }
+          #- { name: orderTabla, label: "Dividir en tablas según:", component: orderSelect }
+          #- { name: orderFila, label: "Dividir en filas según:", component: orderSelect }
+          #- { name: orderColumna, label: "Dividir en columnas según:", component: orderSelect }
+          #- { name: orderSubfila, label: "Dividir en subfila según:", component: orderSelect }
+          #- { name: orderNotas, label: "Añadir notas según:", component: orderSelect }
+          - { name: tags, label: Opciones de estilo, component: tags }
+      - name: video-gospel
+        label: Audios Nuevo Testamento
+        fields:
+          - { name: title, type: string, label: Titulo sección, default: "Audios Nuevo Testamento" }
+          - { name: tags, label: Opciones de estilo, component: tags }
+      - name: video-podcast
+        label: Podcast católicos
+        fields:
+          - { name: title, type: string, label: Titulo sección, default: "Descubre tu fe" }
+          - { name: links, label: Podcast a incluir, component: podcast }
+          - { name: tags, label: Opciones de estilo, component: tags }
+      - name: video-channel
+        label: Canal de Youtube
+        fields:
+          - { name: title, type: string, label: Titulo sección }
+          - { name: filter, label: Filtro. Incluir solo videos que contengan, type: string }
+          - { name: tags, label: Opciones de estilo, component: tags }
+      - name: video-instagram
+        label: Cuenta de instagram
+        fields:
+          - { name: title, type: string, label: Titulo sección }
+          - { name: filter, label: Filtro. Incluir solo posts que contengan, type: string }
+          - { name: tags, label: Opciones de estilo, component: tags }
+      - name: town
+        label: Lista de templos
+        fields:
+          - { name: title, type: string, label: Titulo sección, default: "Nuestros pueblos" }
+          - { name: filters, label: Filtros a mostrar, type: select, options: { multiple: true, creatable: true } }
+          - { name: tags, label: Opciones de estilo, component: tags }
+      - name: eventCards
+        label: Lista de grupos parroquiales
+        fields:
+          - { name: title, type: string, label: Titulo sección, default: "Nuestros parroquiales" }
+          - { name: eventsToShow, label: "Eventos/grupos a mostrar", type: select, options: { source: "event-types.list", multiple: true, label: "{title}" }  }  
+          - { name: filters, label: Filtros a mostrar, type: select, options: { multiple: true, creatable: true } }
+          - { name: tags, label: Opciones de estilo, component: tags }
+      - name: video
+        label: Lista de videos/audios
+        fields:
+          - { name: title, type: string, label: Titulo sección }
+          - { name: links, label: Enlaces externos, type: string, list: { collapsible: { collapsed: true } } }
+          - { name: tags, label: Opciones de estilo, component: tags }
+      - name: map
+        label: Mapa
+        fields:
+          - { name: title, type: string, label: Título sección, default: 'Ven a conocernos' }
+          - { name: geo, type: string, label: "Coordenadas (ej: 42.801941, -1.645660)" }
+          - { name: name, type: string, label: Nombre }
+          - { name: image, type: image, label: Imagen }
+          - { name: tags, label: Opciones de estilo, component: tags }
+      - name: fundraising
+        label: Campaña financiación
+        fields:
+          - { name: title, type: string, label: Titulo sección, default: "Ayudanos a llegar a más" }
+          - { name: name, type: string, label: "Nombre causa (ej: Nuevo tejado)" }
+          - { name: description, type: string, label: Descripcion }
+          - { name: raised, type: number, label: Recaudado hasta la fecha }
+          - { name: goal, type: number, label: Total a recaudar }
+          - { name: action, type: string, label: Nombre acción, hidden: true, default: Donar }
+          - { name: image, type: image, label: Imagen }
+          - { name: tags, label: Opciones de estilo, component: tags }
+      - name: hero
+        label: Cabezera de sección
+        component: hero
+      - name: team
+        label: Miembros del equipo
+        fields:
+          - { name: title, type: string, label: Titulo sección, default: "Nuestro equipo parroquial" }
+          - { name: tags, label: Opciones de estilo, component: tags }
+      - name: links
+        label: Enlaces
+        fields:
+          - { name: title, type: string, label: Titulo sección }
+          - name: links
+            label: "Lista de enlaces"
+            type: select
+            options: { source: "pages.list", multiple: true, label: "{title}", creatable: true }
+          - { name: tags, label: Opciones de estilo, component: tags }
 
 
 content:
@@ -952,16 +955,18 @@ content:
           - { name: label, label: "Tipo de evento (ej: Eucaristía)", type: string }
           #- { name: icon, label: Icono (se mostrará unicamente en este editor), type: icon }
           - name: pageMode
-            label: Página en la web para los eventos de este tipo
+            label: Crear página para eventos de este tipo
             type: select
             options:
               multiple: false
               values:
                 [
                   { value: none, label: "Sin página propia (solo aparecen en el calendario)" },
-                  { value: type, label: "Una única página agrupando todos los eventos de este tipo" },
-                  { value: event, label: "Una página por cada evento de este tipo" },
+                  { value: type, label: "Crear una única página agrupando los eventos de este tipo" },
+                  { value: event, label: "Crear una página para cada evento de este tipo" },
                 ]
+          - { name: sections, label: Secciones de la página creada, component: sections, showif: "pageMode != 'none'" } # TOOD: enable this or similar types of conditional rendering
+
           - { name: defaults, label: "Valores por defecto para evento de este tipo", component: event }
           #- { name: protected, label: 'Elemento protegido/imborrable (dev only, ira escondido)', type: text }
 
