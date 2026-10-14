@@ -950,7 +950,7 @@ content:
         fields:
           - { name: id, label: Identificador, type: uuid, hidden: true }
           - { name: label, label: "Tipo de evento (ej: Eucaristía)", type: string }
-          - { name: icon, label: Icono (se mostrará unicamente en este editor), type: icon }
+          #- { name: icon, label: Icono (se mostrará unicamente en este editor), type: icon }
           - name: pageMode
             label: Página en la web para los eventos de este tipo
             type: select
@@ -959,10 +959,10 @@ content:
               values:
                 [
                   { value: none, label: "Sin página propia (solo aparecen en el calendario)" },
-                  { value: type, label: "Una página para todo el tipo (describe el tipo y lista sus eventos)" },
-                  { value: event, label: "Una página por cada evento" },
+                  { value: type, label: "Una única página agrupando todos los eventos de este tipo" },
+                  { value: event, label: "Una página por cada evento de este tipo" },
                 ]
-          - { name: defaults, label: "Valores por defecto para evento de este tipo",component: event }
+          - { name: defaults, label: "Valores por defecto para evento de este tipo", component: event }
           #- { name: protected, label: 'Elemento protegido/imborrable (dev only, ira escondido)', type: text }
 
   - name: nerdy
@@ -1048,7 +1048,7 @@ content:
         component: page
         list: { collapsible: { collapsed: true, summary: "{fields.title}" }, sort: "alphabetical", modal: false  }
       - { name: pageperlocatoin, label: Crear una página para cada templo, type: boolean, default: true }  
-      - { name: pageperevent, label: "Crear una página para cada evento de tipo (OBSOLETO: usa «Página en la web» en cada tipo de evento)", type: select, options: { source: "event-types.list", multiple: true, label: "{title}" }  }  
+      #- { name: pageperevent, label: "Crear una página para cada evento de tipo (OBSOLETO: usa «Página en la web» en cada tipo de evento)", type: select, options: { source: "event-types.list", multiple: true, label: "{title}" }  }  
       - name: nav
         label: Menu de navegación
         type: object

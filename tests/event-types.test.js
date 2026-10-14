@@ -25,7 +25,7 @@ describe('event-types schema (pages.yml)', () => {
   it('defines the event-types list with its item fields', () => {
     expect(listField).toBeTruthy();
     const names = listField.fields.map((f) => f.name);
-    expect(names).toEqual(expect.arrayContaining(['id', 'label', 'icon', 'pageMode', 'defaults']));
+    expect(names).toEqual(expect.arrayContaining(['id', 'label', 'pageMode', 'defaults']));
   });
 
   it('offers exactly the three page modes, with no default (so legacy configs are not rewritten)', () => {
@@ -95,7 +95,7 @@ describe('addEventType / removeEventType', () => {
     const b = addEventType(config, listField);
     expect(config['event-types'].list).toHaveLength(5);
     expect(Object.keys(a).sort()).toEqual(listField.fields.map((f) => f.name).sort());
-    expect(a).toMatchObject({ label: '', icon: '', pageMode: '' });
+    expect(a).toMatchObject({ label: '', pageMode: '' });
     expect(a.id).toBeTruthy();
     expect(a.id).not.toBe(b.id);
     expect(a.defaults).toBeTypeOf('object');

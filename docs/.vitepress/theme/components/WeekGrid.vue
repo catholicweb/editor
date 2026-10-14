@@ -326,9 +326,9 @@ function onAlldayClick(dayIndex, occs) {
         <div v-for="(o, oi) in dayOccs" :key="`${o.eventIndex}-${oi}`" class="event-row" :class="{ specific: !o.recurring }" @click="emit('edit-occurrence', o)">
           <span class="event-time" v-if="o.time">{{ o.time }}</span>
           <span class="event-time" v-else>—</span>
-          <span class="event-icon" v-if="o.style.icon" :class="[o.warn ? `ev ev-small warn-${o.warn}` : null]" :style="{ color: o.style.color || '#9aa0a6' }">
+          <!--<span class="event-icon" v-if="o.style.icon" :class="[o.warn ? `ev ev-small warn-${o.warn}` : null]" :style="{ color: o.style.color || '#9aa0a6' }">
             <PeIcon :name="o.style.icon" :size="16" />
-          </span>
+          </span>-->
           <span class="event-type">{{ o.title || 'Sin título' }}</span>
           <span class="event-location" v-if="o.location?.length">{{ formatLocation(o.location) }}</span>
           <span class="event-rec" v-if="o.recurLabel">{{ o.recurLabel }}</span>
@@ -348,7 +348,7 @@ function onAlldayClick(dayIndex, occs) {
         <div class="type-head">
           <button class="type-toggle" :aria-expanded="!isCollapsed(group.key)" @click="toggleGroup(group.key)">
             <span class="chev" :class="{ open: !isCollapsed(group.key) }">▸</span>
-            <span v-if="group.icon" class="type-icon"><PeIcon :name="group.icon" :size="16" /></span>
+            <!--<span v-if="group.icon" class="type-icon"><PeIcon :name="group.icon" :size="16" /></span>-->
             <span class="type-name">{{ group.label }}</span>
             <span class="type-count">{{ group.events.length }}</span>
           </button>
@@ -365,9 +365,9 @@ function onAlldayClick(dayIndex, occs) {
           <p v-if="!group.events.length" class="type-empty">Sin eventos de este tipo.</p>
           <div v-for="row in group.events" :key="row.ev.id || row.index" class="event-row" :class="{ specific: row.specific }" @click="emit('edit-event', row.index)">
             <span class="event-time">{{ row.timeStr }}</span>
-            <span class="event-icon" v-if="row.style.icon" :class="[row.warn ? `ev ev-small warn-${row.warn}` : null]" :style="{ color: row.style.color || '#9aa0a6' }">
+            <!--<span class="event-icon" v-if="row.style.icon" :class="[row.warn ? `ev ev-small warn-${row.warn}` : null]" :style="{ color: row.style.color || '#9aa0a6' }">
               <PeIcon :name="row.style.icon" :size="16" />
-            </span>
+            </span>-->
             <span class="event-type">{{ row.title }}</span>
             <span class="event-location" v-if="row.location?.length">{{ formatLocation(row.location) }}</span>
             <span class="event-rec" v-if="row.recur">{{ row.recur }}</span>
@@ -445,18 +445,12 @@ function onAlldayClick(dayIndex, occs) {
     </div>
 
 
-    <!-- Warnings -->
+    <!-- Warnings - ->
     <div v-if="hasWarnings" class="legend">
       <span v-if="hasPurpleWarnings" class="legend-item"><span class="swatch warn-purple"></span> No hay celebrante asignado</span>
       <span v-if="hasRedWarnings" class="legend-item"><span class="swatch warn-red"></span> Bilocación requerida (mismo celebrante solapado en lugares distintos)</span>
       <span v-if="hasOrangeWarnings" class="legend-item"><span class="swatch warn-orange"></span> Poco tiempo (0–15 min) entre eventos del mismo celebrante en lugares distintos</span>
-    </div>
-
-
-
-
-
-
+    </div>-->
 
 
   </div>
