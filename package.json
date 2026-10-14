@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "schema": "node scripts/build-schema.mjs",
+    "predev": "npm run schema",
+    "prebuild": "npm run schema",
     "dev": "vitepress dev docs",
     "build": "vitepress build docs",
     "test": "vitest run",
