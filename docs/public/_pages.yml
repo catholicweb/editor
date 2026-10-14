@@ -685,6 +685,19 @@ content:
     fields:
       - { name: title, label: Título del sitio web, type: string }
       - { name: description, label: Breve descripción del sitio web, type: text }
+
+      - name: places
+        label: Lista de templos
+        type: object
+        list: { collapsible: { collapsed: true, summary: "{fields.name}" }, sort: "alphabetical", modal: false }
+        fields:
+          - { name: name, type: string, label: Nombre }
+          - { name: images, type: image, label: Imagenes, options: { multiple: true } }
+          - { name: geo, type: string, label: "Coordenadas (ej: 42.801941, -1.645660)" }
+          - { name: address, type: string, label: "Dirección" }
+          - { name: createPage, label: "Crear una página para este lugar", type: boolean, default: true }
+          - { name: sections, label: Secciones de la página creada, component: sections, showif: "createPage == true" } # TOOD: enable this or similar types of conditional rendering
+
       - name: collaborators
         label: Lista de colaboradores
         type: object
@@ -697,18 +710,7 @@ content:
             label: Otra información de contacto (email, instagram....)
             type: string
             list: { collapsible: { collapsed: true } }
-          
-      - name: places
-        label: Lista de templos
-        type: object
-        list: { collapsible: { collapsed: true, summary: "{fields.name}" }, sort: "alphabetical", modal: false }
-        fields:
-          - { name: name, type: string, label: Nombre }
-          - { name: images, type: image, label: Imagenes, options: { multiple: true } }
-          - { name: geo, type: string, label: "Coordenadas (ej: 42.801941, -1.645660)" }
-          - { name: address, type: string, label: "Dirección" }
-          - { name: createPage, label: "Crear una página para este lugar", type: boolean, default: true }
-          - { name: sections, label: Secciones de la página creada, component: sections, showif: "createPage == true" } # TOOD: enable this or similar types of conditional rendering
+
       - name: autodiscover
         label: Encontrar templos
         type: places-autodiscover

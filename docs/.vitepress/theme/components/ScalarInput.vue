@@ -312,7 +312,7 @@ function updateRefDropdownPosition() {
         <div v-for="(p, i) in (Array.isArray(modelValue)? modelValue : [modelValue].filter(Boolean))" :key="i" class="image-thumb">
           <img v-if="imagePreviewUrl(p)" :src="imagePreviewUrl(p)" loading="lazy" />
           <div class="image-actions">
-            <button type="button" @click="openPicker(i)">Cambiar</button>
+            <button type="button" @click="openPicker(i)"><PeIcon name="andrsrxn:swap" :size="14" /></button>
             <button type="button" class="del" @click="removeImageAt(i)" :aria-label="'Eliminar'" title="Eliminar"><PeIcon name="trash" :size="14" /></button>
           </div>
         </div>
@@ -322,7 +322,7 @@ function updateRefDropdownPosition() {
     <template v-else>
       <div class="image-single">
         <img v-if="imagePreviewUrl(modelValue)" :src="imagePreviewUrl(modelValue)" class="preview" loading="lazy" />
-        <div class="image-actions">
+        <div class="image-actions" style="position: relative;">
           <button type="button" @click="openPicker()">{{ modelValue ? 'Cambiar imagen' : 'Elegir imagen' }}</button>
           <button v-if="modelValue" type="button" @click="set('')">Quitar</button>
         </div>
@@ -491,25 +491,26 @@ textarea.auto-grow {
 .image-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 6px;
 }
 .image-thumb {
-  width: 110px;
+  width: 130px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  position: relative;
 }
 .image-thumb img {
   width: 100%;
-  height: 80px;
+  height: 100px;
   object-fit: cover;
   border-radius: var(--pe-radius-sm);
   border: 1px solid var(--pe-border);
   background: var(--pe-bg);
 }
 .image-add {
-  width: 110px;
-  height: 80px;
+  width: 130px;
+  height: 100px;
   border: 1px dashed var(--pe-border-strong);
   border-radius: var(--pe-radius);
   background: transparent;
@@ -528,6 +529,7 @@ textarea.auto-grow {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  position: relative;
 }
 .image-single .preview {
   width: 90px;
@@ -536,16 +538,20 @@ textarea.auto-grow {
   border-radius: var(--pe-radius);
   border: 1px solid var(--pe-border);
   background: var(--pe-bg);
+  position: relative;
 }
 .image-actions {
+  position: absolute;
+  right: 2px;
+  top: 2px;
   display: flex;
-  gap: 6px;
+  gap: 10px;
 }
 .image-actions button {
   border: 1px solid var(--pe-border);
   background: var(--pe-panel);
   border-radius: var(--pe-radius-sm);
-  padding: 5px 9px;
+  padding: 3px 5px;
   font-size: 12px;
   cursor: pointer;
   color: var(--pe-text);
@@ -560,7 +566,7 @@ textarea.auto-grow {
   align-items: center;
   color: var(--pe-danger);
   border-color: var(--pe-danger-soft);
-  background: var(--pe-danger-soft);
+  background: white;
 }
 .checkbox-list {
   display: flex;
