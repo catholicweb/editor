@@ -11,13 +11,14 @@ import {
 } from '../lib/calendar.js';
 import { state } from '../lib/store.js';
 import PeIcon from './PeIcon.vue';
-import { typeGroups, resolvePageMode, pageModeBadge } from '../lib/event-types.js';
+import { typeGroups } from '../lib/event-types.js';
 
 const props = defineProps({
   events: { type: Array, required: true },
   celebrants: { type: Array, default: () => [] },
   defaults: { type: Object, default: () => ({}) },
   eventTypes: { type: Array, default: () => [] },
+  typesEditable: { type: Boolean, default: false }, // show the edit/add event-type controls
   weekStart: { type: Object, required: true }, // controlled by CalendarEditor
 });
 const emit = defineEmits(['edit-event', 'add-event', 'edit-occurrence', 'update:weekStart', 'edit-type', 'add-type']);
@@ -237,23 +238,18 @@ function rowFor(ev, i) {
 
 // Every defined type gets a group (even with no events yet), so it can be edited
 // and given its first event from its header.
-const eventsByType = computed(() => {
-  const legacyPages = state.config?.pages?.pageperevent;
-  return typeGroups(props.events || [], props.eventTypes || []).map((g) => {
-    const mode = g.type ? resolvePageMode(g.type, legacyPages) : 'none';
-    return {
-      key: g.key,
-      label: g.label,
-      type: g.type,
-      icon: g.type?.icon || '',
-      badge: pageModeBadge(mode),
-      addType: g.type ? g.type.id : null,
-      events: g.indexes
-        .map((i) => rowFor(props.events[i], i))
-        .sort((a, b) => a.timeStr.localeCompare(b.timeStr)),
-    };
-  });
-});
+const eventsByType = computed(() =>
+  typeGroups(props.events || [], props.eventTypes || []).map((g) => ({
+    key: g.key,
+    label: g.label,
+    type: g.type,
+    icon: g.type?.icon || '',
+    addType: g.type ? g.type.id : null,
+    events: g.indexes
+      .map((i) => rowFor(props.events[i], i))
+      .sort((a, b) => a.timeStr.localeCompare(b.timeStr)),
+  }))
+);
 
 // Collapsed groups are remembered per browser (keyed by type id).
 const COLLAPSED_KEY = 'pe-collapsed-event-types';
@@ -355,10 +351,9 @@ function onAlldayClick(dayIndex, occs) {
             <span v-if="group.icon" class="type-icon"><PeIcon :name="group.icon" :size="16" /></span>
             <span class="type-name">{{ group.label }}</span>
             <span class="type-count">{{ group.events.length }}</span>
-            <span v-if="group.badge" class="type-page">{{ group.badge }}</span>
           </button>
           <span class="type-actions">
-            <button v-if="group.type" class="type-action" title="Editar tipo de evento" aria-label="Editar tipo de evento" @click="emit('edit-type', group.type.id)">
+            <button v-if="group.type && typesEditable" class="type-action" title="Editar tipo de evento" aria-label="Editar tipo de evento" @click="emit('edit-type', group.type.id)">
               <PeIcon name="pencil-square" :size="16" />
             </button>
             <button v-if="group.addType" class="type-action" title="Añadir evento de este tipo" aria-label="Añadir evento de este tipo" @click="emit('add-event', { type: group.addType })">
@@ -380,7 +375,7 @@ function onAlldayClick(dayIndex, occs) {
           </div>
         </template>
       </div>
-      <button class="add-type" @click="emit('add-type')">+ Tipo de evento</button>
+      <button v-if="typesEditable" class="add-type" @click="emit('add-type')">+ Tipo de evento</button>
     </div>
 
     <!-- Event grid -->
@@ -818,15 +813,6 @@ function onAlldayClick(dayIndex, occs) {
   background: var(--pe-hover);
   border-radius: 999px;
   padding: 1px 7px;
-}
-.type-page {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--pe-accent);
-  border: 1px solid var(--pe-accent);
-  border-radius: 999px;
-  padding: 1px 7px;
-  white-space: nowrap;
 }
 .type-actions { display: flex; gap: 2px; flex-shrink: 0; }
 .type-action {
