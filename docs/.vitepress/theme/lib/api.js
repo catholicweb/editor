@@ -221,7 +221,7 @@ export async function listAllSlugs(dataBase) {
 
 
 // ---- GitHub backup repo (version history / undo) ---------------------------
-// The public `catholicweb/backup` repo stores a per-slug daily backup at
+// The public `arrietaeguren/backup` repo stores a per-slug daily backup at
 // `config/<slug>/config.json`. These let the editor list past versions and fetch
 // a specific one. No Authorization header: the repo is public and CORS is open
 // to any origin on both hosts.
@@ -234,7 +234,7 @@ export async function listAllSlugs(dataBase) {
 export async function githubListVersions(slug) {
   const q = encodeURIComponent(`config/${slug}/config.json`);
   const res = await fetch(
-    `https://api.github.com/repos/catholicweb/backup/commits?path=${q}&per_page=100`
+    `https://api.github.com/repos/arrietaeguren/backup/commits?path=${q}&per_page=100`
   );
   if (!res.ok) return [];
   const items = await res.json();
@@ -247,7 +247,7 @@ export async function githubListVersions(slug) {
 
 export async function githubFetchVersion(slug, sha) {
   const res = await fetch(
-    `https://raw.githubusercontent.com/catholicweb/backup/${encodeURIComponent(sha)}/config/${encodeURIComponent(slug)}/config.json`
+    `https://raw.githubusercontent.com/arrietaeguren/backup/${encodeURIComponent(sha)}/config/${encodeURIComponent(slug)}/config.json`
   );
   if (!res.ok) throw new Error(`No se pudo descargar la versión: HTTP ${res.status}`);
   return JSON.parse(await res.text());
