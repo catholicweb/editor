@@ -8,6 +8,10 @@ components:
     type: rich-text
   calendarFilter:
     label: Filtro calendario
+    help: |-
+      Decide qué eventos del calendario aparecen en esta sección. Elige una de las opciones o escribe una expresión propia.
+      Una expresión combina condiciones con & ("y"); el prefijo ! niega la condición; campo:empty significa «ese campo está vacío» (por ejemplo, !byday:empty = eventos que se repiten); una palabra suelta (mass, funeral) mantiene solo los eventos que la contienen.
+      Los marcadores {name}, {title} y {type} se sustituyen por el templo, el evento o el tipo de evento de la página donde se muestra la sección, así que la misma sección sirve en muchas páginas.
     type: select
     options:
       multiple: false
@@ -26,6 +30,9 @@ components:
         ]
   ordering:
     label: Criterio agrupación
+    help: |-
+      Define cómo se agrupan y ordenan los eventos en las tablas de la sección. Es una lista de criterios separados por comas: de izquierda a derecha, cada criterio es una columna o nivel de agrupación (title, dates, times, locations, byday, notes, weekday, byweek, language).
+      Usa una de las opciones predefinidas salvo que haya un motivo para no hacerlo: combinan los criterios de forma probada. Los símbolos especiales (skip, + y -) forman parte de esas combinaciones; no los modifiques.
     type: select
     options:
       multiple: false
@@ -41,12 +48,14 @@ components:
         # { value: "title""dates" "times""locations""byday""language""notes""weekday""byweek""empty"
   times:
     label: horas
+    help: Hora en formato de 24 horas «HH:MM» (por ejemplo 18:30). Se puede escribir una hora que no esté en la lista.
     type: select
     options:
       creatable: true
       values: ["06:00", "06:30", "07:00", "07:30", "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00","22:30", "23:00", "23:30", "06:15", "06:45", "07:15", "07:45", "08:15", "08:45", "09:15", "09:45", "10:15", "10:45", "11:15", "11:45", "12:15", "12:45", "13:15", "13:45", "14:15", "14:45", "15:15", "15:45", "16:15", "16:45", "17:15", "17:45", "18:15", "18:45", "19:15", "19:45", "20:15", "20:45", "21:15", "21:45", "22:15"]
   podcast:
     label: Podcast católicos
+    help: Enlaces a podcasts (Spotify) o listas de reproducción y directos (YouTube). Elige de la lista o pega un enlace completo que empiece por https://.
     type: select
     options:
       multiple: true
@@ -72,6 +81,7 @@ components:
         ]
   languages:
     label: "Idioma"
+    help: Formato «Nombre:código» con el código de idioma de dos letras, por ejemplo «Español:es» o «Euskara:eu». Se pueden añadir otros idiomas escribiéndolos con ese mismo formato.
     type: select
     options:
       multiple: true
@@ -359,6 +369,7 @@ components:
       values: ["card-full", "gallery", "resource-list", "video-grid", "hero-banner", "portfolio", "product-cards", "article-list", "team-cards", "compact-list", "text", "timeline", "calendar-cards", "carousel", "accordion"]
   location:
     label: Lugares
+    help: Templo o lugar donde ocurre. Se guarda el id de un templo de la pestaña Datos (Lista de templos); se pueden elegir varios. También se admite texto libre para un lugar que no esté en esa lista.
     type: select
     options:
       source: "info.places"
@@ -366,6 +377,9 @@ components:
       creatable: true
   tags:
     label: Opciones
+    help: |-
+      Opciones de estilo de la sección; se pueden combinar varias, pero solo las que tengan sentido juntas (por ejemplo, un único tamaño: tiny, small, medium, large o xl).
+      «hidden» oculta la sección en la web sin borrarla.
     type: select
     options:
       multiple: true
@@ -398,6 +412,9 @@ components:
         ]
   rrule:
     label: Fechas
+    help: |-
+      Cuándo se repite el evento. Para repetirlo cada semana elige los días (mo, tu, we, th, fr, sa, su; «ve» = vísperas; «mo,tu,we,th,fr» = lunes a viernes). Para limitarlo a ciertas semanas del mes añade week1–week5 (1ª a 5ª semana). Otras opciones: biweekly (cada dos semanas), monthly (cada mes) y yearly (cada año).
+      «never» significa que no se repite: en ese caso rellena la fecha de inicio.
     type: select
     options:
       multiple: true
@@ -486,11 +503,15 @@ components:
   sections:
     name: sections
     label: Secciones
+    help: |-
+      Contenido de la página como una lista de secciones; el orden de la lista es el orden en que aparecen en la web. Cada sección tiene un tipo (texto, preguntas frecuentes, galería, eventos, vídeo, mapa, campaña de financiación...) y solo admite los campos de ese tipo.
+      Casi todas tienen un título y «Opciones de estilo». Los textos largos («Texto largo», respuestas de las preguntas frecuentes...) se escriben en Markdown. Para esconder una sección sin borrarla usa la opción de estilo «hidden».
     type: block
     list: { collapsible: { collapsed: true, summary: "{fields.title}" },  modal: false }
     blocks:
       - name: accordion
         label: FAQ
+        help: "Preguntas frecuentes: cada elemento es una pregunta (título) con su respuesta en Markdown."
         fields:
           - { name: title, type: string, label: Titulo sección, default: "Preguntas frecuentes" }
           - name: elements
@@ -521,6 +542,7 @@ components:
           - { name: tags, label: Opciones de estilo, component: tags }
       - name: text
         label: Texto
+        help: "Sección de texto libre: el contenido va en el campo «Texto largo», escrito en Markdown (no HTML)."
         modal: true # enabling this is a pending TODO
         fields:
           - { name: title, type: string, label: Titulo sección }
@@ -536,6 +558,7 @@ components:
           - { name: tags, label: Opciones de estilo, component: tags }
       - name: calendar
         label: Eventos
+        help: "Muestra eventos del calendario en tablas. Se elige qué eventos (Filtro) y cómo se agrupan (Agrupación). Los eventos en sí se editan en la pestaña Eventos, no en esta sección."
         fields:
           - { name: title, type: string, label: Titulo sección, default: "Nuestros eventos" }
           - { name: filter, label: "Filtro. ¿Qué eventos quieres mostrar?", component: calendarFilter }
@@ -566,12 +589,14 @@ components:
           - { name: tags, label: Opciones de estilo, component: tags }
       - name: town
         label: Lista de templos
+        help: "Lista de los templos definidos en la pestaña Datos (Lista de templos). No lleva contenido propio: los templos se editan en Datos."
         fields:
           - { name: title, type: string, label: Titulo sección, default: "Nuestros pueblos" }
           - { name: filters, label: Filtros a mostrar, type: select, options: { multiple: true, creatable: true } }
           - { name: tags, label: Opciones de estilo, component: tags }
       - name: eventCards
         label: Lista de grupos parroquiales
+        help: "Tarjetas de los tipos de evento (grupos parroquiales) elegidos en «Eventos/grupos a mostrar». Los tipos se crean y editan en la pestaña Tipos de Evento."
         fields:
           - { name: title, type: string, label: Titulo sección, default: "Nuestros parroquiales" }
           - { name: eventsToShow, label: "Eventos/grupos a mostrar", type: select, options: { source: "event-types.list", multiple: true, label: "{title}" }  }  
@@ -585,6 +610,7 @@ components:
           - { name: tags, label: Opciones de estilo, component: tags }
       - name: map
         label: Mapa
+        help: "Mapa de un lugar. Las coordenadas se escriben como «latitud, longitud» (ej: 42.801941, -1.645660)."
         fields:
           - { name: title, type: string, label: Título sección, default: 'Ven a conocernos' }
           - { name: geo, type: string, label: "Coordenadas (ej: 42.801941, -1.645660)" }
@@ -593,6 +619,7 @@ components:
           - { name: tags, label: Opciones de estilo, component: tags }
       - name: fundraising
         label: Campaña financiación
+        help: "Campaña de financiación con barra de progreso: «Recaudado hasta la fecha» y «Total a recaudar» son números (sin símbolo de moneda) y la barra se calcula con ambos."
         fields:
           - { name: title, type: string, label: Titulo sección, default: "Ayudanos a llegar a más" }
           - { name: name, type: string, label: "Nombre causa (ej: Nuevo tejado)" }
@@ -612,6 +639,7 @@ components:
           - { name: tags, label: Opciones de estilo, component: tags }
       - name: links
         label: Enlaces
+        help: "Lista de enlaces a páginas de la web, que se eligen de Páginas > Lista de páginas (también se admite escribir una dirección)."
         fields:
           - { name: title, type: string, label: Titulo sección }
           - name: links
@@ -632,6 +660,9 @@ content:
       - name: events
         type: calendario
         label: Calendario de eventos
+        help: |-
+          Calendario de eventos de la parroquia (misas, catequesis, confesiones...). Los eventos están en events.list. Cada evento tiene un tipo (el id de un elemento de event-types.list), uno o varios lugares (ids de templos de info.places) y, o bien una fecha de inicio (evento puntual), o bien una regla «Se repite» más hora (evento periódico).
+          Para cambiar un evento, edita ese evento concreto (por su id) en vez de reescribir la lista entera.
         options:
           eventTypesPath: "event-types.list"   # config dot-path to the event-types array
           eventFields: "event"                 # components entry providing the event field set
@@ -646,6 +677,9 @@ content:
     fields:
       - name: list
         label: Tipos de evento
+        help: |-
+          Categorías de eventos (Eucaristía, Catequesis, Confesiones...). Cada evento del calendario pertenece a un tipo, guardado como el id de este elemento en el campo «type» del evento; por eso conviene no borrar un tipo que todavía tenga eventos.
+          Los «valores por defecto» son el punto de partida para los eventos de este tipo.
         type: object
         list:
           collapsible:
@@ -657,6 +691,9 @@ content:
           - { name: label, label: "Tipo de evento (ej: Eucaristía)", type: string }
           - name: pageMode
             label: Crear página para eventos de este tipo
+            help: |-
+              none: los eventos solo aparecen en el calendario. type: se crea UNA página que agrupa todos los eventos de este tipo (lo habitual para un grupo con varias actividades, por ejemplo catequesis con muchas sesiones). event: se crea una página por cada evento (modo antiguo; solo si cada evento necesita su propia página).
+              Las «Secciones de la página creada» solo se usan si el modo no es none.
             type: select
             options:
               multiple: false
@@ -688,6 +725,8 @@ content:
 
       - name: places
         label: Lista de templos
+        help: |-
+          Templos e iglesias de la parroquia. Cada uno puede tener su propia página en la web (opción «Crear una página para este lugar»), cuyo contenido son sus secciones. Los eventos y algunas secciones se refieren a un templo por su id.
         type: object
         list: { collapsible: { collapsed: true, summary: "{fields.name}" }, sort: "alphabetical", modal: false }
         fields:
@@ -736,12 +775,15 @@ content:
     fields:
       - name: list
         label: Lista de páginas
+        help: |-
+          Páginas de la web. Cada página tiene título, imagen y una lista de secciones con su contenido. Las páginas de cada templo y de cada tipo de evento se generan desde sus propias pestañas (Datos, Tipos de Evento), no se añaden aquí.
         component: page
         list: { collapsible: { collapsed: true, summary: "{fields.title}" }, sort: "alphabetical", modal: false  }
       #- { name: pageperlocatoin, label: Crear una página para cada templo, type: boolean, default: true }  
       #- { name: pageperevent, label: "Crear una página para cada evento de tipo (OBSOLETO: usa «Página en la web» en cada tipo de evento)", type: select, options: { source: "event-types.list", multiple: true, label: "{title}" }  }  
       - name: nav
         label: Menu de navegación
+        help: "Menú de navegación de la web: cada elemento es un submenú con un título y una lista de enlaces a páginas, que se eligen de Lista de páginas."
         type: object
         list: { collapsible: { collapsed: true, summary: "{fields.title}" } }
         fields:
