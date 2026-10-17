@@ -32,6 +32,32 @@ describe('constants', () => {
   });
 });
 
+describe('help text (pages.yml `help` -> JSON Schema description)', () => {
+  const tab = (fields, components = {}) => ({ components, content: [{ name: 't', type: 'tab', fields }] });
+
+  it('is appended to description and to the type\'s own note, never replacing them', async () => {
+    const s = await pagesYmlToJsonSchema(tab([
+      { name: 'a', type: 'rich-text', description: 'short note', help: '  Long how-to.\nSecond line.  ' },
+      { name: 'b', type: 'string', help: 'only help' },
+    ]));
+    const { a, b } = s.properties.t.properties;
+    expect(a.description).toContain('Markdown'); // rich-text's own note survives
+    expect(a.description).toContain('short note');
+    expect(a.description).toContain('Long how-to.\nSecond line.'); // trimmed, inner newline kept
+    expect(b.description).toBe('only help');
+  });
+
+  it('is inherited from a component and can be overridden by the field', async () => {
+    const s = await pagesYmlToJsonSchema(tab(
+      [{ name: 'x', component: 'c' }, { name: 'y', component: 'c', help: 'own' }],
+      { c: { type: 'string', help: 'from component' } },
+    ));
+    const { x, y } = s.properties.t.properties;
+    expect(x.description).toBe('from component');
+    expect(y.description).toBe('own');
+  });
+});
+
 describe.skipIf(!Validator)('pages.yml -> JSON Schema (validation)', () => {
   it('accepts an editor-default config', async () => {
     const { cfg } = await defaultConfig();
