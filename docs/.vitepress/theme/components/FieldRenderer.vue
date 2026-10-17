@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import FieldsGroup from './FieldsGroup.vue';
 import ScalarInput from './ScalarInput.vue';
 import PeIcon from './PeIcon.vue';
+import HelpTip from './HelpTip.vue';
 import CalendarEditor from './CalendarEditor.vue';
 import PlacesAutodiscover from './PlacesAutodiscover.vue';
 import Preview from './Preview.vue';
@@ -157,7 +158,7 @@ const editingTitle = computed(() => {
   <div v-if="field.hidden"></div>
   <!-- BLOCK: polymorphic list of named block variants -->
   <div v-else-if="isBlock" class="field block-field" :data-field-name="field.name">
-    <label class="field-label">{{ field.label || field.name }}</label>
+    <label class="field-label"><span class="label-text">{{ field.label || field.name }}<HelpTip :text="field.help" /></span></label>
     <div class="block-list">
       <div v-for="(item, i) in scalarValue" :key="i" class="block-item" @click="listConfig?.modal ? editInModal(item, i) : null">
         <details v-if="!listConfig?.modal" :open="isOpen(i)" @toggle="toggleOpen(i)">
@@ -195,7 +196,7 @@ const editingTitle = computed(() => {
 
   <!-- OBJECT LIST -->
   <div v-else-if="isObjectList" class="field object-list-field" :data-field-name="field.name">
-    <label class="field-label">{{ field.label || field.name }}</label>
+    <label class="field-label"><span class="label-text">{{ field.label || field.name }}<HelpTip :text="field.help" /></span></label>
     <div class="object-list">
       <div v-for="(item, i) in sortedItems" :key="i" class="object-item" @click="listConfig?.modal ? editInModal(item, i) : null">
         <details v-if="!listConfig?.modal" :open="isOpen(i)" @toggle="toggleOpen(i)">
@@ -224,13 +225,13 @@ const editingTitle = computed(() => {
 
   <!-- SINGLE OBJECT -->
   <fieldset v-else-if="isObject" class="field object-field" :data-field-name="field.name">
-    <legend>{{ field.label || field.name }}</legend>
+    <legend>{{ field.label || field.name }}<HelpTip :text="field.help" /></legend>
     <FieldsGroup :fields="field.fields" :container="scalarValue" />
   </fieldset>
 
   <!-- SCALAR LIST (strings/numbers/dates repeated) -->
   <div v-else-if="isScalarList" class="field scalar-list-field" :data-field-name="field.name">
-    <label class="field-label">{{ field.label || field.name }}</label>
+    <label class="field-label"><span class="label-text">{{ field.label || field.name }}<HelpTip :text="field.help" /></span></label>
     <div class="scalar-list">
       <div v-for="(_, i) in scalarValue" :key="i" class="scalar-list-row">
         <ScalarInput :field="{ ...field, list: false }" v-model="scalarValue[i]" />
@@ -265,7 +266,7 @@ const editingTitle = computed(() => {
   <!-- LEAF -->
   <div v-else class="field leaf-field" :data-field-name="field.name">
     <label class="field-label">
-      <span class="label-text">{{ field.label || field.name }}</span>
+      <span class="label-text">{{ field.label || field.name }}<HelpTip :text="field.help" /></span>
       <span class="label-actions">
         <span v-if="field.options?.source" class="source-link" @click="navigateToSource(field.options.source)">
           Editar opciones
@@ -308,6 +309,12 @@ const editingTitle = computed(() => {
   font-size: 13px;
   font-weight: 600;
   color: var(--pe-text);
+}
+/* label text + its (i) help badge stay together on the left */
+.label-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 .label-actions {
   display: inline-flex;

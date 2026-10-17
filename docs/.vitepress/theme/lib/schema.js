@@ -64,7 +64,11 @@ export function resolveFieldDef(raw, components) {
     if (comp) base = resolveFieldDef({ ...comp }, components);
   }
   const out = { ...base };
-  for (const k of ['label', 'type', 'list', 'hidden', 'default', 'min', 'max', 'step', 'marks', 'customValueHint', 'description']) {
+  // `description` is a short note aimed at AI clients (JSON Schema only);
+  // `help` is a longer how-to for the field: shown to humans as an (i) tooltip
+  // (components/HelpTip.vue) AND exported into the JSON Schema description
+  // (lib/jsonschema.js), so the MCP/AI side reads the very same text.
+  for (const k of ['label', 'type', 'list', 'hidden', 'default', 'min', 'max', 'step', 'marks', 'customValueHint', 'description', 'help']) {
     if (raw[k] !== undefined) out[k] = raw[k];
   }
   // Options are MERGED, not replaced: a field that uses `component:` can add its

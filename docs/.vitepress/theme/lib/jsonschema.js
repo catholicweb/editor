@@ -17,10 +17,17 @@ const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const optValues = (field) =>
   (field.options?.values || []).map((v) => (isObj(v) ? v : { value: v, label: String(v) }));
 
+// The JSON Schema `description` is what MCP clients read. It is assembled from,
+// in order: a note the field type itself sets (e.g. "Markdown text…" for
+// rich-text), the field's short `description`, its long-form `help` (the same
+// text the editor shows as an (i) tooltip) and `customValueHint`. Appended, not
+// replaced, so setting `help` never hides the type's own note.
 function annotate(schema, field) {
   if (field.label) schema.title = field.label;
-  const desc = [field.description, field.customValueHint].filter(Boolean).join(' ');
-  if (desc) schema.description = desc;
+  const parts = [schema.description, field.description, field.help, field.customValueHint]
+    .map((p) => (typeof p === 'string' ? p.trim() : p))
+    .filter(Boolean);
+  if (parts.length) schema.description = parts.join(' ');
   if (field.default !== undefined) schema.default = field.default;
   if (field.hidden) schema['x-hidden'] = true;
   return schema;
