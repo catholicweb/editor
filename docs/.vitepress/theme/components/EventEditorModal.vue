@@ -80,7 +80,7 @@ const eventFieldDefs = computed(() => {
     { name: 'type', label: 'Tipo de evento', type: 'select', options: { source: props.eventTypesSource } },
     ...eventFields
       .filter((f) => !hidden.has(f.name))
-      //.filter((f) => f.name !== 'celebrants' || showCeleb)
+      //.filter((f) => f.name !== 'celebrants' || showCelebrants)
       .map(fieldDefFor),
   ];
   return r
@@ -264,12 +264,6 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
           <h2>{{ event.title || 'Nuevo evento' }}</h2>
         </div>
         <div class="header-actions">
-          <button class="header-action" @click="emit('duplicate')" title="Duplicar evento" aria-label="Duplicar evento">
-            <PeIcon name="document-duplicate" :size="16" />
-          </button>
-          <button class="header-action del" @click="emit('remove')" title="Borrar evento" aria-label="Borrar evento">
-            <PeIcon name="trash" :size="16" />
-          </button>
           <button class="close" @click="emit('close')" title="Cerrar">✕</button>
         </div>
       </header>
@@ -339,6 +333,14 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
           </div>
         </section>
       </div>
+
+      <footer class="modal-footer">
+        <div class="footer-inner">
+          <button class="btn" @click="emit('duplicate')">Duplicar</button>
+          <button class="btn btn-danger" @click="emit('remove')">Borrar</button>
+          <button class="btn btn-primary" @click="emit('close')">Cerrar</button>
+        </div>
+      </footer>
     </div>
   </div>
 </template>
@@ -449,21 +451,6 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
   border-radius: var(--pe-radius-sm);
 }
 .close:hover { background: var(--pe-hover); color: var(--pe-text); }
-.header-action {
-  border: none;
-  background: transparent;
-  color: var(--pe-muted);
-  cursor: pointer;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--pe-radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background var(--pe-transition), color var(--pe-transition);
-}
-.header-action:hover { background: var(--pe-hover); color: var(--pe-text); }
-.header-action.del:hover { background: var(--pe-danger-soft); color: var(--pe-danger); }
 
 .modal-body {
   overflow-y: auto;
@@ -479,6 +466,48 @@ watch(() => props.event, () => { deletePastExceptions(); }, { immediate: true })
   min-height: 0;
   padding-bottom: 250px;
 }
+
+/* ---- footer actions ---- */
+.modal-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--pe-border);
+  background: var(--pe-panel);
+  padding: 12px 18px;
+  z-index: 3;
+}
+.footer-inner {
+  max-width: 880px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.btn {
+  padding: 8px 14px;
+  border-radius: var(--pe-radius-sm);
+  border: 1px solid var(--pe-border);
+  background: var(--pe-panel);
+  color: var(--pe-text);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+.btn:hover { background: var(--pe-hover); }
+.btn-danger {
+  border-color: var(--pe-danger-soft);
+  background: var(--pe-danger-soft);
+  color: var(--pe-danger);
+}
+.btn-danger:hover { background: var(--pe-danger); color: #fff; }
+.btn-primary {
+  margin-left: auto;
+  border-color: var(--pe-accent);
+  background: var(--pe-accent);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--pe-accent-hover); }
+
 .event-section {
   display: flex;
   flex-direction: column;

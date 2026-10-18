@@ -8,6 +8,8 @@ import {
   mergeTypeDefaults,
   recurrenceLabel,
   resolveEventStyle,
+  toArray,
+  parseDateToISO,
 } from '../lib/calendar.js';
 import { state } from '../lib/store.js';
 import PeIcon from './PeIcon.vue';
@@ -205,34 +207,63 @@ function typeStyle(id) {
   return t || {};
 }
 
-// One row of the by-type list.
+// ---- by-type list formatting ----------------------------------------------
+// Dates are stored as ISO (or legacy dd/mm/yyyy); show them as dd/mm/yyyy.
+function fmtDate(v) {
+  return toArray(v)
+    .map(parseDateToISO)
+    .filter(Boolean)
+    .map((iso) => {
+      const p = String(iso).split('-');
+      return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : String(iso);
+    })
+    .join(', ');
+}
+function fmtTimes(list) {
+  return toArray(list).map((t) => String(t).replace('.', ':')).join(', ');
+}
+// The times of an event or type-defaults object (`times`, or legacy `time`).
+function timesOf(src) {
+  const t = toArray(src?.times);
+  return t.length ? t : toArray(src?.time);
+}
+// Group-header summary of the type's DEFAULTS: repeat rule, date and time,
+// only the ones the type actually sets.
+function defaultsLabel(type) {
+  const d = type?.defaults;
+  if (!d || typeof d !== 'object') return '';
+  return [recurrenceLabel(d.rrule), fmtDate(d.date), fmtTimes(timesOf(d))].filter(Boolean).join(' · ');
+}
+
+// One row of the by-type list. The row only DISPLAYS what the event itself
+// sets: values inherited from the type's defaults are already shown in the
+// group header, so they are not repeated here. The effective (merged) event is
+// still used for ordering, the style and the celebrant warning.
 function rowFor(ev, i) {
   const eff = mergeTypeDefaults(ev, props.eventTypes || []);
   const style = resolveEventStyle(eff, props.celebrants || [], props.eventTypes || []);
-  let timeStr = '—';
-  const times = eff.times || (eff.time ? [eff.time] : []);
-  if (Array.isArray(times) && times.length) {
-    let t = String(times[0]);
-    if (t.includes('.')) t = t.replace('.', ':');
-    timeStr = t;
-  } else if (times != null) {
-    let t = String(times);
-    if (t.includes('.')) t = t.replace('.', ':');
-    timeStr = t;
-  } else if (eff.date) {
-    timeStr = eff.date + (eff.time ? ' ' + String(eff.time).replace('.', ':') : '');
-  }
+
+  const recur = recurrenceLabel(ev.rrule);
+  const when = recur || fmtDate(ev.date); // repeat rule, or date when it has none
+  const timeStr = fmtTimes(timesOf(ev).slice(0, 1));
+
+  const ownTitle = String(ev.title ?? '').trim();
+  // Only fall back to a placeholder when neither the event nor its type has a title.
+  const title = ownTitle || (String(eff.title ?? '').trim() ? '' : 'Sin título');
+
+  const effTime = fmtTimes(timesOf(eff).slice(0, 1));
   const warn = (!eff.celebrants || !eff.celebrants.length) ? 'purple' : null;
   return {
     ev,
     index: i,
+    when,
     timeStr,
-    title: eff.title || 'Sin título',
-    location: eff.location || ev.location,
-    recur: eff.rrule ? recurrenceLabel(eff.rrule) : null,
+    title,
+    location: ev.location,
     style,
     warn,
     specific: !eff.rrule,
+    sortKey: effTime || '\uffff', // events without any time go last
   };
 }
 
@@ -244,10 +275,11 @@ const eventsByType = computed(() =>
     label: g.label,
     type: g.type,
     icon: g.type?.icon || '',
+    defaults: defaultsLabel(g.type),
     addType: g.type ? g.type.id : null,
     events: g.indexes
       .map((i) => rowFor(props.events[i], i))
-      .sort((a, b) => a.timeStr.localeCompare(b.timeStr)),
+      .sort((a, b) => a.sortKey.localeCompare(b.sortKey)),
   }))
 );
 
@@ -295,22 +327,29 @@ function onAlldayClick(dayIndex, occs) {
 <template>
   <div class="week-grid">
 
-    <!-- Week toolbar -->
+    <!-- Toolbar: view mode (+ collapse-all or week navigation) on the left, add buttons on the right -->
     <div class="week-toolbar">
-      <div class="nav">
-        <button @click="prev">‹</button>
-        <button class="today" @click="goToday">Hoy</button>
-        <button @click="next">›</button>
+      <div class="toolbar-group">
+        <div class="nav">
+          <button :class="{ active: viewMode === 'byType' }" @click="viewMode = 'byType'">Lista</button>
+          <button :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">Día</button>
+          <!--<button :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">Tabla</button>-->
+        </div>
+        <div v-if="viewMode === 'byType' && eventsByType.length > 1" class="nav">
+          <button @click="toggleAll">{{ allCollapsed ? 'Expandir todo' : 'Colapsar todo' }}</button>
+        </div>
+        <!-- Week navigation only makes sense in the day-by-day view -->
+        <div v-if="viewMode === 'list'" class="nav">
+          <button @click="prev">‹</button>
+          <button class="today" @click="goToday">Hoy</button>
+          <button @click="next">›</button>
+        </div>
+        <!--<h3 class="range">{{ formatWeekRange(weekStart) }}</h3>-->
       </div>
-      <!--<h3 class="range">{{ formatWeekRange(weekStart) }}</h3>-->
-      
-      <div class="nav">
-        <button :class="{ active: viewMode === 'byType' }" @click="viewMode = 'byType'">Lista</button>
-        <button :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">Día</button>
-        <!--<button :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">Tabla</button>-->
-        
+      <div class="toolbar-actions">
+        <button v-if="viewMode === 'byType' && typesEditable" class="add-type" @click="emit('add-type')">+ Tipo de evento</button>
+        <button class="add-event" @click="emit('add-event', {})">+ Evento</button>
       </div>
-      <button class="add-event" @click="emit('add-event', {})">+ Evento</button>
     </div>
 
     <p v-if="!props.events?.length && viewMode !== 'byType'" class="empty-week">
@@ -338,9 +377,6 @@ function onAlldayClick(dayIndex, occs) {
 
     <!-- Event list grouped by type: collapsible groups, inline type editing -->
     <div v-else-if="viewMode === 'byType'" class="event-list by-type">
-      <div v-if="eventsByType.length > 1" class="list-tools">
-        <button class="link-btn" @click="toggleAll">{{ allCollapsed ? 'Expandir todo' : 'Colapsar todo' }}</button>
-      </div>
       <p v-if="!eventsByType.length" class="empty-week">
         No hay eventos ni tipos de evento. Usa <strong>+ Evento</strong> o <strong>+ Tipo de evento</strong> para añadir.
       </p>
@@ -350,6 +386,7 @@ function onAlldayClick(dayIndex, occs) {
             <span class="chev" :class="{ open: !isCollapsed(group.key) }">▸</span>
             <!--<span v-if="group.icon" class="type-icon"><PeIcon :name="group.icon" :size="16" /></span>-->
             <span class="type-name">{{ group.label }}</span>
+            <span v-if="group.defaults" class="type-defaults">{{ group.defaults }}</span>
             <span class="type-count">{{ group.events.length }}</span>
           </button>
           <span class="type-actions">
@@ -364,18 +401,17 @@ function onAlldayClick(dayIndex, occs) {
         <template v-if="!isCollapsed(group.key)">
           <p v-if="!group.events.length" class="type-empty">Sin eventos de este tipo.</p>
           <div v-for="row in group.events" :key="row.ev.id || row.index" class="event-row" :class="{ specific: row.specific }" @click="emit('edit-event', row.index)">
+            <span class="event-when">{{ row.when }}</span>
             <span class="event-time">{{ row.timeStr }}</span>
             <!--<span class="event-icon" v-if="row.style.icon" :class="[row.warn ? `ev ev-small warn-${row.warn}` : null]" :style="{ color: row.style.color || '#9aa0a6' }">
               <PeIcon :name="row.style.icon" :size="16" />
             </span>-->
-            <span class="event-type">{{ row.title }}</span>
+            <span v-if="row.title" class="event-type">{{ row.title }}</span>
             <span class="event-location" v-if="row.location?.length">{{ formatLocation(row.location) }}</span>
-            <span class="event-rec" v-if="row.recur">{{ row.recur }}</span>
             <span v-if="row.style.celebrantName" class="event-celebrant" :style="{ background: row.style.color }" :title="row.style.celebrantName"></span>
           </div>
         </template>
       </div>
-      <button v-if="typesEditable" class="add-type" @click="emit('add-type')">+ Tipo de evento</button>
     </div>
 
     <!-- Event grid -->
@@ -469,6 +505,18 @@ function onAlldayClick(dayIndex, occs) {
   gap: 8px;
   flex-wrap: wrap;
 }
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
 .nav {
   display: flex;
   gap: 4px;
@@ -501,6 +549,17 @@ function onAlldayClick(dayIndex, occs) {
   font-size: 12px;
 }
 .add-event:hover { background: var(--pe-accent-hover); }
+.add-type {
+  padding: 6px 12px;
+  border-radius: var(--pe-radius);
+  border: 1px solid var(--pe-accent);
+  background: transparent;
+  color: var(--pe-accent);
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 12px;
+}
+.add-type:hover { background: var(--pe-accent-soft); }
 
 .grid-scroll {
   overflow: auto;
@@ -695,6 +754,9 @@ function onAlldayClick(dayIndex, occs) {
   font-size: 12px;
   transition: background var(--pe-transition);
 }
+/* In the by-type list a row may show little or nothing (everything inherited
+   from the type); keep it tall enough to stay easy to click. */
+.by-type .event-row { min-height: 30px; box-sizing: border-box; }
 /* Specific (non-recurring) items stand out with an accent edge; recurring items
    keep full contrast (opacity was dropped so all text, incl. the recurrence
    chip, stays readable). No full-row tint, so the hover background and the
@@ -708,6 +770,14 @@ function onAlldayClick(dayIndex, occs) {
 .event-row:hover {
   background: var(--pe-hover);
   cursor: pointer;
+}
+.event-when {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pe-accent);
+  min-width: 64px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .event-time {
   font-family: 'SF Mono', 'Fira Code', monospace;
@@ -800,6 +870,14 @@ function onAlldayClick(dayIndex, occs) {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* the type's default repeat / date / time, next to its name */
+.type-defaults {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--pe-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 .type-count {
   font-size: 10px;
   font-weight: 600;
@@ -821,27 +899,6 @@ function onAlldayClick(dayIndex, occs) {
 }
 .type-action:hover { background: var(--pe-hover); color: var(--pe-text); }
 .type-empty { margin: 2px 8px; font-size: 12px; color: var(--pe-muted); }
-.list-tools { display: flex; justify-content: flex-end; }
-.link-btn {
-  border: none;
-  background: transparent;
-  color: var(--pe-accent);
-  cursor: pointer;
-  font-size: 12px;
-  padding: 0;
-}
-.add-type {
-  align-self: flex-start;
-  padding: 6px 12px;
-  border: 1px dashed var(--pe-border);
-  background: transparent;
-  color: var(--pe-accent);
-  border-radius: var(--pe-radius);
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 12px;
-}
-.add-type:hover { background: var(--pe-hover); }
 
 @media (min-width: 640px) {
   .grid {

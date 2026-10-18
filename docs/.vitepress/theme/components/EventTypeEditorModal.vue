@@ -35,15 +35,6 @@ function remove() {
           <h2>{{ type.label?.trim() || 'Nuevo tipo de evento' }}</h2>
         </div>
         <div class="header-actions">
-          <button
-            class="header-action del"
-            :disabled="!canDelete"
-            :title="canDelete ? 'Borrar tipo' : `No se puede borrar: ${usedBy} evento(s) usan este tipo`"
-            aria-label="Borrar tipo"
-            @click="remove"
-          >
-            <PeIcon name="trash" :size="16" />
-          </button>
           <button class="close" @click="emit('close')" title="Cerrar">✕</button>
         </div>
       </header>
@@ -54,6 +45,20 @@ function remove() {
           {{ usedBy }} evento(s) usan este tipo. Para borrarlo, cambia o elimina primero esos eventos.
         </p>
       </div>
+
+      <footer class="modal-footer">
+        <div class="footer-inner">
+          <button
+            class="btn btn-danger"
+            :disabled="!canDelete"
+            :title="canDelete ? 'Borrar tipo' : `No se puede borrar: ${usedBy} evento(s) usan este tipo`"
+            @click="remove"
+          >
+            Borrar
+          </button>
+          <button class="btn btn-primary" @click="emit('close')">Cerrar</button>
+        </div>
+      </footer>
     </div>
   </div>
 </template>
@@ -116,17 +121,6 @@ function remove() {
   white-space: nowrap;
 }
 .header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.header-action {
-  border: none;
-  background: transparent;
-  color: var(--pe-muted);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: var(--pe-radius-sm);
-}
-.header-action:hover:not(:disabled) { background: var(--pe-hover); }
-.header-action.del:hover:not(:disabled) { color: var(--pe-danger); }
-.header-action:disabled { opacity: 0.35; cursor: not-allowed; }
 .close {
   border: none;
   background: transparent;
@@ -145,4 +139,44 @@ function remove() {
   max-width: 760px;
 }
 .in-use { margin: 0; font-size: 12px; color: var(--pe-muted); }
+
+/* ---- footer actions ---- */
+.modal-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--pe-border);
+  background: var(--pe-panel);
+  padding: 12px 18px;
+}
+.footer-inner {
+  max-width: 760px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.btn {
+  padding: 8px 14px;
+  border-radius: var(--pe-radius-sm);
+  border: 1px solid var(--pe-border);
+  background: var(--pe-panel);
+  color: var(--pe-text);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) { background: var(--pe-hover); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-danger {
+  border-color: var(--pe-danger-soft);
+  background: var(--pe-danger-soft);
+  color: var(--pe-danger);
+}
+.btn-danger:hover:not(:disabled) { background: var(--pe-danger); color: #fff; }
+.btn-primary {
+  margin-left: auto;
+  border-color: var(--pe-accent);
+  background: var(--pe-accent);
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) { background: var(--pe-accent-hover); }
 </style>
