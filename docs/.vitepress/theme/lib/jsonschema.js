@@ -130,7 +130,6 @@ function calendarSchema(field, eventSchema) {
     type: 'object',
     properties: {
       [o.keyList || 'list']: { type: 'array', items: eventSchema },
-      [o.keyCelebrants || 'celebrants']: { type: 'array', items: { type: 'string' } },
       [o.keyDefaults || 'defaults']: { type: 'object', description: 'Per-event-type defaults, keyed by event type id.' },
     },
   };
@@ -155,19 +154,13 @@ function fieldSchema(field, path) {
 export async function pagesYmlToJsonSchema(rawPages, { title = 'parroquia config.json' } = {}) {
   const schema = await normalizeSchema(rawPages);
 
-  // Events: fields come from pages.yml; id/type/except/celebrants are added by
-  // the calendar editor (lib/calendar.js newEvent) and left open for the rest.
-  const exceptionFields = (rawPages.components?.exception?.fields || []).map((f) => f.name);
+  // Events: fields come from pages.yml; id/type are added by the calendar
+  // editor (lib/calendar.js newEvent) and the schema is left open (non-strict)
+  // for any other key an older event may still carry.
   EVENT_SCHEMA = objectSchema(schema.eventFields, 'event', { strict: false });
   Object.assign(EVENT_SCHEMA.properties, {
     [ID_KEY]: { type: 'string', minLength: 1 },
     type: { type: 'string', description: 'Id of an item in event-types.list.', 'x-source': 'event-types.list' },
-    celebrants: { type: 'array', items: { type: 'string' } },
-    except: {
-      type: 'array',
-      description: 'Per-date overrides of a repeating event.',
-      items: { type: 'object', properties: { date: { type: 'string' }, ...Object.fromEntries(exceptionFields.map((n) => [n, {}])) } },
-    },
   });
   EVENT_SCHEMA.required = [ID_KEY];
 
