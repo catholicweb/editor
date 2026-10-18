@@ -13,6 +13,14 @@ const options = props.field.options || {};
 const multiple = !!options.multiple;
 const creatable = !!options.creatable;
 const maxChips = options.max || 0; // 0 = unlimited
+// `display: chips` (pages.yml) shows every option as a tappable chip instead of
+// the tag-input + dropdown. Works for single and multiple selects. A value that
+// is stored but not among the options (legacy / creatable) is still shown, as
+// a selected chip, so it can be seen and removed.
+const asChips = options.display === 'chips';
+// `exclusive: [values]` — selecting one of these clears every other value, and
+// selecting any other value clears them (e.g. "never" repeats vs. weekdays).
+const exclusive = new Set(options.exclusive || []);
 
 // Reactively compute options from state.config if a source path is set
 const normalizedOptions = computed(() => {
@@ -63,6 +71,15 @@ const selectedList = computed(() => {
   return [props.modelValue];
 });
 
+// The options plus any selected value that is not among them (chips display).
+const chipChoices = computed(() => {
+  const known = new Set(normalizedOptions.value.map((o) => o.value));
+  const extra = selectedList.value
+    .filter((v) => !known.has(v))
+    .map((v) => ({ value: v, label: labelFor(v) }));
+  return [...normalizedOptions.value, ...extra];
+});
+
 // Whether adding is blocked (for multiple with max, or single which is always max 1)
 const atMax = computed(() => {
   if (multiple && maxChips) {
@@ -83,13 +100,18 @@ function toggleValue(val) {
   }
   const current = selectedList.value.slice();
   const idx = current.indexOf(val);
-  if (idx === -1) {
-    if (atMax.value) return;
-    current.push(val);
-  } else {
+  if (idx !== -1) {
     current.splice(idx, 1);
+    emit('update:modelValue', current);
+    return;
   }
-  emit('update:modelValue', current);
+  // An exclusive value replaces everything else.
+  if (exclusive.has(val)) {
+    emit('update:modelValue', [val]);
+    return;
+  }
+  if (atMax.value) return;
+  emit('update:modelValue', [...current.filter((v) => !exclusive.has(v)), val]);
 }
 function removeValue(val) {
   if (!multiple) {
@@ -206,8 +228,24 @@ function onSingleChange(e) {
 
 <template>
   <div class="select-field">
-    <!-- always: tag input + dropdown (works for both single & multiple) -->
-    <div class="tags" :class="{ open }">
+    <!-- display: chips — every option visible, one tap to toggle -->
+    <div v-if="asChips" class="chips">
+      <div class="chips-row" role="group" :aria-label="field.label">
+        <button
+          v-for="o in chipChoices"
+          :key="o.value"
+          type="button"
+          class="choice"
+          :class="{ on: isSelected(o.value) }"
+          :aria-pressed="isSelected(o.value)"
+          @click="toggleValue(o.value)"
+        >{{ o.label }}</button>
+      </div>
+      <p v-if="atMax && multiple" class="max-hint">Máximo {{ maxChips }} valor{{ maxChips > 1 ? 'es' : '' }}</p>
+    </div>
+
+    <!-- default: tag input + dropdown (works for both single & multiple) -->
+    <div v-else class="tags" :class="{ open }">
       <div class="tags-box" @click="inputEl?.focus()">
         <span v-for="v in selectedList" :key="v" class="chip">
           {{ labelFor(v) }}
@@ -276,6 +314,38 @@ select:focus-visible,
 input:focus-visible {
   outline: none;
   border-color: var(--pe-accent);
+  box-shadow: var(--pe-ring);
+}
+
+/* ---- chips display (options.display: chips) ---- */
+.chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.choice {
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.2;
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--pe-border);
+  background: var(--pe-input-bg);
+  color: var(--pe-text);
+  cursor: pointer;
+  transition: background var(--pe-transition), border-color var(--pe-transition), color var(--pe-transition);
+}
+.choice:hover {
+  background: var(--pe-hover);
+}
+.choice.on {
+  background: var(--pe-accent);
+  border-color: var(--pe-accent);
+  color: #fff;
+}
+.choice:focus-visible {
+  outline: none;
   box-shadow: var(--pe-ring);
 }
 

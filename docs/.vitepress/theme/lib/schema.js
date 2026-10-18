@@ -206,14 +206,13 @@ export function defaultForField(field) {
   // proper empty shape so opening a new file doesn't start null. It is NOT
   // treated as an `object`/`block` by applyDefaults (no `fields`), so the
   // generic recursion leaves its nested structure to the calendar editor.
-  // The sub-keys are driven by the field's options (keyList/keyCelebrants/
-  // keyDefaults) so the schema author controls where data lives; the live
-  // sub-keys are `list`, `celebrants`, `defaults`.
+  // The sub-keys are driven by the field's options (keyList/keyDefaults) so
+  // the schema author controls where data lives; the live sub-keys are `list`
+  // and `defaults`.
   if (field.type === 'calendario') {
     const o = field.options || {};
     return {
       [o.keyList || 'list']: [],
-      [o.keyCelebrants || 'celebrants']: [],
       [o.keyDefaults || 'defaults']: {},
     };
   }

@@ -5,22 +5,11 @@
 // pages.yml's `rrule` component (weekday tokens, yearly/monthly/biweekly,
 // week1..week5, and 'never').
 
-// Predefined color array for celebrants who don't have a color defined.
-// Colors are visually distinguishable and assigned in order to celebrants.
-export const CELEBRANT_COLORS = [
-  '#3498db', // Blue
-  '#e74c3c', // Red
-  '#2ecc71', // Green
-  '#f39c12', // Orange
-  '#9b59b6', // Purple
-  '#1abc9c', // Teal
-  '#e67e22', // Dark Orange
-  '#00bcd4', // Cyan
-  '#ff5722', // Deep Orange
-  '#607d8b', // Blue Grey
-];
+const WEEKDAY_TOKENS = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'];
+// JS getDay(): 0=Sun..6=Sat -> token
+const DAY_TO_TOKEN = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'];
 
-
+const BIWEEKLY_EPOCH = new Date(2020, 0, 6); // a Monday, used when a group has no anchor date
 
 // ---- Dynamic event-type helpers -------------------------------------------
 
@@ -28,15 +17,11 @@ export function getEventType(typeName, eventTypes) {
   return eventTypes?.find((t) => t.id === typeName) || null;
 }
 
+// Display config of an event type (just its icon). Unknown types fall back to
+// the 'custom' type's icon, then to a plain calendar.
 export function getTypeConfig(type, eventTypes) {
-  const et = getEventType(type, eventTypes);
-  if (et) {
-    const duration = (et.fields && et.fields.duration != null) ? et.fields.duration : (et.duration || DEFAULT_DURATION);
-    return { icon: et.icon, duration };
-  }
-  // Fallback: use 'custom' type defaults
-  const customType = eventTypes?.find(t => t.id === 'custom');
-  return { icon: customType?.icon || 'calendar', duration: customType?.duration || DEFAULT_DURATION };
+  const et = getEventType(type, eventTypes) || eventTypes?.find((t) => t.id === 'custom');
+  return { icon: et?.icon || 'calendar' };
 }
 
 export function getTypeFieldDefaults(type, eventTypes) {
@@ -64,16 +49,11 @@ export function mergeTypeDefaults(event, eventTypes) {
   return eff;
 }
 
-export const DEFAULT_DURATION = 45;
-
 // The ordered event-field set, used to render the event editor. `component`
 // references a reusable component name in pages.yml (resolved at render time
-// against state.schema.components).
-// EVENT_FIELDS removed - now defined in pages.yml schema
-// Use getEventFields() to get the event field definitions from schema
-
+// against state.schema.components). The real definition lives in pages.yml
+// (`components.event`); this is only the fallback.
 export function getEventFields(eventFields) {
-  // Return event fields from schema, or fallback to default fields
   if (eventFields && eventFields.length > 0) {
     return eventFields;
   }
@@ -86,38 +66,17 @@ export function getEventFields(eventFields) {
     { name: 'date', label: 'Fecha', type: 'date' },
     { name: 'times', label: 'Hora', component: 'times' },
     { name: 'rrule', label: 'Se repite', component: 'rrule' },
-    { name: 'duration', label: 'Duración (min)', type: 'number', default: 45 },
-    { name: 'celebrants', label: 'Celebrantes', type: 'celebrants' },
   ];
 }
 
-// A concrete occurrence is identified by (date, time, place). Exceptions
-// target one such occurrence (picked from an expanded list of the next 25),
-// and override its place/time/celebrant + a "takes place" flag (false =>
-// cancelled). `pick` comes from expandUpcomingOccurrences().
-export function newException(pick = {}) {
-  return {
-    date: pick.date || '',
-    time: pick.time ?? '',
-    place: pick.place ?? '',
-    takesPlace: true,
-    newTime: '',
-    newPlace: '',
-    celebrants: [],
-  };
-}
-
-// A group "repeats" when it carries any rrule token. Exceptions only apply
-// to repeating events; actos only apply to non-repeating ones.
+// A group "repeats" when it carries any rrule token.
 export function hasRepetition(group) {
   return toArray(group?.rrule).length > 0;
 }
 
 // Whether an rrule denotes a frequently-recurring event (weekly / monthly /
-// biweekly / nth-week-of-month / weekday tokens). These are the "routine"
-// events dimmed on the week grid so what's SPECIFIC to a week (one-off dates,
-// yearly feasts, exceptions) stands out. Yearly recurrences are NOT frequent
-// (they only appear once a year) and are shown normally.
+// biweekly / nth-week-of-month / weekday tokens). Yearly recurrences are NOT
+// frequent (they only appear once a year) and are shown normally.
 export function isFrequentRecurrence(rrule) {
   const tokens = normalizeRRule(rrule);
   if (!tokens.length) return false;
@@ -129,86 +88,6 @@ export function isFrequentRecurrence(rrule) {
       /^week[1-5]$/.test(t)
   );
 }
-
-// Build { specific: Map<date|time|place, ex>, cancelledDates: Set<iso> } from
-// an `except` array. Accepts legacy bare date strings (=> cancel the whole
-// day) and rich objects ({date, time, place, takesPlace, newTime, newPlace,
-// celebrants}) targeting a single occurrence.
-export function buildExceptMap(exceptArr) {
-  const specific = new Map();
-  const cancelledDates = new Set();
-  for (const ex of exceptArr || []) {
-    if (ex == null) continue;
-    if (typeof ex === 'string') {
-      cancelledDates.add(parseDateToISO(ex));
-      continue;
-    }
-    if (!ex.date) continue;
-    const iso = parseDateToISO(ex.date);
-    if (ex.time !== undefined) {
-      // concrete occurrence (from the picker): keyed by date|time|place
-      specific.set(`${iso}|${ex.time ?? ''}|${ex.place ?? ''}`, ex);
-    } else if (ex.takesPlace === false || ex.mode === 'cancelled') {
-      // legacy date-only cancellation: cancel the whole day
-      cancelledDates.add(iso);
-    }
-  }
-  return { specific, cancelledDates };
-}
-
-export function exceptKey(o) {
-  return `${o.date}|${o.time ?? ''}|${o.place ?? ''}`;
-}
-
-// Monday-first single-letter weekday labels (L M X J V S D).
-export const WEEKDAY_LABELS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
-
-// Human label for a concrete occurrence: "Sáb 19 - Albiasu - 19:30".
-export function occurrenceLabel(o) {
-  const d = isoToDate(o.date);
-  if (!d) return o.date || '(sin fecha)';
-  const wd = WEEKDAY_LABELS[(d.getDay() + 6) % 7];
-  let s = `${wd} ${d.getDate()}`;
-  if (o.place) s += ` - ${o.place}`;
-  if (o.time) s += ` - ${o.time}`;
-  return s;
-}
-
-// Expand the next `limit` concrete occurrences (rrule × times × places)
-// starting from the Monday of `fromISO`. Used to populate the exception
-// picker. Reuses expandRRule week by week so semantics stay consistent.
-export function expandUpcomingOccurrences(group, fromISO, limit = 25) {
-  const rrule = toArray(group?.rrule);
-  if (!rrule.length) return [];
-  const times = toArray(group?.times).map((t) => String(t).replace('.', ':'));
-  if (!times.length) times.push(null);
-  const places = toArray(group?.location);
-  if (!places.length) places.push('');
-  const anchor = parseDateToISO(group?.date);
-  const fromWeek = startOfWeek(isoToDate(fromISO) || new Date());
-
-  const out = [];
-  for (let w = 0; w < 80 && out.length < limit; w++) {
-    const ws = addDays(fromWeek, 7 * w);
-    const dates = expandRRule(rrule, anchor, ws).map(dateToISO).sort();
-    for (const iso of dates) {
-      for (const time of times) {
-        for (const place of places) {
-          if (out.length >= limit) break;
-          out.push({ date: iso, time, place });
-        }
-      }
-    }
-  }
-  return out;
-}
-
-const WEEKDAY_TOKENS = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'];
-// JS getDay(): 0=Sun..6=Sat -> token
-const DAY_TO_TOKEN = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'];
-const TOKEN_TO_DAY = { mo: 1, tu: 2, we: 3, th: 4, fr: 5, sa: 6, su: 0 };
-
-const BIWEEKLY_EPOCH = new Date(2020, 0, 6); // a Monday, used when a group has no anchor date
 
 export function generateId(prefix = '') {
   const rnd = (typeof crypto !== 'undefined' && crypto.randomUUID)
@@ -244,6 +123,33 @@ export function parseDateToISO(s) {
   const parts = s.split('/');
   if (parts.length === 3) return [parts[2], parts[1], parts[0]].join('-');
   return s;
+}
+
+const ISO_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+// Short display form of a date (or list of dates): DD/MM, with the two-digit
+// year appended (DD/MM/YY) only when it is not the current year.
+export function formatShortDate(v, now = new Date()) {
+  return toArray(v)
+    .map(parseDateToISO)
+    .filter(Boolean)
+    .map((iso) => {
+      const m = ISO_RE.exec(String(iso));
+      if (!m) return String(iso);
+      const [, y, mo, d] = m;
+      return Number(y) === now.getFullYear() ? `${d}/${mo}` : `${d}/${mo}/${y.slice(-2)}`;
+    })
+    .join(', ');
+}
+
+// A one-off event is "past" once every one of its dates is before today.
+// Events that repeat (their own rrule or the one inherited from the type —
+// pass the merged event) or have no date are never past.
+export function isPastEvent(event, now = new Date()) {
+  if (hasRepetition(event)) return false;
+  const dates = toArray(event?.date).map(parseDateToISO).filter((s) => ISO_RE.test(s)).sort();
+  if (!dates.length) return false;
+  return dates[dates.length - 1] < dateToISO(now);
 }
 
 export function isoToDate(iso) {
@@ -452,56 +358,14 @@ export function expandRRule(rrule, dateISO, weekStart) {
   return out;
 }
 
-// Resolve a celebrant record by id.
-export function celebrantById(celebrants, id) {
-  return (celebrants || []).find((c) => c.id === id) || null;
-}
-
-// Effective style for a chip: the TYPE's icon + the first celebrant's color
-// (the priest colors the chip; the type only supplies the glyph). If there
-// is no celebrant, color is null (the grid falls back to a neutral grey and
-// raises a red "no celebrant" warning).
-// If the celebrant doesn't have a color defined, use a predefined color array
-// (CELEBRANT_COLORS) in order - first celebrant gets first color, etc.
-// Duration: use event.duration if set, then fall back to type config.
-export function resolveEventStyle(event, celebrants, eventTypes = null) {
-  const cfg = getTypeConfig(event.type, eventTypes);
-  const celebs = toArray(event.celebrants)
-    .map((id) => celebrantById(celebrants, id))
-    .filter(Boolean);
-
-  // Resolve a stable palette color per celebrant WITHOUT mutating the shared
-  // celebrant records (assigning c.color would leak style state onto the
-  // document data). Use the celebrant's own color if set, otherwise the first
-  // palette color not already used by an earlier celebrant this render.
-  const usedColors = new Set();
-  const colors = celebs.map((c, i) => {
-    const color = c.color
-      || CELEBRANT_COLORS.find((clr) => !usedColors.has(clr))
-      || CELEBRANT_COLORS[i % CELEBRANT_COLORS.length];
-    usedColors.add(color);
-    return color;
-  });
-
-  return {
-    icon: cfg.icon,
-    color: colors[0] || CELEBRANT_COLORS[0],
-    celebrantName: celebs[0]?.name || null,
-    celebrants: celebs,
-    duration: event.duration ?? cfg.duration ?? DEFAULT_DURATION,
-  };
-}
-
 // Expand a single flat event to concrete occurrences for the displayed week.
-// The event is self-contained (no actos), but inherits empty fields from its
-// type's defaults via mergeTypeDefaults — so the grid shows inherited
-// location/times/celebrant/rrule without the event storing them.
+// The event is self-contained, but inherits empty fields from its type's
+// defaults via mergeTypeDefaults — so the list shows inherited
+// location/times/rrule without the event storing them.
 export function expandEventToWeek(event, eventIndex, weekStart, defaults = {}, eventTypes = null) {
   const base = mergeTypeDefaults(event, eventTypes);
   const typeDefault = { ...(defaults[event.type] || {}), ...(getTypeFieldDefaults(event.type, eventTypes)) };
   const out = [];
-
-  const { specific, cancelledDates } = buildExceptMap(toArray(base.except));
 
   // explicit dates (one-off) + rrule expansion
   const explicit = toArray(base.date).map(parseDateToISO).filter(Boolean);
@@ -513,39 +377,24 @@ export function expandEventToWeek(event, eventIndex, weekStart, defaults = {}, e
   const basePlaces = toArray(base.location);
   if (!basePlaces.length) basePlaces.push('');
 
+  const image = base.image || typeDefault.image || '';
+  const description = base.description || typeDefault.description || '';
+  // A frequently-recurring occurrence (weekly/monthly/…) is routine; one-offs
+  // and yearly feasts are "specific" and stand out in the list.
+  const recurring = isFrequentRecurrence(base.rrule);
+  const recurLabel = recurrenceLabel(base.rrule);
+
   for (const iso of allDates) {
     const dayDate = isoToDate(iso);
     if (!dayDate) continue;
     const dayIndex = Math.round((startOfDay(dayDate) - startOfDay(weekStart)) / 86400000);
     if (dayIndex < 0 || dayIndex > 6) continue;
-    if (cancelledDates.has(iso)) continue;
 
     for (const time of baseTimes) {
       for (const place of basePlaces) {
-        const ex = specific.get(`${iso}|${time ?? ''}|${place}`);
-        if (ex && ex.takesPlace === false) continue;
-
-        const effTime = ex && ex.newTime ? String(ex.newTime).replace('.', ':') : time;
-        const effPlace = ex && ex.newPlace ? ex.newPlace : place;
-        const celebs = toArray(ex && ex.celebrants && ex.celebrants.length ? ex.celebrants : base.celebrants);
-        const e = { ...base, times: [effTime], location: [effPlace], celebrants: celebs };
-
-        const style = resolveEventStyle(e, defaults.__celebrants || [], eventTypes);
-        const image = e.image || typeDefault.image || '';
-        const description = e.description || typeDefault.description || '';
-        const location = toArray(e.location);
-        const title = e.title || '';
-        const duration = style.duration;
-        const styleBag = { icon: style.icon, color: style.color };
-        // A frequently-recurring occurrence (weekly/monthly/…) is dimmed on the
-        // grid unless it was overridden by an exception (then it's "specific").
-        const recurring = isFrequentRecurrence(base.rrule) && !ex;
-
         out.push({
-          date: iso, dayIndex, time: effTime, title, description, image, location,
-          celebrants: celebs, type: event.type, eventIndex, duration, recurring,
-          recurLabel: recurrenceLabel(base.rrule),
-          style: styleBag,
+          date: iso, dayIndex, time, title: base.title || '', description, image,
+          location: place ? [place] : [], type: event.type, eventIndex, recurring, recurLabel,
         });
       }
     }
@@ -553,86 +402,12 @@ export function expandEventToWeek(event, eventIndex, weekStart, defaults = {}, e
   return out;
 }
 
-export function expandAllEvents(events, weekStart, defaults = {}, celebrants = [], eventTypes = null) {
-  const ctx = { ...defaults, __celebrants: celebrants };
+export function expandAllEvents(events, weekStart, defaults = {}, eventTypes = null) {
   const out = [];
   (events || []).forEach((evt, i) => {
-    out.push(...expandEventToWeek(evt, i, weekStart, ctx, eventTypes));
+    out.push(...expandEventToWeek(evt, i, weekStart, defaults, eventTypes));
   });
-  computeWarnings(out);
   return out;
-}
-
-// ---- conflict / sanity warnings ------------------------------------------
-//  - no celebrant at all  -> red ("Sin celebrante asignado")
-//  - same celebrant, overlapping intervals on DIFFERENT locations -> red
-//    ("Bilocación requerida": a priest can't be in two places at once)
-//  - same celebrant, 0-15 min gap between back-to-back events on different
-//    locations -> orange ("Poco tiempo entre eventos": too tight to move)
-// An occurrence may carry several celebrants; it is checked per celebrant.
-function toMin(time) {
-  if (time == null) return null;
-  const [h, m] = String(time).replace('.', ':').split(':').map(Number);
-  if (Number.isNaN(h)) return null;
-  return h * 60 + (m || 0);
-}
-function sharesLocation(a, b) {
-  const la = a.location || [];
-  const lb = b.location || [];
-  if (!la.length || !lb.length) return false; // unknown place -> treat as differ
-  return la.some((l) => lb.includes(l));
-}
-function setWarn(o, level, reason) {
-  if (!o.warn || (level === 'red') || (level === 'orange' && o.warn !== 'red')) {
-    o.warn = level;
-    o.warnReason = reason;
-  }
-}
-export function computeWarnings(occurrences) {
-  for (const o of occurrences) {
-    o.start = toMin(o.time);
-    o.end = o.start == null ? null : o.start + (o.duration || DEFAULT_DURATION);
-    o.warn = null;
-    o.warnReason = null;
-    if (!o.celebrants || !o.celebrants.length) {
-      setWarn(o, 'purple', 'No hay celebrante');
-    }
-  }
-  // group each celebrant's occurrences by date
-  const byKey = new Map();
-  for (const o of occurrences) {
-    if (o.start == null) continue;
-    for (const cid of o.celebrants) {
-      const k = `${cid}|${o.date}`;
-      if (!byKey.has(k)) byKey.set(k, []);
-      byKey.get(k).push(o);
-    }
-  }
-  for (const arr of byKey.values()) {
-    arr.sort((a, b) => a.start - b.start);
-    for (let i = 0; i < arr.length; i++) {
-      for (let j = i + 1; j < arr.length; j++) {
-        const a = arr[i];
-        const b = arr[j];
-        const overlap = a.start < b.end && b.start < a.end;
-        const differ = !sharesLocation(a, b);
-        if (overlap) {
-          if (differ) {
-            setWarn(a, 'red', 'Bilocación requerida');
-            setWarn(b, 'red', 'Bilocación requerida');
-          }
-        } else {
-          const gap = b.start - a.end; // minutes between end of a and start of b
-          if (gap >= 0 && gap < 15 && differ) {
-            setWarn(a, 'orange', `${gap} min hasta el siguiente evento`);
-            setWarn(b, 'orange', `${gap} min desde el evento anterior`);
-          } else if (gap >= 15) {
-            break; // sorted: further j only widens the gap
-          }
-        }
-      }
-    }
-  }
 }
 
 // Create a new empty event with defaults.
@@ -658,8 +433,6 @@ export function newEvent(type = 'funeral', eventFields = null) {
     event.date = '';
     event.times = [];
     event.rrule = [];
-    event.except = [];
-    event.celebrants = [];
   }
 
   return event;

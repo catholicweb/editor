@@ -342,7 +342,7 @@ components:
   }
   surfaceStyle:
     "description": "Shadow depth + button fill as one coherent choice — these two properties read as a single 'flat vs. dimensional' design decision, and letting them vary independently risks incoherent combos (e.g. bold shadows + outline buttons rarely looks intentional)."
-    "type": select
+    "type": "select"
     "options":
       values: [
         {
@@ -417,28 +417,30 @@ components:
       «never» significa que no se repite: en ese caso rellena la fecha de inicio.
     type: select
     options:
+      display: chips # one tappable chip per option instead of a dropdown
       multiple: true
       creatable: true
+      exclusive: ["never"] # "No se repite" excludes every other value
       values:
         [
-          { value: "mo", label: "Lunes" },
-          { value: "tu", label: "Martes" },
-          { value: "we", label: "Miércoles" },
-          { value: "th", label: "Jueves" },
-          { value: "fr", label: "Viernes" },
-          { value: "sa", label: "Sábado" },
-          { value: "su", label: "Domingos" },
-          { value: "ve", label: "Visperas" },
-          { value: "mo,tu,we,th,fr", label: "Lunes a viernes" },
-          { value: "yearly", label: "Anualmente" },
-          { value: "monthly", label: "Mensualmente" },
-          { value: "biweekly", label: "Cada dos semanas" },
-          { value: "week1", label: "1ª semana del mes" },
-          { value: "week2", label: "2ª semana del mes" },
-          { value: "week3", label: "3ª semana del mes" },
-          { value: "week4", label: "4ª semana del mes" },
-          { value: "week5", label: "5ª semana del mes" },
-          { value: "never", label: "Nunca (no se repite)" },
+          { value: "mo", label: "Lun" },
+          { value: "tu", label: "Mar" },
+          { value: "we", label: "Mié" },
+          { value: "th", label: "Jue" },
+          { value: "fr", label: "Vie" },
+          { value: "sa", label: "Sáb" },
+          { value: "su", label: "Dom" },
+          { value: "ve", label: "Vísperas" },
+          { value: "mo,tu,we,th,fr", label: "Lun a vie" },
+          { value: "yearly", label: "Cada año" },
+          { value: "monthly", label: "Cada mes" },
+          { value: "biweekly", label: "Cada 2 semanas" },
+          { value: "week1", label: "1ª semana" },
+          { value: "week2", label: "2ª semana" },
+          { value: "week3", label: "3ª semana" },
+          { value: "week4", label: "4ª semana" },
+          { value: "week5", label: "5ª semana" },
+          { value: "never", label: "No se repite" },
         ]
   hero:
     label: Hero
@@ -478,17 +480,9 @@ components:
       - { name: location, label: Lugar, component: location }
       - { name: date, label: Fecha inicio, type: date }
       - { name: times, label: Hora, component: times }
-      - { name: rrule, label: Se repite, component: rrule, options: { creatable: true } }
+      - { name: rrule, label: Se repite, component: rrule }
       - { name: description, label: Nota breve, type: string }
       #- { name: duration, label: Duración (min), type: number }
-      #- { name: celebrants, label: Celebrantes, type: select, options: {  multiple: true, source: "info.collaborators" } }
-  exception:
-    label: Excepción
-    type: object
-    fields:
-      - { name: newTime, label: Nueva hora, component: times }
-      - { name: newPlace, label: Nuevo lugar, component: location }
-      #- { name: celebrants, label: Celebrantes, type: select, options: {  multiple: true, source: "info.collaborators" } }
   page:
     label: Página
     type: object
@@ -667,7 +661,6 @@ content:
           eventTypesPath: "event-types.list"   # config dot-path to the event-types array
           eventFields: "event"                 # components entry providing the event field set
           keyList: "list"                      # events doc sub-key holding the array
-          keyCelebrants: "celebrants"          # events doc sub-key holding the celebrant list
           keyDefaults: "defaults"              # events doc sub-key holding the per-type defaults map
 
   - name: event-types
@@ -810,4 +803,3 @@ content:
       - { name: spacingDensity, label: "Espaciado de elementos", component: spacingDensity }
       #- { name: surfaceStyle, label: "Estilos de superficie", component: surfaceStyle }
       #- { name: motionIntensity, label: "Dinamismo, efectos visuales", component: motionIntensity }
-
