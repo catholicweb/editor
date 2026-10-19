@@ -225,6 +225,32 @@ function toggleAll() {
 <template>
   <div class="week-grid">
 
+    <!-- Toolbar at the start of the list: view mode (+ collapse-all / past toggle or week navigation) on the left, add buttons on the right -->
+    <div class="week-toolbar">
+      <div class="toolbar-group">
+        <div class="nav">
+          <button v-if="viewMode === 'list'" @click="viewMode = 'byType'">Ver lista</button>
+          <button v-if="viewMode === 'byType'" @click="viewMode = 'list'">Ver día</button>
+        </div>
+        <div v-if="viewMode === 'byType' && totalPast > 0" class="nav">
+          <button @click="togglePast">{{ showPast ? 'Ocultar pasados' : `Ver pasados (${totalPast})` }}</button>
+        </div>
+        <div v-if="viewMode === 'byType' && eventsByType.length > 1" class="nav">
+          <button @click="toggleAll">{{ allCollapsed ? 'Expandir todo' : 'Colapsar todo' }}</button>
+        </div>
+        <!-- Week navigation only makes sense in the day-by-day view -->
+        <div v-if="viewMode === 'list'" class="nav">
+          <button @click="prev">‹</button>
+          <button class="today" @click="goToday">Hoy</button>
+          <button @click="next">›</button>
+        </div>
+      </div>
+      <div class="toolbar-actions">
+        <button v-if="viewMode === 'byType' && typesEditable" class="add-type" @click="emit('add-type')">+ Tipo de evento</button>
+        <button class="add-event" @click="emit('add-event', {})">+ Evento</button>
+      </div>
+    </div>
+
     <p v-if="!props.events?.length && viewMode !== 'byType'" class="empty-week">
       No hay eventos. Usa <strong>+ Evento</strong> para añadir.
     </p>
@@ -259,6 +285,13 @@ function toggleAll() {
             <span class="type-count">{{ group.events.length }}</span>
           </button>
           <span class="type-actions">
+
+            <div v-if="group.type && typesEditable" class="type-footer">
+              <button type="button" class="footer-btn edit" @click="emit('edit-type', group.type.id)">
+                <PeIcon name="pencil-square" :size="16" />
+              </button>
+            </div>
+
             <button v-if="group.addType" class="type-action" title="Añadir evento de este tipo" aria-label="Añadir evento de este tipo" @click="emit('add-event', { type: group.addType })">
               <PeIcon name="plus" :size="18" />
             </button>
@@ -274,38 +307,7 @@ function toggleAll() {
             <span v-if="row.title" class="event-type">{{ row.title }}</span>
             <span class="event-location" v-if="row.location?.length">{{ formatLocation(row.location) }}</span>
           </div>
-          <div v-if="group.type && typesEditable" class="type-footer">
-            <button type="button" class="footer-btn edit" @click="emit('edit-type', group.type.id)">
-              <PeIcon name="pencil-square" :size="16" /> Editar tipo
-            </button>
-          </div>
         </template>
-      </div>
-    </div>
-
-    <!-- Toolbar at the end of the list: view mode (+ collapse-all / past toggle or week navigation) on the left, add buttons on the right -->
-    <div class="week-toolbar">
-      <div class="toolbar-group">
-        <div class="nav">
-          <button :class="{ active: viewMode === 'byType' }" @click="viewMode = 'byType'">Lista</button>
-          <button :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">Día</button>
-        </div>
-        <div v-if="viewMode === 'byType' && totalPast > 0" class="nav">
-          <button @click="togglePast">{{ showPast ? 'Ocultar pasados' : `Ver pasados (${totalPast})` }}</button>
-        </div>
-        <div v-if="viewMode === 'byType' && eventsByType.length > 1" class="nav">
-          <button @click="toggleAll">{{ allCollapsed ? 'Expandir todo' : 'Colapsar todo' }}</button>
-        </div>
-        <!-- Week navigation only makes sense in the day-by-day view -->
-        <div v-if="viewMode === 'list'" class="nav">
-          <button @click="prev">‹</button>
-          <button class="today" @click="goToday">Hoy</button>
-          <button @click="next">›</button>
-        </div>
-      </div>
-      <div class="toolbar-actions">
-        <button v-if="viewMode === 'byType' && typesEditable" class="add-type" @click="emit('add-type')">+ Tipo de evento</button>
-        <button class="add-event" @click="emit('add-event', {})">+ Evento</button>
       </div>
     </div>
 
@@ -413,7 +415,7 @@ function toggleAll() {
   padding: 6px 8px;
   min-width: 0;
   border-radius: var(--pe-radius-sm);
-  font-size: 14px;
+  font-size: 12px;
   white-space: nowrap;
   transition: background var(--pe-transition);
 }
@@ -435,7 +437,7 @@ function toggleAll() {
   font-size: 13px;
   font-weight: 500;
   color: var(--pe-text);
-  min-width: 72px;
+  min-width: 48px;
   flex-shrink: 0;
 }
 .event-time {
@@ -499,7 +501,6 @@ function toggleAll() {
   text-align: left;
   font: inherit;
 }
-.type-toggle:hover .type-name { text-decoration: underline; }
 .chev {
   display: inline-block;
   width: 12px;
@@ -509,7 +510,7 @@ function toggleAll() {
 }
 .chev.open { transform: rotate(90deg); }
 .type-name {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--pe-text);
   overflow: hidden;
@@ -525,12 +526,12 @@ function toggleAll() {
   flex-shrink: 0;
 }
 .type-count {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--pe-muted);
   background: var(--pe-hover);
   border-radius: 999px;
-  padding: 1px 8px;
+  padding: 1px 4px;
 }
 .type-actions { display: flex; gap: 2px; flex-shrink: 0; }
 .type-action {
@@ -538,7 +539,7 @@ function toggleAll() {
   align-items: center;
   border: none;
   background: transparent;
-  color: var(--pe-muted);
+  color: var(--pe-accent);
   cursor: pointer;
   padding: 4px 8px;
   border-radius: var(--pe-radius-sm);
