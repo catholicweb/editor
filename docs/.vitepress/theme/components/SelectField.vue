@@ -13,10 +13,11 @@ const options = props.field.options || {};
 const multiple = !!options.multiple;
 const creatable = !!options.creatable;
 const maxChips = options.max || 0; // 0 = unlimited
-// `display: chips` (pages.yml) shows every option as a tappable chip instead of
-// the tag-input + dropdown. Works for single and multiple selects. A value that
-// is stored but not among the options (legacy / creatable) is still shown, as
-// a selected chip, so it can be seen and removed.
+// `display: chips` (pages.yml) shows every option as a tappable chip, in one
+// horizontally scrollable line, instead of the tag-input + dropdown. Works for
+// single and multiple selects. A value that is stored but not among the
+// options (legacy / creatable) is still shown, as a selected chip, so it can
+// be seen and removed.
 const asChips = options.display === 'chips';
 // `exclusive: [values]` — selecting one of these clears every other value, and
 // selecting any other value clears them (e.g. "never" repeats vs. weekdays).
@@ -228,7 +229,7 @@ function onSingleChange(e) {
 
 <template>
   <div class="select-field">
-    <!-- display: chips — every option visible, one tap to toggle -->
+    <!-- display: chips — every option in one scrollable line, one tap to toggle -->
     <div v-if="asChips" class="chips">
       <div class="chips-row" role="group" :aria-label="field.label">
         <button
@@ -317,13 +318,18 @@ input:focus-visible {
   box-shadow: var(--pe-ring);
 }
 
-/* ---- chips display (options.display: chips) ---- */
+/* ---- chips display (options.display: chips): one scrollable line ---- */
 .chips-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
 }
 .choice {
+  flex: 0 0 auto;
+  white-space: nowrap;
   font: inherit;
   font-size: 13px;
   line-height: 1.2;
