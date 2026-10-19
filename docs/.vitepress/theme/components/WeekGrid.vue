@@ -169,7 +169,7 @@ function togglePast() {
 }
 
 // Every defined type gets a group (even with no events yet), so it can be edited
-// and given its first event from its body.
+// and given its first event from its header.
 const eventsByType = computed(() =>
   typeGroups(props.events || [], props.eventTypes || []).map((g) => {
     const rows = g.indexes
@@ -225,7 +225,65 @@ function toggleAll() {
 <template>
   <div class="week-grid">
 
-    <!-- Toolbar: view mode (+ collapse-all / past toggle or week navigation) on the left, add buttons on the right -->
+    <p v-if="!props.events?.length && viewMode !== 'byType'" class="empty-week">
+      No hay eventos. Usa <strong>+ Evento</strong> para añadir.
+    </p>
+
+    <!-- Day-by-day list -->
+    <div v-else-if="viewMode === 'list'" class="event-list">
+      <div v-for="(dayOccs, dayIdx) in occurrencesByDay" :key="dayIdx" class="event-day">
+        <h4 v-if="dayOccs.length" class="day-header">
+          {{ DAY_NAME_BY_GETDAY[listDays[dayIdx].getDay()] }} {{ listDays[dayIdx].getDate() }}
+        </h4>
+        <div v-for="(o, oi) in dayOccs" :key="`${o.eventIndex}-${oi}`" class="event-row" :class="{ specific: !o.recurring }" @click="emit('edit-event', o.eventIndex)">
+          <span class="event-time" v-if="o.time">{{ o.time }}</span>
+          <span class="event-time" v-else>—</span>
+          <span class="event-type">{{ o.title || 'Sin título' }}</span>
+          <span class="event-location" v-if="o.location?.length">{{ formatLocation(o.location) }}</span>
+          <span class="event-rec" v-if="o.recurLabel">{{ o.recurLabel }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Event list grouped by type: collapsible groups; add-event in the title bar, edit-type in the body -->
+    <div v-else-if="viewMode === 'byType'" class="event-list by-type">
+      <p v-if="!eventsByType.length" class="empty-week">
+        No hay eventos ni tipos de evento. Usa <strong>+ Evento</strong> o <strong>+ Tipo de evento</strong> para añadir.
+      </p>
+      <div v-for="group in eventsByType" :key="group.key" class="event-type-group">
+        <div class="type-head">
+          <button class="type-toggle" :aria-expanded="!isCollapsed(group.key)" @click="toggleGroup(group.key)">
+            <span class="chev" :class="{ open: !isCollapsed(group.key) }">▸</span>
+            <span class="type-name">{{ group.label }}</span>
+            <span v-if="group.defaults" class="type-defaults">{{ group.defaults }}</span>
+            <span class="type-count">{{ group.events.length }}</span>
+          </button>
+          <span class="type-actions">
+            <button v-if="group.addType" class="type-action" title="Añadir evento de este tipo" aria-label="Añadir evento de este tipo" @click="emit('add-event', { type: group.addType })">
+              <PeIcon name="plus" :size="18" />
+            </button>
+          </span>
+        </div>
+        <template v-if="!isCollapsed(group.key)">
+          <p v-if="!group.events.length" class="type-empty">
+            {{ group.pastCount ? 'Solo hay eventos pasados.' : 'Sin eventos de este tipo.' }}
+          </p>
+          <div v-for="row in group.events" :key="row.ev.id || row.index" class="event-row" :class="{ specific: row.specific, past: row.past }" @click="emit('edit-event', row.index)">
+            <span class="event-when">{{ row.when }}</span>
+            <span class="event-time">{{ row.timeStr }}</span>
+            <span v-if="row.title" class="event-type">{{ row.title }}</span>
+            <span class="event-location" v-if="row.location?.length">{{ formatLocation(row.location) }}</span>
+          </div>
+          <div v-if="group.type && typesEditable" class="type-footer">
+            <button type="button" class="footer-btn edit" @click="emit('edit-type', group.type.id)">
+              <PeIcon name="pencil-square" :size="16" /> Editar tipo
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Toolbar at the end of the list: view mode (+ collapse-all / past toggle or week navigation) on the left, add buttons on the right -->
     <div class="week-toolbar">
       <div class="toolbar-group">
         <div class="nav">
@@ -251,62 +309,6 @@ function toggleAll() {
       </div>
     </div>
 
-    <p v-if="!props.events?.length && viewMode !== 'byType'" class="empty-week">
-      No hay eventos. Usa <strong>+ Evento</strong> para añadir.
-    </p>
-
-    <!-- Day-by-day list -->
-    <div v-else-if="viewMode === 'list'" class="event-list">
-      <div v-for="(dayOccs, dayIdx) in occurrencesByDay" :key="dayIdx" class="event-day">
-        <h4 v-if="dayOccs.length" class="day-header">
-          {{ DAY_NAME_BY_GETDAY[listDays[dayIdx].getDay()] }} {{ listDays[dayIdx].getDate() }}
-        </h4>
-        <div v-for="(o, oi) in dayOccs" :key="`${o.eventIndex}-${oi}`" class="event-row" :class="{ specific: !o.recurring }" @click="emit('edit-event', o.eventIndex)">
-          <span class="event-time" v-if="o.time">{{ o.time }}</span>
-          <span class="event-time" v-else>—</span>
-          <span class="event-type">{{ o.title || 'Sin título' }}</span>
-          <span class="event-location" v-if="o.location?.length">{{ formatLocation(o.location) }}</span>
-          <span class="event-rec" v-if="o.recurLabel">{{ o.recurLabel }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Event list grouped by type: collapsible groups; add-event and edit-type live inside each group's body -->
-    <div v-else-if="viewMode === 'byType'" class="event-list by-type">
-      <p v-if="!eventsByType.length" class="empty-week">
-        No hay eventos ni tipos de evento. Usa <strong>+ Evento</strong> o <strong>+ Tipo de evento</strong> para añadir.
-      </p>
-      <div v-for="group in eventsByType" :key="group.key" class="event-type-group">
-        <div class="type-head">
-          <button class="type-toggle" :aria-expanded="!isCollapsed(group.key)" @click="toggleGroup(group.key)">
-            <span class="chev" :class="{ open: !isCollapsed(group.key) }">▸</span>
-            <span class="type-name">{{ group.label }}</span>
-            <span v-if="group.defaults" class="type-defaults">{{ group.defaults }}</span>
-            <span class="type-count">{{ group.events.length }}</span>
-          </button>
-        </div>
-        <template v-if="!isCollapsed(group.key)">
-          <p v-if="!group.events.length" class="type-empty">
-            {{ group.pastCount ? 'Solo hay eventos pasados.' : 'Sin eventos de este tipo.' }}
-          </p>
-          <div v-for="row in group.events" :key="row.ev.id || row.index" class="event-row" :class="{ specific: row.specific, past: row.past }" @click="emit('edit-event', row.index)">
-            <span class="event-when">{{ row.when }}</span>
-            <span class="event-time">{{ row.timeStr }}</span>
-            <span v-if="row.title" class="event-type">{{ row.title }}</span>
-            <span class="event-location" v-if="row.location?.length">{{ formatLocation(row.location) }}</span>
-          </div>
-          <div v-if="group.addType || (group.type && typesEditable)" class="type-footer">
-            <button v-if="group.addType" type="button" class="footer-btn add" @click="emit('add-event', { type: group.addType })">
-              <PeIcon name="plus" :size="16" /> Añadir evento
-            </button>
-            <button v-if="group.type && typesEditable" type="button" class="footer-btn edit" @click="emit('edit-type', group.type.id)">
-              <PeIcon name="pencil-square" :size="16" /> Editar tipo
-            </button>
-          </div>
-        </template>
-      </div>
-    </div>
-
   </div>
 </template>
 
@@ -314,7 +316,7 @@ function toggleAll() {
 .week-grid {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 .week-toolbar {
   display: flex;
@@ -509,8 +511,7 @@ function toggleAll() {
 .type-name {
   font-size: 16px;
   font-weight: 700;
-  color: var(--pe-accent);
-  text-transform: lowercase;
+  color: var(--pe-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -531,14 +532,24 @@ function toggleAll() {
   border-radius: 999px;
   padding: 1px 8px;
 }
+.type-actions { display: flex; gap: 2px; flex-shrink: 0; }
+.type-action {
+  display: flex;
+  align-items: center;
+  border: none;
+  background: transparent;
+  color: var(--pe-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--pe-radius-sm);
+}
+.type-action:hover { background: var(--pe-hover); color: var(--pe-text); }
 .type-empty { margin: 2px 8px; font-size: 14px; color: var(--pe-muted); }
 
-/* add-event and edit-type, at the bottom of the group's body */
+/* edit-type, at the bottom of the group's body */
 .type-footer {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
   padding: 2px 0 6px;
 }
 .footer-btn {
@@ -551,12 +562,6 @@ function toggleAll() {
   font-weight: 600;
   cursor: pointer;
 }
-.footer-btn.add {
-  border: 1px dashed var(--pe-accent);
-  background: var(--pe-accent-soft);
-  color: var(--pe-accent);
-}
-.footer-btn.add:hover { background: var(--pe-accent-soft-hover); }
 .footer-btn.edit {
   margin-left: auto;
   border: none;
