@@ -22,14 +22,19 @@ const optValues = (field) =>
 // rich-text), the field's short `description`, its long-form `help` (the same
 // text the editor shows as an (i) tooltip) and `customValueHint`. Appended, not
 // replaced, so setting `help` never hides the type's own note.
+// A field's `showif` condition (the editor hides the field while it is false)
+// is exported as `x-showif` and mentioned last in the description. It is never
+// a validation rule: hidden fields keep their stored values and stay optional.
 function annotate(schema, field) {
   if (field.label) schema.title = field.label;
-  const parts = [schema.description, field.description, field.help, field.customValueHint]
+  const showifNote = typeof field.showif === 'string' ? `Only relevant when: ${field.showif}.` : null;
+  const parts = [schema.description, field.description, field.help, field.customValueHint, showifNote]
     .map((p) => (typeof p === 'string' ? p.trim() : p))
     .filter(Boolean);
   if (parts.length) schema.description = parts.join(' ');
   if (field.default !== undefined) schema.default = field.default;
   if (field.hidden) schema['x-hidden'] = true;
+  if (typeof field.showif === 'string') schema['x-showif'] = field.showif;
   return schema;
 }
 
