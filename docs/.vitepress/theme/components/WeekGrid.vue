@@ -13,6 +13,7 @@ import {
 import { state } from '../lib/store.js';
 import PeIcon from './PeIcon.vue';
 import { typeGroups } from '../lib/event-types.js';
+import { eventOrderKey, compareEventOrder } from '../lib/event-sort.js';
 
 const props = defineProps({
   events: { type: Array, required: true },
@@ -123,8 +124,9 @@ function defaultsLabel(type) {
 // One row of the by-type list: date (or repeat rule), time, title, place.
 // The row only DISPLAYS what the event itself sets: values inherited from the
 // type's defaults are already shown in the group header, so they are not
-// repeated here. The effective (merged) event is still used for ordering and
-// to tell whether a one-off event is already past.
+// repeated here. The effective (merged) event is still used for ordering (date,
+// then weekday, then time: see lib/event-sort.js) and to tell whether a
+// one-off event is already past.
 function rowFor(ev, i) {
   const eff = mergeTypeDefaults(ev, props.eventTypes || []);
 
@@ -136,7 +138,6 @@ function rowFor(ev, i) {
   // Only fall back to a placeholder when neither the event nor its type has a title.
   const title = ownTitle || (String(eff.title ?? '').trim() ? '' : 'Sin título');
 
-  const effTime = fmtTimes(timesOf(eff).slice(0, 1));
   return {
     ev,
     index: i,
@@ -146,7 +147,7 @@ function rowFor(ev, i) {
     location: ev.location,
     specific: !eff.rrule,
     past: isPastEvent(eff),
-    sortKey: effTime || '\uffff', // events without any time go last
+    order: eventOrderKey(eff),
   };
 }
 
@@ -174,7 +175,7 @@ const eventsByType = computed(() =>
   typeGroups(props.events || [], props.eventTypes || []).map((g) => {
     const rows = g.indexes
       .map((i) => rowFor(props.events[i], i))
-      .sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+      .sort((a, b) => compareEventOrder(a.order, b.order));
     const pastCount = rows.filter((r) => r.past).length;
     return {
       key: g.key,
