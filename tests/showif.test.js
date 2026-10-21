@@ -54,10 +54,10 @@ describe('showif evaluation', () => {
     expect(show("tags == ''", { tags: [] })).toBe(true);
   });
 
-  it('fails open (and warns once) on a malformed condition', () => {
+  it('fails open (and warns once per expression) on a malformed condition', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    expect(show('a ===== b', { a: 1 })).toBe(true);
-    expect(show('a ===== b', { a: 1 })).toBe(true);
+    expect(show('a ==', { a: 1 })).toBe(true); // operator without a value
+    expect(show('a ==', { a: 1 })).toBe(true);
     expect(show({ not: 'a string' }, {})).toBe(true);
     expect(warn).toHaveBeenCalledTimes(2); // cached: the repeated expression warns once
     warn.mockRestore();
