@@ -1,13 +1,16 @@
 <script setup>
 import { computed } from 'vue';
 import FieldRenderer from './FieldRenderer.vue';
+import { isVisible } from '../lib/showif.js';
 
 const props = defineProps({
   fields: { type: Array, default: () => [] },
   container: { type: Object, required: true },
 });
 
-const visible = computed(() => props.fields.filter((f) => !f.hidden));
+// `hidden` fields never render; `showif` fields render only while their
+// condition holds for the sibling values in `container` (see lib/showif.js).
+const visible = computed(() => props.fields.filter((f) => !f.hidden && isVisible(f, props.container)));
 </script>
 
 <template>
