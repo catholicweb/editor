@@ -682,6 +682,13 @@ content:
         fields:
           - { name: id, label: Identificador, type: uuid, hidden: true }
           - { name: label, label: "Tipo de evento (ej: Eucaristía)", type: string }
+          - name: calendar
+            label: "Calendario de Google a importar (opcional)"
+            help: |-
+              Enlace de un calendario de Google (u otro calendario .ics) cuyos eventos se importan automáticamente como eventos de este tipo, con los «valores por defecto» de abajo para lo que les falte (imagen, lugar, nota...). Así, todo lo que se añada a ese calendario aparece en la web sin tocar el editor.
+              Admite: la «Dirección pública en formato iCal», el enlace público o de compartir del calendario, o su id (algo@group.calendar.google.com). El calendario debe ser público: este enlace es visible en la web, no uses la «dirección secreta».
+              Se actualiza en cada publicación de la web.
+            type: string
           - name: pageMode
             label: Crear página para eventos de este tipo
             help: |-
