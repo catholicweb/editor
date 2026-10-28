@@ -102,3 +102,71 @@ export function relPathForNewMedia(schema, filename, hashSuffix) {
   const timestamp = Date.now();
   return withHash(`image-${timestamp}`);
 }
+
+// Imágenes en uso -----------------------------------------------------------
+
+const IMAGE_EXT_RE = /\.(jpe?g|png|webp|gif|avif|svg)$/i;
+// CDNs de las fuentes del selector: sus URLs pueden no tener extensión
+// (Unsplash: images.unsplash.com/photo-…?w=1600).
+const IMAGE_HOSTS = new Set(['images.unsplash.com', 'images.pexels.com', 'upload.wikimedia.org']);
+const MAX_WALK_DEPTH = 24;
+
+// ¿Parece una URL absoluta de imagen? Por extensión del path o por CDN conocida.
+export function isImageUrl(value) {
+  if (typeof value !== 'string' || !/^https?:\/\//i.test(value)) return false;
+  try {
+    const u = new URL(value);
+    return IMAGE_EXT_RE.test(u.pathname) || IMAGE_HOSTS.has(u.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
+function displayNameForUrl(url) {
+  try {
+    const u = new URL(url);
+    const photographer = u.searchParams.get('photographer');
+    if (photographer) return photographer;
+    return decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() || '') || u.hostname;
+  } catch {
+    return url;
+  }
+}
+
+// Recorre config.json y devuelve las imágenes que la web está usando ahora y
+// que NO están en `knownUrls` (el listado del servidor): fotos de Unsplash /
+// Pexels / Wikimedia, enlaces externos pegados… Las que ya viven en nuestro
+// servidor salen en la biblioteca normal, así que no se duplican.
+//
+// Cada entrada: { url, name, external: true, tab, uses }
+//   tab  = clave de primer nivel de config.json donde se usa por primera vez
+//          (la pestaña del editor), para mostrar dónde está.
+//   uses = nº de veces que aparece.
+// El orden es el de primera aparición en el config.
+export function collectUsedImages(config, knownUrls = []) {
+  const known = new Set(knownUrls);
+  const found = new Map();
+
+  function walk(node, tab, depth) {
+    if (depth > MAX_WALK_DEPTH || node == null) return;
+    if (typeof node === 'string') {
+      if (known.has(node) || !isImageUrl(node)) return;
+      const entry = found.get(node);
+      if (entry) entry.uses++;
+      else found.set(node, { url: node, name: displayNameForUrl(node), external: true, tab, uses: 1 });
+      return;
+    }
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item, tab, depth + 1);
+      return;
+    }
+    if (typeof node === 'object') {
+      for (const [key, value] of Object.entries(node)) {
+        walk(value, depth === 0 ? key : tab, depth + 1);
+      }
+    }
+  }
+
+  walk(config, '', 0);
+  return [...found.values()];
+}

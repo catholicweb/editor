@@ -194,3 +194,28 @@ export async function searchUnsplash(rawQuery, page = 1, { signal } = {}) {
     totalPages: data.total_pages || 0,
   };
 }
+
+// Una foto concreta por id (para URLs pegadas de unsplash.com/photos/…).
+// Devuelve el mismo objeto que `mapPhoto`, con el crédito del fotógrafo, para
+// que la imagen se guarde igual que si se hubiera elegido desde la búsqueda.
+export async function getUnsplashPhoto(id, { signal } = {}) {
+  if (!unsplashEnabled) {
+    throw new UnsplashError('Unsplash no esta configurado', 'no_key');
+  }
+  const url = `${API_BASE}/photos/${encodeURIComponent(id)}?client_id=${ACCESS_KEY}`;
+  let res;
+  try {
+    res = await fetchWithTimeout(url, TIMEOUT_MS, signal);
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      if (signal?.aborted) throw err;
+      throw new UnsplashError('Se agoto el tiempo de espera', 'network');
+    }
+    throw new UnsplashError('No se pudo conectar con Unsplash', 'network');
+  }
+  if (res.status === 429 || (res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0')) {
+    throw new UnsplashError('Límite de peticiones de Unsplash alcanzado', 'rate_limit');
+  }
+  if (!res.ok) throw new UnsplashError(res.status === 404 ? 'No se encontró la foto' : `HTTP ${res.status}`, 'http');
+  return mapPhoto(await res.json());
+}
