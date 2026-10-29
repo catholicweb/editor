@@ -62,6 +62,12 @@ function openPicker(index = null) {
   pickerTargetIndex.value = index;
   pickerOpen.value = true;
 }
+// Selección múltiple (varias imágenes de una vez): se añaden al final.
+function onPickedMany(urls) {
+  const arr = Array.isArray(props.modelValue) ? props.modelValue.slice() : [];
+  set([...arr, ...urls]);
+  pickerOpen.value = false;
+}
 function onPicked(url) {
   if (multiple.value) {
     const arr = Array.isArray(props.modelValue) ? props.modelValue.slice() : [];
@@ -328,7 +334,13 @@ function updateRefDropdownPosition() {
         </div>
       </div>
     </template>
-    <ImagePickerModal v-if="pickerOpen" @select="onPicked" @close="pickerOpen = false" />
+    <ImagePickerModal
+      v-if="pickerOpen"
+      :multiple="multiple && pickerTargetIndex == null"
+      @select="onPicked"
+      @select-many="onPickedMany"
+      @close="pickerOpen = false"
+    />
   </div>
 
   <!-- reference (chip-style, like select) -->

@@ -42,10 +42,10 @@ describe('collectUsedImages', () => {
     expect(out[0]).toMatchObject({ url: unsplash, uses: 2, tab: 'pages', external: true });
     expect(out[2]).toMatchObject({ tab: 'places', uses: 1 });
   });
-  it('names entries after the photographer or the file', () => {
+  it('names entries after the file (the photographer is not shown in the picker)', () => {
     const out = collectUsedImages(config, [server]);
-    expect(out[0].name).toBe('Ana');
-    expect(out[1].name).toBe('Luis');
+    expect(out[0].name).toBe('photo-1');
+    expect(out[1].name).toBe('Foo bar.jpg');
     expect(out[2].name).toBe('ermita.png');
   });
   it('is safe on empty or missing config', () => {

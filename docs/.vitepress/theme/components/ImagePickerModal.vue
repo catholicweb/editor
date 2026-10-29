@@ -10,8 +10,14 @@ import * as wikimedia from '../lib/wikimedia.js';
 import { classifyInput, baseNameFromUrl } from '../lib/image-input.js';
 import { searchPlaces } from '../lib/geocode.js';
 import { createImageSource, sourceErrorMessage } from '../lib/useImageSource.js';
+import PeIcon from './PeIcon.vue';
 
-const emit = defineEmits(['select', 'close']);
+// `multiple`: el campo admite varias imágenes. El modal no se cierra al tocar
+// una imagen: se van marcando (en orden) y se confirman con «Añadir N», que
+// emite `select-many` con las URLs. Sin `multiple` (campo simple, editor de
+// texto, o reemplazo de una imagen concreta) se emite `select` y se cierra.
+const props = defineProps({ multiple: { type: Boolean, default: false } });
+const emit = defineEmits(['select', 'select-many', 'close']);
 
 const uploading = ref(false);
 const uploadError = ref('');
@@ -21,8 +27,39 @@ function urlFor(entry) {
   return entry.url; // media entries are absolute URLs
 }
 
-function choose(entry) {
-  emit('select', entry.url); // the absolute URL is the stored field value
+// --- Selección -------------------------------------------------------------
+const selected = ref([]); // URLs marcadas, en orden de selección (solo `multiple`)
+
+function isSelected(url) {
+  return selected.value.includes(url);
+}
+function selectedNumber(url) {
+  const i = selected.value.indexOf(url);
+  return i === -1 ? '' : i + 1;
+}
+function addToSelection(url) {
+  if (!selected.value.includes(url)) selected.value = [...selected.value, url];
+}
+
+// Al tocar una imagen: en modo múltiple la marca/desmarca; si no, la elige y
+// el padre cierra el modal. La URL absoluta es el valor que se guarda.
+function pick(url) {
+  if (!props.multiple) {
+    emit('select', url);
+    return;
+  }
+  if (isSelected(url)) selected.value = selected.value.filter((u) => u !== url);
+  else addToSelection(url);
+}
+
+// Imagen recién subida/copiada: en modo múltiple se suma a la selección.
+function pickNew(url) {
+  if (props.multiple) addToSelection(url);
+  else emit('select', url);
+}
+
+function confirmSelection() {
+  if (selected.value.length) emit('select-many', [...selected.value]);
 }
 
 const search = ref('');
@@ -304,7 +341,7 @@ async function copyToServer() {
     if (!blob.type.startsWith('image/')) throw new Error('not_image');
     const ext = blob.type.split('/')[1].split('+')[0] || 'img';
     const file = new File([blob], `${baseNameFromUrl(photo.url)}.${ext}`, { type: blob.type });
-    emit('select', await storeImageFile(file));
+    pickNew(await storeImageFile(file));
   } catch (err) {
     copyError.value = 'Ese servidor no permite copiar la imagen. Puedes usarla como enlace externo.';
   } finally {
@@ -381,13 +418,16 @@ async function storeImageFile(file) {
 }
 
 async function onFileChosen(e) {
-  const file = e.target.files && e.target.files[0];
+  const files = Array.from((e.target.files && e.target.files) || []);
   e.target.value = '';
-  if (!file) return;
+  if (!files.length) return;
   uploading.value = true;
   uploadError.value = '';
   try {
-    emit('select', await storeImageFile(file));
+    // Secuencial: cada subida refresca el listado y comparte el worker.
+    for (const file of props.multiple ? files : files.slice(0, 1)) {
+      pickNew(await storeImageFile(file));
+    }
   } catch (err) {
     uploadError.value = err.message || String(err);
   } finally {
@@ -412,20 +452,28 @@ const externalHasResults = computed(() => sections.value.some((s) => s.src.resul
       </header>
 
       <div class="toolbar">
-        <button class="upload-btn" :disabled="uploading" @click="triggerUpload">
-          {{ uploading ? 'Subiendo…' : '+ Subir nueva imagen' }}
-        </button>
-        <input ref="fileInput" type="file" accept="image/*" hidden @change="onFileChosen" />
         <input v-model="search" type="text" class="search" :placeholder="placeholder" />
         <button
           type="button"
-          class="loc-btn"
+          class="icon-btn"
+          :disabled="uploading"
+          title="Subir imagen"
+          aria-label="Subir imagen"
+          @click="triggerUpload"
+        >
+          <PeIcon :name="uploading ? 'arrow-path' : 'arrow-up-tray'" :size="18" :class="{ spin: uploading }" />
+        </button>
+        <input ref="fileInput" type="file" accept="image/*" :multiple="multiple" hidden @change="onFileChosen" />
+        <button
+          type="button"
+          class="icon-btn"
           :class="{ active: locationMode }"
           :aria-pressed="locationMode"
           title="Buscar por ubicación"
+          aria-label="Buscar por ubicación"
           @click="toggleLocation"
         >
-          📍
+          <PeIcon name="map-pin" :size="18" />
         </button>
       </div>
       <p v-if="uploadError" class="error">{{ uploadError }}</p>
@@ -437,12 +485,14 @@ const externalHasResults = computed(() => sections.value.some((s) => s.src.resul
             v-for="entry in filtered"
             :key="entry.url"
             class="thumb"
+            :class="{ selected: isSelected(entry.url) }"
             :title="entry.external ? usedInLabel(entry) : entry.name"
-            @click="choose(entry)"
+            @click="pick(entry.url)"
           >
             <img :src="urlFor(entry)" :alt="entry.name" loading="lazy" />
             <span v-if="entry.external" class="badge">externa</span>
-            <span class="caption">{{ entry.name }}</span>
+            <span v-if="multiple" class="sel-badge" :class="{ empty: !isSelected(entry.url) }">{{ selectedNumber(entry.url) }}</span>
+            <span class="caption">{{ entry.external ? hostOf(entry.url) : entry.name }}</span>
           </button>
           <p v-if="!libraryEntries.length" class="empty">
             Sin resultados. Prueba a buscar algo :)
@@ -479,14 +529,15 @@ const externalHasResults = computed(() => sections.value.some((s) => s.src.resul
           <div v-else-if="urlPreview.status === 'ready'" class="url-card">
             <img :src="urlPreview.photo.thumbUrl" :alt="urlPreview.photo.alt || 'Vista previa'" />
             <div class="url-info">
-              <strong>{{ urlPreview.photo.creditName ? 'Foto: ' + urlPreview.photo.creditName : hostOf(urlPreview.photo.url) }}</strong>
-              <span v-if="urlPreview.photo.license" class="unsplash-subtitle">{{ urlPreview.photo.license }}</span>
+              <strong>{{ hostOf(urlPreview.photo.url) }}</strong>
               <span v-if="urlPreview.source === 'direct'" class="unsplash-subtitle">
                 Se usará como enlace a {{ hostOf(urlPreview.photo.url) }}: si allí borran la imagen, dejará de verse.
               </span>
-              <span v-else class="unsplash-subtitle">Se guarda como enlace, con el crédito del autor.</span>
+              <span v-else class="unsplash-subtitle">Se guarda como enlace; el crédito del autor se muestra en la web.</span>
               <div class="url-actions">
-                <button type="button" class="upload-btn" @click="choose(urlPreview.photo)">Usar esta imagen</button>
+                <button type="button" class="upload-btn" @click="pick(urlPreview.photo.url)">
+                  {{ !multiple ? 'Usar esta imagen' : isSelected(urlPreview.photo.url) ? 'Quitar de la selección' : 'Añadir a la selección' }}
+                </button>
                 <button
                   v-if="urlPreview.source === 'direct'"
                   type="button"
@@ -506,7 +557,7 @@ const externalHasResults = computed(() => sections.value.some((s) => s.src.resul
         <section v-for="sec in sections" :key="sec.key" class="unsplash-section">
           <div class="unsplash-title">
             <h3>{{ sec.title }}</h3>
-            <span class="unsplash-subtitle">{{ sec.subtitle }}</span>
+            <span class="unsplash-subtitle sec-subtitle">{{ sec.subtitle }}</span>
             <select v-if="sec.key === 'near'" v-model.number="geoRadius" class="radius" aria-label="Radio de búsqueda">
               <option :value="1000">1 km</option>
               <option :value="5000">5 km</option>
@@ -523,20 +574,17 @@ const externalHasResults = computed(() => sections.value.some((s) => s.src.resul
           <p v-else-if="sec.src.error" class="unsplash-error">{{ sec.src.error }}</p>
           <template v-else>
             <div class="grid">
-              <div v-for="photo in sec.src.results" :key="photo.id" class="unsplash-card">
-                <button class="thumb" :title="photo.alt" @click="choose(photo)">
-                  <img :src="photo.thumbUrl" :alt="photo.alt" loading="lazy" />
-                </button>
-                <a
-                  class="unsplash-credit"
-                  :href="photo.creditUrl"
-                  :title="photo.license ? photo.creditName + ' · ' + photo.license : photo.creditName"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Foto: {{ photo.creditName }}
-                </a>
-              </div>
+              <button
+                v-for="photo in sec.src.results"
+                :key="photo.id"
+                class="thumb"
+                :class="{ selected: isSelected(photo.url) }"
+                :title="photo.alt"
+                @click="pick(photo.url)"
+              >
+                <img :src="photo.thumbUrl" :alt="photo.alt" loading="lazy" />
+                <span v-if="multiple" class="sel-badge" :class="{ empty: !isSelected(photo.url) }">{{ selectedNumber(photo.url) }}</span>
+              </button>
             </div>
             <p v-if="!sec.src.results.length" class="empty">{{ sec.emptyText }}</p>
             <div v-else-if="sec.src.page < sec.src.totalPages" class="unsplash-more-wrap">
@@ -547,6 +595,16 @@ const externalHasResults = computed(() => sections.value.some((s) => s.src.resul
           </template>
         </section>
       </div>
+
+      <footer v-if="multiple" class="picker-footer">
+        <span class="sel-count">
+          {{ selected.length ? `${selected.length} ${selected.length === 1 ? 'seleccionada' : 'seleccionadas'}` : 'Toca las imágenes para seleccionarlas' }}
+        </span>
+        <button v-if="selected.length" type="button" class="link-btn" @click="selected = []">Limpiar</button>
+        <button type="button" class="primary-btn" :disabled="!selected.length" @click="confirmSelection">
+          {{ selected.length ? `Añadir ${selected.length}` : 'Añadir' }}
+        </button>
+      </footer>
     </div>
   </div>
 </template>
@@ -682,25 +740,6 @@ header h2 {
   font-size: 11px;
   color: var(--pe-muted);
 }
-.unsplash-card {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-.unsplash-credit {
-  font-size: 10px;
-  line-height: 1.3;
-  color: var(--pe-muted);
-  text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.unsplash-credit:hover {
-  color: var(--pe-accent);
-  text-decoration: underline;
-}
 .unsplash-error {
   color: var(--pe-danger);
   text-align: center;
@@ -768,8 +807,11 @@ header h2 {
   text-align: center;
 }
 
-.loc-btn {
+.icon-btn {
   flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  color: var(--pe-text);
   width: 36px;
   height: 36px;
   border-radius: var(--pe-radius);
@@ -780,10 +822,22 @@ header h2 {
   line-height: 1;
   transition: background var(--pe-transition), border-color var(--pe-transition);
 }
-.loc-btn:hover {
+.icon-btn:hover:not(:disabled) {
   border-color: var(--pe-accent);
 }
-.loc-btn.active {
+.icon-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.spin {
+  animation: pe-spin 1s linear infinite;
+}
+@keyframes pe-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.icon-btn.active {
   border-color: var(--pe-accent);
   background: var(--pe-accent-soft);
 }
@@ -889,6 +943,123 @@ header h2 {
 .unsplash-error.left {
   text-align: left;
   padding: 0;
+}
+.thumb.selected {
+  border-color: var(--pe-accent);
+  box-shadow: 0 0 0 2px var(--pe-accent);
+}
+.sel-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: var(--pe-accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}
+.sel-badge.empty {
+  background: rgba(15, 17, 21, 0.3);
+  border: 1.5px solid #fff;
+}
+.picker-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--pe-border);
+  background: var(--pe-panel);
+}
+.sel-count {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--pe-muted);
+}
+.link-btn {
+  border: none;
+  background: transparent;
+  color: var(--pe-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.primary-btn {
+  padding: 8px 16px;
+  border-radius: var(--pe-radius);
+  border: 1px solid var(--pe-accent);
+  background: var(--pe-accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+.primary-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Móvil: el selector ocupa toda la pantalla y la rejilla es más densa
+   (3 por fila, miniaturas cuadradas). */
+@media (max-width: 640px) {
+  .overlay {
+    padding: 0;
+    align-items: stretch;
+  }
+  .modal {
+    max-width: none;
+    max-height: none;
+    height: 100%;
+    border-radius: 0;
+    border: none;
+  }
+  header {
+    padding: 10px 12px;
+  }
+  .toolbar {
+    padding: 10px 12px 0;
+    gap: 8px;
+  }
+  .results-scroll {
+    padding: 10px 12px 12px;
+    flex: 1;
+  }
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .thumb {
+    padding: 3px;
+    gap: 2px;
+  }
+  .thumb img {
+    height: auto;
+    aspect-ratio: 1;
+  }
+  .caption {
+    font-size: 10px;
+  }
+  .badge {
+    top: 6px;
+    left: 6px;
+  }
+  .sel-badge {
+    top: 6px;
+    right: 6px;
+  }
+  .sec-subtitle {
+    display: none;
+  }
+  .picker-footer {
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
 }
 @media (max-width: 520px) {
   .url-card {
