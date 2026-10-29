@@ -122,11 +122,11 @@ export function isImageUrl(value) {
   }
 }
 
+// Nombre para mostrar: el del fichero. El fotógrafo (param `photographer`) se
+// conserva en la URL para la web pública, pero no se muestra en el selector.
 function displayNameForUrl(url) {
   try {
     const u = new URL(url);
-    const photographer = u.searchParams.get('photographer');
-    if (photographer) return photographer;
     return decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() || '') || u.hostname;
   } catch {
     return url;
