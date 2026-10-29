@@ -16,23 +16,29 @@ components:
     options:
       multiple: false
       creatable: true
+      # Same wording pattern everywhere: "Solo ..." keeps only those events, "Todos excepto ..." hides them.
+      # Grouped by what they look at: kind of event, how often it happens, and the page the section is on.
+      # The values are stored in sites' config.json (and `mass` also drives the default grouping in
+      # web-template's assembleOrder): never change a value, only its label.
       values:
         [
-          { value: "!dates:empty&byday:empty", label: 'Eventos puntuales' }, # has a date and does not repeat
-          { value: '!byday:empty', label: "Eventos periódicos" }, # check is repeating only (start date is okay on repeating events)
-          { value: "{name}", label: 'Templo correspondiente' },
-          { value: "{title}", label: 'Evento correspondiente' },
-          { value: '"type":"{type}"', label: 'Eventos del tipo de la página' },
-          { value: 'mass', label: "Mostrar sólo Misas" },
-          { value: 'funeral', label: "Mostrar sólo funerales" },
-          { value: '!mass', label: "Ocultar Misas" },
-          { value: '!byday:empty&!mass', label: "Eventos periódicos (excepto Misas)" },
+          { value: 'mass', label: "Solo misas" },
+          { value: 'funeral', label: "Solo funerales" },
+          { value: '!mass', label: "Todos excepto misas" },
+          { value: "!dates:empty&byday:empty", label: 'Solo eventos puntuales (con fecha, sin repetirse)' }, # has a date and does not repeat
+          { value: '!byday:empty', label: "Solo eventos periódicos (que se repiten)" }, # check is repeating only (start date is okay on repeating events)
+          { value: '!byday:empty&!mass', label: "Solo eventos periódicos, excepto misas" },
+          { value: "{name}", label: 'Solo los del templo de esta página' },
+          { value: "{title}", label: 'Solo los del evento de esta página' },
+          { value: '"type":"{type}"', label: 'Solo los del tipo de evento de esta página' },
         ]
   ordering:
+    # Legacy: the editor no longer shows this field (the calendar section's `ordering` is `hidden: true`).
+    # It stays in the schema so existing values are kept and still validate.
     label: Criterio agrupación
     help: |-
-      Define cómo se agrupan y ordenan los eventos en las tablas de la sección. Es una lista de criterios separados por comas: de izquierda a derecha, cada criterio es una columna o nivel de agrupación (title, dates, times, locations, byday, notes, weekday, byweek, language).
-      Usa una de las opciones predefinidas salvo que haya un motivo para no hacerlo: combinan los criterios de forma probada. Los símbolos especiales (skip, + y -) forman parte de esas combinaciones; no los modifiques.
+      Opcional; el editor ya no lo muestra y casi nunca hace falta rellenarlo. Si está vacío, la web elige la agrupación según el filtro de la sección (solo misas: Laborable/Festivo > Horas > Lugares > Notas; cualquier otro: Tipo de evento > Día o fecha > Horas > Extras).
+      Si se rellena (sitios antiguos), define cómo se agrupan y ordenan los eventos en las tablas de la sección. Es una lista de 5 criterios separados por comas: de izquierda a derecha, cada criterio es una columna o nivel de agrupación (title, dates, times, locations, byday, notes, weekday, byweek, language). Los símbolos especiales (skip, + y -) forman parte de las combinaciones predefinidas.
     type: select
     options:
       multiple: false
@@ -552,11 +558,13 @@ components:
           - { name: tags, label: Opciones de estilo, component: tags }
       - name: calendar
         label: Eventos
-        help: "Muestra eventos del calendario en tablas. Se elige qué eventos (Filtro) y cómo se agrupan (Agrupación). Los eventos en sí se editan en la pestaña Eventos, no en esta sección."
+        help: "Muestra eventos del calendario en tablas. Se elige qué eventos (Filtro); cómo se agrupan lo decide la web según ese filtro. Los eventos en sí se editan en la pestaña Eventos, no en esta sección."
         fields:
           - { name: title, type: string, label: Titulo sección, default: "Nuestros eventos" }
           - { name: filter, label: "Filtro. ¿Qué eventos quieres mostrar?", component: calendarFilter }
-          - { name: ordering, label: "Agrupación de eventos. ¿Cómo quieres agruparlos?", component: ordering }
+          # Legacy, hidden: kept so sites that already saved an ordering keep it (and keep validating).
+          # Empty = web-template picks it from `filter` (see assembleOrder in web-template/docs/.vitepress/utils.js).
+          - { name: ordering, label: "Agrupación de eventos (opcional)", component: ordering, hidden: true }
           - { name: tags, label: Opciones de estilo, component: tags }
       - name: video-gospel
         label: Audios Nuevo Testamento
