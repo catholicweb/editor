@@ -22,11 +22,6 @@ const API_KEY =
 
 export const pexelsEnabled = Boolean(API_KEY);
 
-// Reutiliza el sesgo católico de Unsplash («catholic <consulta>» salvo que ya
-// contenga un término religioso) para que Pexels devuelva resultados afines al
-// contenido del sitio.
-import { catholicBiasQuery } from './unsplash.js';
-
 const API_BASE = 'https://api.pexels.com';
 const SEARCH_PATH = '/v1/search';
 const PER_PAGE = 30;
@@ -105,7 +100,7 @@ export async function searchPexels(rawQuery, page = 1, { signal } = {}) {
   if (!pexelsEnabled) {
     throw new PexelsError('Pexels no esta configurado', 'no_key');
   }
-  const query = catholicBiasQuery(rawQuery);
+  const query = String(rawQuery || '').trim();
   const url =
     `${API_BASE}${SEARCH_PATH}?query=${encodeURIComponent(query)}` +
     `&page=${page}&per_page=${PER_PAGE}`;

@@ -27,57 +27,6 @@ const TIMEOUT_MS = 10_000;
 // valor del campo es la imagen desnuda, sin utm ni crédito.
 const UTM_PARAMS = 'utm_source=parroquia-editor&utm_medium=referral&utm_campaign=image-picker';
 
-// Términos (es/en) que marcan una búsqueda como ya "religiosa". Comparación por
-// subcadena sin límites de palabra, a propósito: coge plurales e inflexiones
-// ("iglesias" contiene "iglesia"). Un falso positivo ocasional es el coste
-// aceptado del sesgo hacia contenido católico.
-const RELIGIOUS_TERMS = [
-  'catholic', 'catholicism',
-  'iglesia', 'iglesias', 'church',
-  'catolic', 'católic', 'catholic',
-  'santo', 'santa', 'santos', 'santas', 'saint', 'saints',
-  'cruz', 'cross',
-  'virgen', 'virgin',
-  'maria', 'maría', 'mary',
-  'jesus', 'jesús', 'christ', 'cristo', 'christian', 'cristiano', 'cristiana',
-  'religion', 'religión', 'religioso', 'religiosa', 'religious',
-  'parish', 'parroquia', 'parroquial',
-  'chapel', 'capilla',
-  'cathedral', 'catedral',
-  'priest', 'sacerdote', 'sacerdotal',
-  'pope', 'papa', 'papal',
-  'bible', 'biblia', 'bíblico', 'biblical',
-  'eucarist', 'eucharist',
-  'rosario', 'rosary',
-  'obispo', 'bishop',
-  'monje', 'monja', 'monk', 'nun',
-  'convento', 'convent', 'monasterio', 'monastery', 'abadia', 'abadía', 'abbey',
-  'peregrino', 'peregrina', 'peregrin', 'pilgrim',
-  'cruzada', 'crusade',
-  'vaticano', 'vatican',
-  'gospel', 'evangelio', 'evangelica', 'evangélica', 'evangelico', 'evangélico',
-  'oracion', 'oración', 'orando', 'orando', 'prayer', 'praying', 'pray',
-  'rezo', 'rezando',
-  'angel', 'ángel', 'angeles', 'ángeles', 'angels',
-  'santuario', 'sanctuary',
-  'templo', 'temple',
-];
-
-const RELIGIOUS_RE = new RegExp(RELIGIOUS_TERMS.join('|'), 'i');
-
-export function hasReligiousTerm(query) {
-  return RELIGIOUS_RE.test(query);
-}
-
-// Sesgo católico: devuelve la consulta prefijada con «catholic» salvo que ya
-// contenga un término religioso.
-export function catholicBiasQuery(rawQuery) {
-  const q = String(rawQuery || '').trim();
-  if (!q) return '';
-  return q
-  return hasReligiousTerm(q) ? q : `catholic ${q}`;
-}
-
 function appendParams(url, params) {
   const sep = url.includes('?') ? '&' : '?';
   return url + sep + params;
@@ -149,7 +98,7 @@ export async function searchUnsplash(rawQuery, page = 1, { signal } = {}) {
   if (!unsplashEnabled) {
     throw new UnsplashError('Unsplash no esta configurado', 'no_key');
   }
-  const query = catholicBiasQuery(rawQuery);
+  const query = String(rawQuery || '').trim();
   const url =
     `${API_BASE}${SEARCH_PATH}?query=${encodeURIComponent(query)}` +
     `&page=${page}&per_page=${PER_PAGE}&client_id=${ACCESS_KEY}`;
@@ -193,4 +142,29 @@ export async function searchUnsplash(rawQuery, page = 1, { signal } = {}) {
     total: data.total || 0,
     totalPages: data.total_pages || 0,
   };
+}
+
+// Una foto concreta por id (para URLs pegadas de unsplash.com/photos/…).
+// Devuelve el mismo objeto que `mapPhoto`, con el crédito del fotógrafo, para
+// que la imagen se guarde igual que si se hubiera elegido desde la búsqueda.
+export async function getUnsplashPhoto(id, { signal } = {}) {
+  if (!unsplashEnabled) {
+    throw new UnsplashError('Unsplash no esta configurado', 'no_key');
+  }
+  const url = `${API_BASE}/photos/${encodeURIComponent(id)}?client_id=${ACCESS_KEY}`;
+  let res;
+  try {
+    res = await fetchWithTimeout(url, TIMEOUT_MS, signal);
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      if (signal?.aborted) throw err;
+      throw new UnsplashError('Se agoto el tiempo de espera', 'network');
+    }
+    throw new UnsplashError('No se pudo conectar con Unsplash', 'network');
+  }
+  if (res.status === 429 || (res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0')) {
+    throw new UnsplashError('Límite de peticiones de Unsplash alcanzado', 'rate_limit');
+  }
+  if (!res.ok) throw new UnsplashError(res.status === 404 ? 'No se encontró la foto' : `HTTP ${res.status}`, 'http');
+  return mapPhoto(await res.json());
 }

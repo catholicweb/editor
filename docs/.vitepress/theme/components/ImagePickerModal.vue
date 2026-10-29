@@ -1,11 +1,15 @@
 <script setup>
-import { ref, computed, watch, onUnmounted } from 'vue';
+import { ref, reactive, computed, watch, onUnmounted } from 'vue';
 import { state, uploadMedia, refreshFileList } from '../lib/store.js';
-import { relPathForNewMedia } from '../lib/content-index.js';
+import { relPathForNewMedia, collectUsedImages } from '../lib/content-index.js';
 import { compressToWebP } from '../lib/image-compression.js';
 import { sha256Hex } from '../lib/hash.js';
 import * as unsplash from '../lib/unsplash.js';
 import * as pexels from '../lib/pexels.js';
+import * as wikimedia from '../lib/wikimedia.js';
+import { classifyInput, baseNameFromUrl } from '../lib/image-input.js';
+import { searchPlaces } from '../lib/geocode.js';
+import { createImageSource, sourceErrorMessage } from '../lib/useImageSource.js';
 
 const emit = defineEmits(['select', 'close']);
 
@@ -23,175 +27,357 @@ function choose(entry) {
 
 const search = ref('');
 
+// --- Qué se ha escrito en el buscador ---------------------------------------
+// El buscador es «inteligente»: detecta una URL pegada, unas coordenadas o
+// texto libre (ver lib/image-input.js). El botón 📍 activa además la búsqueda
+// por nombre de lugar (autocompletado con Photon).
+const input = computed(() => classifyInput(search.value));
+const locationMode = ref(false);
+const place = ref(null); // lugar elegido del autocompletado: { label, context, lat, lon }
+const geoRadius = ref(5000); // metros; Commons limita geosearch a 10 km
+
+// 'library' (nada escrito) | 'text' | 'url' | 'geo' (punto + radio) | 'place' (escribiendo un lugar)
+const mode = computed(() => {
+  const kind = input.value.kind;
+  if (kind === 'url') return 'url';
+  if (kind === 'coords') return 'geo';
+  if (locationMode.value) return place.value ? 'geo' : 'place';
+  return kind === 'text' ? 'text' : 'library';
+});
+
+const geoPoint = computed(() => {
+  if (input.value.kind === 'coords') {
+    const { lat, lon } = input.value;
+    return { lat, lon, label: `${lat}, ${lon}` };
+  }
+  if (locationMode.value && place.value) return place.value;
+  return null;
+});
+const geoKey = computed(() => (geoPoint.value ? `${geoPoint.value.lat},${geoPoint.value.lon},${geoRadius.value}` : ''));
+
+// --- Biblioteca: las del servidor + las que la web usa ahora ------------------
+// Las imágenes que config.json ya usa pero viven fuera de nuestro servidor
+// (Unsplash, Pexels, Wikimedia, enlaces pegados) se añaden a la rejilla por
+// defecto, para poder reutilizarlas. Las del servidor ya están en el listado.
+const usedImages = computed(() => collectUsedImages(state.config, state.mediaUrls));
+const libraryEntries = computed(() => [...state.mediaFiles, ...usedImages.value]);
+
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase();
-  if (!q) return state.mediaFiles;
-  return state.mediaFiles.filter((entry) =>
-    entry.name.toLowerCase().includes(q)
+  if (!q) return libraryEntries.value;
+  return libraryEntries.value.filter(
+    (entry) => entry.name.toLowerCase().includes(q) || (entry.external && entry.url.toLowerCase().includes(q))
   );
 });
 
-// --- Búsqueda en Unsplash (fuente externa) ---
+function usedInLabel(entry) {
+  const tab = state.fileIndex.find((e) => e.tabPath === entry.tab);
+  const where = tab ? tab.displayName : entry.tab;
+  return `${entry.name} — enlace externo${where ? ` · en uso en «${where}»` : ''}`;
+}
+
+// --- Fuentes externas (Unsplash, Pexels, Wikimedia) ---------------------------
 const DEBOUNCE_MS = 600;
-const unsplashEnabled = unsplash.unsplashEnabled;
+const GEO_DEBOUNCE_MS = 200;
 
-const unsplashResults = ref([]); // fotos mapeadas (mapPhoto)
-const unsplashLoading = ref(false);
-const unsplashError = ref(''); // '' = sin error; si no, mensaje en español
-const unsplashSearched = ref(false); // true tras una respuesta de página 1 (para mostrar el vacío)
-const unsplashPage = ref(1);
-const unsplashTotalPages = ref(0);
+const pexelsSrc = createImageSource({
+  name: 'Pexels',
+  enabled: pexels.pexelsEnabled,
+  fetchPage: (q, page, opts) => pexels.searchPexels(q, page, opts),
+});
+const unsplashSrc = createImageSource({
+  name: 'Unsplash',
+  enabled: unsplash.unsplashEnabled,
+  fetchPage: (q, page, opts) => unsplash.searchUnsplash(q, page, opts),
+});
+const wikimediaSrc = createImageSource({
+  name: 'Wikimedia',
+  enabled: wikimedia.wikimediaEnabled,
+  fetchPage: (q, page, opts) => wikimedia.searchWikimedia(q, page, opts),
+});
+// Búsqueda por ubicación: solo Commons (Unsplash/Pexels no geolocalizan). La
+// «consulta» es la clave `lat,lon,radio` (ver geoKey).
+const nearSrc = createImageSource({
+  name: 'Wikimedia',
+  fetchPage: (key, _page, opts) => {
+    const [lat, lon, radius] = key.split(',').map(Number);
+    return wikimedia.searchWikimediaNear(lat, lon, radius, opts);
+  },
+});
+const textSources = [pexelsSrc, unsplashSrc, wikimediaSrc]; // orden de las secciones
 
-let unsplashTimer = null; // debounce
-let activeRequestId = 0; // descarta respuestas de búsquedas superadas
-let activeController = null; // aborta la petición en curso
-
-// --- Búsqueda en Pexels (segunda fuente externa) ---
-const pexelsEnabled = pexels.pexelsEnabled;
-
-const pexelsResults = ref([]); // fotos mapeadas (mapPhoto)
-const pexelsLoading = ref(false);
-const pexelsError = ref(''); // '' = sin error; si no, mensaje en español
-const pexelsSearched = ref(false); // true tras una respuesta de página 1 (para mostrar el vacío)
-const pexelsPage = ref(1);
-const pexelsTotalPages = ref(0);
-
-let pexelsTimer = null; // debounce
-let pexelsRequestId = 0; // descarta respuestas de búsquedas superadas
-let pexelsController = null; // aborta la petición en curso
-
-const unsplashActive = computed(() =>
-  unsplashEnabled &&
-  search.value.trim() !== '' &&
-  (unsplashLoading.value || unsplashError.value !== '' || unsplashSearched.value)
-);
-
-const pexelsActive = computed(() =>
-  pexelsEnabled &&
-  search.value.trim() !== '' &&
-  (pexelsLoading.value || pexelsError.value !== '' || pexelsSearched.value)
-);
-
-watch(search, (q) => {
-  clearTimeout(unsplashTimer);
-  clearTimeout(pexelsTimer);
-  const trimmed = (q || '').trim();
-  if (!trimmed) {
-    unsplashResults.value = [];
-    unsplashLoading.value = false;
-    unsplashPage.value = 1;
-    unsplashTotalPages.value = 0;
-    unsplashError.value = '';
-    unsplashSearched.value = false;
-    activeController?.abort();
-    pexelsResults.value = [];
-    pexelsLoading.value = false;
-    pexelsPage.value = 1;
-    pexelsTotalPages.value = 0;
-    pexelsError.value = '';
-    pexelsSearched.value = false;
-    pexelsController?.abort();
-    return;
+const sections = computed(() => {
+  if (mode.value === 'text') {
+    return [
+      { key: 'pexels', title: 'Pexels', subtitle: 'Fotos libres de derechos', src: pexelsSrc },
+      { key: 'unsplash', title: 'Unsplash', subtitle: 'Fotos libres de derechos', src: unsplashSrc },
+      { key: 'wikimedia', title: 'Wikimedia', subtitle: 'Wikimedia Commons · se guarda con crédito', src: wikimediaSrc },
+    ]
+      .filter((s) => s.src.active)
+      .map((s) => ({ ...s, emptyText: `Sin resultados en ${s.title} para «${search.value.trim()}».` }));
   }
-  if (unsplashEnabled) {
-    unsplashTimer = setTimeout(() => runUnsplashSearch(trimmed), DEBOUNCE_MS);
+  if (mode.value === 'geo') {
+    return [
+      {
+        key: 'near',
+        title: 'Wikimedia',
+        subtitle: `Fotos cerca de 📍 ${geoPoint.value.label}`,
+        src: nearSrc,
+        emptyText: 'No hay fotos de Commons en esta zona. Prueba con un radio mayor.',
+      },
+    ];
   }
-  if (pexelsEnabled) {
-    pexelsTimer = setTimeout(() => runPexelsSearch(trimmed), DEBOUNCE_MS);
-  }
+  return [];
 });
 
-async function runUnsplashSearch(rawQuery, page = 1, append = false) {
-  const requestId = ++activeRequestId;
-  unsplashError.value = '';
-  unsplashLoading.value = true;
-  if (!append) {
-    activeController?.abort();
-    unsplashResults.value = [];
-    unsplashSearched.value = false;
+// --- Sugerencias de lugares (modo 📍) ----------------------------------------
+const suggestions = ref([]);
+const suggestLoading = ref(false);
+const suggestError = ref('');
+let suggestTimer = null;
+let suggestCtrl = null;
+let suggestId = 0;
+
+function resetSuggest() {
+  clearTimeout(suggestTimer);
+  suggestCtrl?.abort();
+  suggestId++;
+  suggestions.value = [];
+  suggestLoading.value = false;
+  suggestError.value = '';
+}
+
+function scheduleSuggest(query) {
+  clearTimeout(suggestTimer);
+  suggestCtrl?.abort();
+  const id = ++suggestId;
+  suggestError.value = '';
+  if (query.length < 3) {
+    suggestions.value = [];
+    suggestLoading.value = false;
+    return;
   }
-  const controller = new AbortController();
-  activeController = controller;
-  try {
-    const data = await unsplash.searchUnsplash(rawQuery, page, { signal: controller.signal });
-    if (requestId !== activeRequestId) return; // respuesta de una búsqueda superada
-    if (page === 1) unsplashResults.value = data.results;
-    else unsplashResults.value = [...unsplashResults.value, ...data.results];
-    unsplashPage.value = page;
-    unsplashTotalPages.value = data.totalPages;
-    unsplashSearched.value = true;
-  } catch (err) {
-    if (requestId !== activeRequestId) return;
-    if (err.name === 'AbortError') return; // cancelada por una búsqueda nueva / cierre
-    if (err.code === 'rate_limit') {
-      unsplashError.value = 'Límite de búsquedas de Unsplash alcanzado. Vuelve a intentarlo dentro de una hora.';
-    } else if (err.code === 'http') {
-      unsplashError.value = `Unsplash respondió con un error (${err.message}). Prueba de nuevo.`;
-    } else {
-      unsplashError.value = 'No se pudo conectar con Unsplash. Comprueba tu conexión.';
+  suggestLoading.value = true;
+  suggestTimer = setTimeout(async () => {
+    const ctrl = new AbortController();
+    suggestCtrl = ctrl;
+    try {
+      const found = await searchPlaces(query, { signal: ctrl.signal });
+      if (id !== suggestId) return;
+      suggestions.value = found;
+    } catch (err) {
+      if (id !== suggestId || err.name === 'AbortError') return;
+      suggestions.value = [];
+      suggestError.value = err.message || 'No se pudo buscar el lugar.';
+    } finally {
+      if (id === suggestId) suggestLoading.value = false;
     }
-    unsplashSearched.value = true;
-  } finally {
-    if (requestId === activeRequestId) unsplashLoading.value = false;
-  }
+  }, 350);
 }
 
-async function loadMoreUnsplash() {
-  const q = search.value.trim();
-  if (!q || unsplashLoading.value) return;
-  await runUnsplashSearch(q, unsplashPage.value + 1, true);
+function toggleLocation() {
+  locationMode.value = !locationMode.value;
+  if (!locationMode.value) place.value = null;
 }
 
-async function runPexelsSearch(rawQuery, page = 1, append = false) {
-  const requestId = ++pexelsRequestId;
-  pexelsError.value = '';
-  pexelsLoading.value = true;
-  if (!append) {
-    pexelsController?.abort();
-    pexelsResults.value = [];
-    pexelsSearched.value = false;
-  }
-  const controller = new AbortController();
-  pexelsController = controller;
-  try {
-    const data = await pexels.searchPexels(rawQuery, page, { signal: controller.signal });
-    if (requestId !== pexelsRequestId) return; // respuesta de una búsqueda superada
-    if (page === 1) pexelsResults.value = data.results;
-    else pexelsResults.value = [...pexelsResults.value, ...data.results];
-    pexelsPage.value = page;
-    pexelsTotalPages.value = data.totalPages;
-    pexelsSearched.value = true;
-  } catch (err) {
-    if (requestId !== pexelsRequestId) return;
-    if (err.name === 'AbortError') return; // cancelada por una búsqueda nueva / cierre
-    if (err.code === 'rate_limit') {
-      pexelsError.value = 'Límite de búsquedas de Pexels alcanzado. Vuelve a intentarlo dentro de una hora.';
-    } else if (err.code === 'http') {
-      pexelsError.value = `Pexels respondió con un error (${err.message}). Prueba de nuevo.`;
-    } else {
-      pexelsError.value = 'No se pudo conectar con Pexels. Comprueba tu conexión.';
+function pickPlace(p) {
+  place.value = p;
+  search.value = p.label; // el watch de `search` conserva `place` si coincide
+  resetSuggest();
+}
+
+// Si se edita el texto después de elegir un lugar, se descarta el lugar.
+watch(search, (v) => {
+  if (place.value && v.trim() !== place.value.label) place.value = null;
+});
+
+// --- Pegar una URL -----------------------------------------------------------
+const urlPreview = reactive({ status: 'idle', photo: null, source: '', message: '' });
+const copying = ref(false);
+const copyError = ref('');
+let urlTimer = null;
+let urlCtrl = null;
+let urlId = 0;
+
+function resetUrl() {
+  clearTimeout(urlTimer);
+  urlCtrl?.abort();
+  urlId++;
+  urlPreview.status = 'idle';
+  urlPreview.photo = null;
+  urlPreview.source = '';
+  urlPreview.message = '';
+  copyError.value = '';
+}
+
+// Comprueba que la URL carga como imagen. new Image() no necesita CORS.
+function probeImage(url, signal) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const timer = setTimeout(() => finish(new Error('timeout')), 10_000);
+    function finish(err) {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
+      img.onload = img.onerror = null;
+      if (err) reject(err);
+      else resolve({ width: img.naturalWidth, height: img.naturalHeight });
     }
-    pexelsSearched.value = true;
-  } finally {
-    if (requestId === pexelsRequestId) pexelsLoading.value = false;
+    function onAbort() {
+      img.src = '';
+      finish(Object.assign(new Error('abort'), { name: 'AbortError' }));
+    }
+    img.onload = () => finish(null);
+    img.onerror = () => finish(new Error('not_image'));
+    signal?.addEventListener('abort', onAbort, { once: true });
+    img.src = url;
+  });
+}
+
+async function directPhoto(url, signal) {
+  await probeImage(url, signal);
+  return { id: url, url, thumbUrl: url, alt: '', creditName: '', creditUrl: '', license: '' };
+}
+
+async function resolveUrl() {
+  const parsed = input.value;
+  if (parsed.kind !== 'url') return;
+  const id = ++urlId;
+  urlCtrl?.abort();
+  const ctrl = new AbortController();
+  urlCtrl = ctrl;
+  urlPreview.status = 'loading';
+  copyError.value = '';
+  try {
+    let photo = null;
+    if (parsed.source === 'wikimedia') {
+      // Con la API se obtiene también el autor (la licencia CC BY-SA lo exige).
+      photo = await wikimedia.getWikimediaFile(parsed.title, { signal: ctrl.signal });
+      if (!photo && parsed.url) photo = await directPhoto(parsed.url, ctrl.signal);
+      if (!photo) throw Object.assign(new Error('wm_missing'), { code: 'wm_missing' });
+    } else if (parsed.source === 'unsplash') {
+      photo = await unsplash.getUnsplashPhoto(parsed.id, { signal: ctrl.signal });
+    } else {
+      photo = await directPhoto(parsed.url, ctrl.signal);
+    }
+    if (id !== urlId) return;
+    urlPreview.photo = photo;
+    urlPreview.source = parsed.source;
+    urlPreview.status = 'ready';
+  } catch (err) {
+    if (id !== urlId || err.name === 'AbortError') return;
+    urlPreview.photo = null;
+    urlPreview.status = 'error';
+    if (err.code === 'wm_missing') {
+      urlPreview.message = 'No se encontró esa foto en Wikimedia Commons (solo se admiten JPG, PNG y WebP).';
+    } else if (parsed.source === 'wikimedia') {
+      urlPreview.message = sourceErrorMessage('Wikimedia', err);
+    } else if (parsed.source === 'unsplash') {
+      urlPreview.message = sourceErrorMessage('Unsplash', err);
+    } else {
+      urlPreview.message =
+        'No se pudo cargar esa dirección como imagen. Comprueba que el enlace apunta directamente a una imagen (.jpg, .png…).';
+    }
   }
 }
 
-async function loadMorePexels() {
-  const q = search.value.trim();
-  if (!q || pexelsLoading.value) return;
-  await runPexelsSearch(q, pexelsPage.value + 1, true);
+function hostOf(url) {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return '';
+  }
 }
+
+// Sube una copia al servidor (mismo flujo que «Subir nueva imagen»). Solo se
+// ofrece para enlaces directos sin crédito: copiar una foto de Unsplash o
+// Wikimedia perdería la atribución que exigen sus licencias. Requiere que el
+// servidor de origen permita CORS; si no, se explica y se puede usar como enlace.
+async function copyToServer() {
+  const photo = urlPreview.photo;
+  if (!photo || copying.value) return;
+  copying.value = true;
+  copyError.value = '';
+  try {
+    const res = await fetch(photo.url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    if (!blob.type.startsWith('image/')) throw new Error('not_image');
+    const ext = blob.type.split('/')[1].split('+')[0] || 'img';
+    const file = new File([blob], `${baseNameFromUrl(photo.url)}.${ext}`, { type: blob.type });
+    emit('select', await storeImageFile(file));
+  } catch (err) {
+    copyError.value = 'Ese servidor no permite copiar la imagen. Puedes usarla como enlace externo.';
+  } finally {
+    copying.value = false;
+  }
+}
+
+// --- Orquestación: qué fuentes buscan según el modo ---------------------------
+function resetSources() {
+  for (const s of textSources) s.reset();
+  nearSrc.reset();
+}
+
+function sync() {
+  const m = mode.value;
+  if (m !== 'place') resetSuggest();
+  if (m !== 'url') resetUrl();
+
+  if (m === 'text') {
+    nearSrc.reset();
+    const q = input.value.query;
+    for (const s of textSources) {
+      if (s.enabled) s.schedule(q, DEBOUNCE_MS);
+      else s.reset();
+    }
+  } else if (m === 'geo') {
+    for (const s of textSources) s.reset();
+    nearSrc.schedule(geoKey.value, GEO_DEBOUNCE_MS);
+  } else if (m === 'url') {
+    resetSources();
+    resetUrl();
+    urlPreview.status = 'loading';
+    urlTimer = setTimeout(resolveUrl, 400);
+  } else if (m === 'place') {
+    resetSources();
+    scheduleSuggest(search.value.trim());
+  } else {
+    resetSources();
+  }
+}
+
+watch(() => `${mode.value}|${search.value.trim()}|${geoKey.value}`, sync);
 
 onUnmounted(() => {
-  clearTimeout(unsplashTimer);
-  activeController?.abort();
-  clearTimeout(pexelsTimer);
-  pexelsController?.abort();
+  resetSources();
+  resetSuggest();
+  resetUrl();
 });
 
 function triggerUpload() {
   fileInput.value?.click();
+}
+
+// Comprime a WebP, añade un hash corto al nombre (cache-busting), sube al
+// servidor y refresca el listado. Devuelve la URL absoluta de la copia.
+async function storeImageFile(file) {
+  // Compress image to WebP before upload
+  const compressedFile = await compressToWebP(file, {
+    maxWidth: 1920,
+    maxHeight: 1080,
+    targetSizeKB: 250,
+    minQuality: 0.6
+  });
+
+  // Hash the exact WebP bytes being stored and append a brief content hash to
+  // the filename, so a changed image produces a new URL (cache-busting).
+  const bytes = await compressedFile.arrayBuffer();
+  const hashSuffix = (await sha256Hex(bytes)).slice(0, 8);
+
+  const relPath = relPathForNewMedia(state.schema, compressedFile.name, hashSuffix);
+  const url = await uploadMedia(compressedFile, relPath);
+  await refreshFileList();
+  return url;
 }
 
 async function onFileChosen(e) {
@@ -201,29 +387,20 @@ async function onFileChosen(e) {
   uploading.value = true;
   uploadError.value = '';
   try {
-    // Compress image to WebP before upload
-    const compressedFile = await compressToWebP(file, {
-      maxWidth: 1920,
-      maxHeight: 1080,
-      targetSizeKB: 250,
-      minQuality: 0.6
-    });
-
-    // Hash the exact WebP bytes being stored and append a brief content hash to
-    // the filename, so a changed image produces a new URL (cache-busting).
-    const bytes = await compressedFile.arrayBuffer();
-    const hashSuffix = (await sha256Hex(bytes)).slice(0, 8);
-
-    const relPath = relPathForNewMedia(state.schema, compressedFile.name, hashSuffix);
-    const url = await uploadMedia(compressedFile, relPath);
-    await refreshFileList();
-    emit('select', url);
+    emit('select', await storeImageFile(file));
   } catch (err) {
     uploadError.value = err.message || String(err);
   } finally {
     uploading.value = false;
   }
 }
+
+const placeholder = computed(() =>
+  locationMode.value
+    ? 'Escribe un lugar (p. ej. Pamplona) o pega coordenadas…'
+    : 'Buscar, pegar una URL o unas coordenadas…'
+);
+const externalHasResults = computed(() => sections.value.some((s) => s.src.results.length));
 </script>
 
 <template>
@@ -239,86 +416,121 @@ async function onFileChosen(e) {
           {{ uploading ? 'Subiendo…' : '+ Subir nueva imagen' }}
         </button>
         <input ref="fileInput" type="file" accept="image/*" hidden @change="onFileChosen" />
-        <input v-model="search" type="text" class="search" placeholder="Buscar imagen…" />
+        <input v-model="search" type="text" class="search" :placeholder="placeholder" />
+        <button
+          type="button"
+          class="loc-btn"
+          :class="{ active: locationMode }"
+          :aria-pressed="locationMode"
+          title="Buscar por ubicación"
+          @click="toggleLocation"
+        >
+          📍
+        </button>
       </div>
       <p v-if="uploadError" class="error">{{ uploadError }}</p>
 
       <div class="results-scroll">
-        <div class="grid">
+        <!-- Biblioteca: imágenes del servidor + las que la web usa ahora -->
+        <div v-if="mode === 'library' || mode === 'text'" class="grid">
           <button
             v-for="entry in filtered"
             :key="entry.url"
             class="thumb"
-            :title="entry.name"
+            :title="entry.external ? usedInLabel(entry) : entry.name"
             @click="choose(entry)"
           >
             <img :src="urlFor(entry)" :alt="entry.name" loading="lazy" />
+            <span v-if="entry.external" class="badge">externa</span>
             <span class="caption">{{ entry.name }}</span>
           </button>
-          <p v-if="!state.mediaFiles.length" class="empty">
+          <p v-if="!libraryEntries.length" class="empty">
             Sin resultados. Prueba a buscar algo :)
           </p>
-          <p v-else-if="!filtered.length && (!unsplashActive || !unsplashResults.length)" class="empty">
+          <p v-else-if="!filtered.length && !externalHasResults" class="empty">
             Sin resultados para «{{ search }}».
           </p>
         </div>
 
-        <section v-if="pexelsActive" class="unsplash-section">
-          <div class="unsplash-title">
-            <h3>Pexels</h3>
-            <span class="unsplash-subtitle">Fotos libres de derechos</span>
-          </div>
-
-          <div v-if="pexelsLoading && !pexelsResults.length" class="empty">
-            Buscando en Pexels…
-          </div>
-          <p v-else-if="pexelsError" class="unsplash-error">{{ pexelsError }}</p>
-          <template v-else>
-            <div class="grid">
-              <div v-for="photo in pexelsResults" :key="photo.id" class="unsplash-card">
-                <button class="thumb" :title="photo.alt" @click="choose(photo)">
-                  <img :src="photo.thumbUrl" :alt="photo.alt" loading="lazy" />
-                </button>
-                <a
-                  class="unsplash-credit"
-                  :href="photo.creditUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Foto: {{ photo.creditName }}
-                </a>
-              </div>
-            </div>
-            <p v-if="!pexelsResults.length" class="empty">
-              Sin resultados en Pexels para «{{ search }}».
-            </p>
-            <div v-else-if="pexelsPage < pexelsTotalPages" class="unsplash-more-wrap">
-              <button class="unsplash-more" :disabled="pexelsLoading" @click="loadMorePexels">
-                {{ pexelsLoading ? 'Buscando…' : 'Cargar más' }}
+        <!-- Modo 📍: elegir un lugar -->
+        <div v-if="mode === 'place'" class="places">
+          <p v-if="suggestLoading" class="empty">Buscando lugares…</p>
+          <p v-else-if="suggestError" class="unsplash-error">{{ suggestError }}</p>
+          <ul v-else-if="suggestions.length" class="suggestions">
+            <li v-for="p in suggestions" :key="p.id">
+              <button type="button" class="suggestion" @click="pickPlace(p)">
+                <span class="suggestion-name">📍 {{ p.label }}</span>
+                <span v-if="p.context" class="suggestion-context">{{ p.context }}</span>
               </button>
+            </li>
+          </ul>
+          <p v-else-if="search.trim().length >= 3" class="empty">
+            No se encontró ningún lugar para «{{ search.trim() }}».
+          </p>
+          <p v-else class="empty">
+            Escribe el nombre de un lugar (o pega unas coordenadas, p. ej. 42.8125, -1.6458) para ver fotos de Wikimedia Commons de la zona.
+          </p>
+        </div>
+
+        <!-- Pegar una URL -->
+        <section v-if="mode === 'url'" class="url-preview">
+          <p v-if="urlPreview.status === 'loading'" class="empty">Comprobando el enlace…</p>
+          <p v-else-if="urlPreview.status === 'error'" class="unsplash-error">{{ urlPreview.message }}</p>
+          <div v-else-if="urlPreview.status === 'ready'" class="url-card">
+            <img :src="urlPreview.photo.thumbUrl" :alt="urlPreview.photo.alt || 'Vista previa'" />
+            <div class="url-info">
+              <strong>{{ urlPreview.photo.creditName ? 'Foto: ' + urlPreview.photo.creditName : hostOf(urlPreview.photo.url) }}</strong>
+              <span v-if="urlPreview.photo.license" class="unsplash-subtitle">{{ urlPreview.photo.license }}</span>
+              <span v-if="urlPreview.source === 'direct'" class="unsplash-subtitle">
+                Se usará como enlace a {{ hostOf(urlPreview.photo.url) }}: si allí borran la imagen, dejará de verse.
+              </span>
+              <span v-else class="unsplash-subtitle">Se guarda como enlace, con el crédito del autor.</span>
+              <div class="url-actions">
+                <button type="button" class="upload-btn" @click="choose(urlPreview.photo)">Usar esta imagen</button>
+                <button
+                  v-if="urlPreview.source === 'direct'"
+                  type="button"
+                  class="unsplash-more"
+                  :disabled="copying"
+                  @click="copyToServer"
+                >
+                  {{ copying ? 'Copiando…' : 'Copiar a mi servidor' }}
+                </button>
+              </div>
+              <p v-if="copyError" class="unsplash-error left">{{ copyError }}</p>
             </div>
-          </template>
+          </div>
         </section>
-        
-        <section v-if="unsplashActive" class="unsplash-section">
+
+        <!-- Fuentes externas (texto) o Wikimedia por ubicación -->
+        <section v-for="sec in sections" :key="sec.key" class="unsplash-section">
           <div class="unsplash-title">
-            <h3>Unsplash</h3>
-            <span class="unsplash-subtitle">Fotos libres de derechos</span>
+            <h3>{{ sec.title }}</h3>
+            <span class="unsplash-subtitle">{{ sec.subtitle }}</span>
+            <select v-if="sec.key === 'near'" v-model.number="geoRadius" class="radius" aria-label="Radio de búsqueda">
+              <option :value="1000">1 km</option>
+              <option :value="5000">5 km</option>
+              <option :value="10000">10 km</option>
+            </select>
           </div>
 
-          <div v-if="unsplashLoading && !unsplashResults.length" class="empty">
-            Buscando en Unsplash…
+          <div
+            v-if="(sec.src.loading && !sec.src.results.length) || (sec.key === 'near' && !sec.src.searched && !sec.src.error)"
+            class="empty"
+          >
+            Buscando en {{ sec.title }}…
           </div>
-          <p v-else-if="unsplashError" class="unsplash-error">{{ unsplashError }}</p>
+          <p v-else-if="sec.src.error" class="unsplash-error">{{ sec.src.error }}</p>
           <template v-else>
             <div class="grid">
-              <div v-for="photo in unsplashResults" :key="photo.id" class="unsplash-card">
+              <div v-for="photo in sec.src.results" :key="photo.id" class="unsplash-card">
                 <button class="thumb" :title="photo.alt" @click="choose(photo)">
                   <img :src="photo.thumbUrl" :alt="photo.alt" loading="lazy" />
                 </button>
                 <a
                   class="unsplash-credit"
                   :href="photo.creditUrl"
+                  :title="photo.license ? photo.creditName + ' · ' + photo.license : photo.creditName"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -326,12 +538,10 @@ async function onFileChosen(e) {
                 </a>
               </div>
             </div>
-            <p v-if="!unsplashResults.length" class="empty">
-              Sin resultados en Unsplash para «{{ search }}».
-            </p>
-            <div v-else-if="unsplashPage < unsplashTotalPages" class="unsplash-more-wrap">
-              <button class="unsplash-more" :disabled="unsplashLoading" @click="loadMoreUnsplash">
-                {{ unsplashLoading ? 'Buscando…' : 'Cargar más' }}
+            <p v-if="!sec.src.results.length" class="empty">{{ sec.emptyText }}</p>
+            <div v-else-if="sec.src.page < sec.src.totalPages" class="unsplash-more-wrap">
+              <button class="unsplash-more" :disabled="sec.src.loading" @click="sec.src.loadMore()">
+                {{ sec.src.loading ? 'Buscando…' : 'Cargar más' }}
               </button>
             </div>
           </template>
@@ -556,5 +766,137 @@ header h2 {
   font-size: 13px;
   padding: 20px 0;
   text-align: center;
+}
+
+.loc-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--pe-radius);
+  border: 1px solid var(--pe-border);
+  background: var(--pe-input-bg);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  transition: background var(--pe-transition), border-color var(--pe-transition);
+}
+.loc-btn:hover {
+  border-color: var(--pe-accent);
+}
+.loc-btn.active {
+  border-color: var(--pe-accent);
+  background: var(--pe-accent-soft);
+}
+.results-scroll > .unsplash-section:first-child {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+.radius {
+  margin-left: auto;
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 6px;
+  border-radius: var(--pe-radius-sm);
+  border: 1px solid var(--pe-border);
+  background: var(--pe-input-bg);
+  color: var(--pe-text);
+}
+.suggestions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.suggestion {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 9px 12px;
+  border: 1px solid var(--pe-border);
+  border-radius: var(--pe-radius);
+  background: var(--pe-input-bg);
+  color: var(--pe-text);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: border-color var(--pe-transition);
+}
+.suggestion:hover {
+  border-color: var(--pe-accent);
+}
+.suggestion-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+.suggestion-context {
+  font-size: 11px;
+  color: var(--pe-muted);
+}
+.thumb {
+  position: relative;
+}
+.badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(15, 17, 21, 0.65);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.url-card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid var(--pe-border);
+  border-radius: var(--pe-radius);
+  background: var(--pe-input-bg);
+}
+.url-card img {
+  width: 180px;
+  max-width: 45%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: var(--pe-radius-sm);
+  background: var(--pe-bg);
+  flex-shrink: 0;
+}
+.url-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.url-info strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.url-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+.unsplash-error.left {
+  text-align: left;
+  padding: 0;
+}
+@media (max-width: 520px) {
+  .url-card {
+    flex-direction: column;
+  }
+  .url-card img {
+    width: 100%;
+    max-width: 100%;
+  }
 }
 </style>
