@@ -74,7 +74,7 @@ describe('typeGroups', () => {
     const events = [{ type: 'gone' }, { type: '' }, {}];
     const groups = typeGroups(events, types());
     expect(groups.find((g) => g.key === 'gone')).toMatchObject({ label: 'gone', type: null, indexes: [0] });
-    expect(groups.find((g) => g.key === 'sin-tipo')).toMatchObject({ label: 'Sin tipo', type: null, indexes: [1, 2] });
+    expect(groups.find((g) => g.key === 'sin-tipo')).toMatchObject({ label: 'Sin grupo', type: null, indexes: [1, 2] });
   });
 
   it('labels a type without a name instead of showing its id', () => {
@@ -129,5 +129,15 @@ describe('addEventType / removeEventType', () => {
 
   it('returns false for an unknown id', () => {
     expect(removeEventType({ 'event-types': { list: types() } }, 'nope')).toBe(false);
+  });
+});
+
+describe('event date field', () => {
+  it('allows several dates and defaults to an empty list', async () => {
+    const { defaultForField } = await import('../docs/.vitepress/theme/lib/schema.js');
+    const date = schema.eventFields.find((f) => f.name === 'date');
+    expect(date.type).toBe('date');
+    expect(date.options.multiple).toBe(true);
+    expect(defaultForField(date)).toEqual([]);
   });
 });
