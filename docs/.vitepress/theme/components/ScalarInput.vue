@@ -89,6 +89,41 @@ function imagePreviewUrl(value) {
   return value || '';
 }
 
+// ---- date --------------------------------------------------------------
+// A date field is either one date (`<input type=date>` + a button to clear it)
+// or, with `options.multiple`, a list of dates shown as removable chips with a
+// picker to add more. The list is kept sorted and without duplicates. Values
+// saved when the field held a single date (a plain string) are read as a
+// one-item list and only become an array once edited, so opening an event never
+// marks it as modified.
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const dateMultiple = computed(() => props.field.type === 'date' && !!props.field.options?.multiple);
+const dateList = computed(() => {
+  const v = props.modelValue;
+  const arr = Array.isArray(v) ? v : v ? [v] : [];
+  return arr.filter((d) => typeof d === 'string' && d.trim() !== '');
+});
+const pendingDate = ref('');
+// 2026-12-24 -> 24/12/2026 (anything else is shown as stored)
+function dateChipLabel(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
+}
+// Dates are added with an explicit button (or Enter) rather than on every input
+// event: while a year is being typed the browser reports a valid date for each
+// keystroke (0002-.., 0020-.., 0202-.., 2026-..), which would add junk entries.
+function addPendingDate() {
+  const d = pendingDate.value;
+  if (!ISO_DATE.test(d) || d < '1900-01-01') return;
+  if (!dateList.value.includes(d)) set([...dateList.value, d].sort());
+  pendingDate.value = '';
+}
+function removeDateAt(i) {
+  const arr = dateList.value.slice();
+  arr.splice(i, 1);
+  set(arr);
+}
+
 // ---- reference ----------------------------------------------------------
 const refOptions = computed(() => {
   const collectionPath = props.field.options?.collection;
@@ -295,13 +330,29 @@ function updateRefDropdownPosition() {
     </div>
   </div>
 
-  <!-- date -->
-  <input
-    v-else-if="field.type === 'date'"
-    type="date"
-    :value="modelValue ?? ''"
-    @input="set($event.target.value)"
-  />
+  <!-- date, several (options.multiple): removable chips + a picker to add more -->
+  <div v-else-if="field.type === 'date' && dateMultiple" class="date-multi">
+    <div v-if="dateList.length" class="date-chips">
+      <span v-for="(d, i) in dateList" :key="d" class="date-chip">
+        {{ dateChipLabel(d) }}
+        <button type="button" class="date-chip-x" @click="removeDateAt(i)" :aria-label="`Quitar ${dateChipLabel(d)}`" title="Quitar">✕</button>
+      </span>
+    </div>
+    <div class="date-row">
+      <input type="date" v-model="pendingDate" @keydown.enter.prevent="addPendingDate" />
+      <button type="button" class="date-btn" :disabled="!pendingDate" @click="addPendingDate">+ Añadir</button>
+    </div>
+  </div>
+
+  <!-- date (one) -->
+  <div v-else-if="field.type === 'date'" class="date-row">
+    <input
+      type="date"
+      :value="modelValue ?? ''"
+      @input="set($event.target.value)"
+    />
+    <button v-if="modelValue" type="button" class="date-btn" @click="set('')">Quitar</button>
+  </div>
 
   <!-- select -->
   <SelectField
@@ -602,6 +653,76 @@ textarea.auto-grow {
   font-size: 12px;
   color: var(--pe-muted);
   margin: 0;
+}
+
+/* ---- date ---- */
+.date-multi {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.date-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.date-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--pe-accent-soft);
+  color: var(--pe-accent);
+  border-radius: 999px;
+  padding: 2px 4px 2px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.date-chip-x {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  transition: background var(--pe-transition);
+}
+.date-chip-x:hover {
+  background: var(--pe-accent-soft-hover);
+}
+.date-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.date-row input {
+  flex: 1;
+  min-width: 0;
+}
+.date-btn {
+  flex-shrink: 0;
+  padding: 7px 12px;
+  border-radius: var(--pe-radius);
+  border: 1px solid var(--pe-border);
+  background: var(--pe-panel);
+  color: var(--pe-text);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background var(--pe-transition), border-color var(--pe-transition);
+}
+.date-btn:hover:not(:disabled) {
+  background: var(--pe-hover);
+  border-color: var(--pe-border-strong);
+}
+.date-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ---- reference chip input (same as select field chips) ---- */
