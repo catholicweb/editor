@@ -61,3 +61,14 @@ describe('pages.yml event schema', () => {
     expect(cal.options.keyCelebrants).toBeUndefined();
   });
 });
+
+describe('events with several dates', () => {
+  it('uses the earliest date as the anchor of a yearly rule', async () => {
+    const { expandRRule, firstDateISO } = await import('../docs/.vitepress/theme/lib/calendar.js');
+    expect(firstDateISO(['2026-12-24', '2025-03-19'])).toBe('2025-03-19');
+    expect(firstDateISO('')).toBe('');
+    // week of Mon 2026-03-16 contains 19 March
+    const days = expandRRule(['yearly'], ['2027-05-01', '2025-03-19'], new Date(2026, 2, 16));
+    expect(days.map((d) => d.getDate())).toEqual([19]);
+  });
+});

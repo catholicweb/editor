@@ -11,7 +11,7 @@ components:
     help: |-
       Decide qué eventos del calendario aparecen en esta sección. Elige una de las opciones o escribe una expresión propia.
       Una expresión combina condiciones con & ("y"); el prefijo ! niega la condición; campo:empty significa «ese campo está vacío» (por ejemplo, !byday:empty = eventos que se repiten); una palabra suelta (mass, funeral) mantiene solo los eventos que la contienen.
-      Los marcadores {name}, {title} y {type} se sustituyen por el templo, el evento o el tipo de evento de la página donde se muestra la sección, así que la misma sección sirve en muchas páginas.
+      Los marcadores {name}, {title} y {type} se sustituyen por el templo, el evento o el grupo de eventos de la página donde se muestra la sección, así que la misma sección sirve en muchas páginas.
     type: select
     options:
       multiple: false
@@ -30,7 +30,7 @@ components:
           { value: '!byday:empty&!mass', label: "Solo eventos periódicos, excepto misas" },
           { value: "{name}", label: 'Solo los del templo de esta página' },
           { value: "{title}", label: 'Solo los del evento de esta página' },
-          { value: '"type":"{type}"', label: 'Solo los del tipo de evento de esta página' },
+          { value: '"type":"{type}"', label: 'Solo los del grupo de eventos de esta página' },
         ]
   ordering:
     # Legacy: the editor no longer shows this field (the calendar section's `ordering` is `hidden: true`).
@@ -484,7 +484,13 @@ components:
       - { name: title, label: Título/Nombre del evento, type: string }
       - { name: images, label: Imagenes, type: image, options: { multiple: true } }
       - { name: location, label: Lugar, component: location }
-      - { name: date, label: Fecha inicio, type: date }
+      - name: date
+        label: Fechas
+        help: |-
+          Fecha o fechas del evento (se guardan como lista, formato AAAA-MM-DD). Un evento puntual puede tener varias fechas (por ejemplo, las sesiones de un curso). Para quitar una fecha, pulsa la ✕ de su etiqueta; sin fechas, el evento usa las de su grupo.
+          En un evento que se repite, la fecha más temprana es la de inicio: de ella dependen «Cada año», «Cada mes» y «Cada 2 semanas».
+        type: date
+        options: { multiple: true }
       - { name: times, label: Hora, component: times }
       - { name: rrule, label: Se repite, component: rrule }
       - { name: description, label: Nota breve, type: string }
@@ -598,7 +604,7 @@ components:
           - { name: tags, label: Opciones de estilo, component: tags }
       - name: eventCards
         label: Lista de grupos parroquiales
-        help: "Tarjetas de los tipos de evento (grupos parroquiales) elegidos en «Eventos/grupos a mostrar». Los tipos se crean y editan en la pestaña Tipos de Evento."
+        help: "Tarjetas de los grupos de eventos (grupos parroquiales) elegidos en «Eventos/grupos a mostrar». Los grupos se crean y editan en la pestaña Grupos de Eventos."
         fields:
           - { name: title, type: string, label: Titulo sección, default: "Nuestros parroquiales" }
           - { name: eventsToShow, label: "Eventos/grupos a mostrar", type: select, options: { source: "event-types.list", multiple: true, label: "{title}" }  }  
@@ -663,7 +669,7 @@ content:
         type: calendario
         label: Calendario de eventos
         help: |-
-          Calendario de eventos de la parroquia (misas, catequesis, confesiones...). Los eventos están en events.list. Cada evento tiene un tipo (el id de un elemento de event-types.list), uno o varios lugares (ids de templos de info.places) y, o bien una fecha de inicio (evento puntual), o bien una regla «Se repite» más hora (evento periódico).
+          Calendario de eventos de la parroquia (misas, catequesis, confesiones...). Los eventos están en events.list. Cada evento pertenece a un grupo (campo «type»: el id de un elemento de event-types.list), uno o varios lugares (ids de templos de info.places) y, o bien una fecha de inicio (evento puntual), o bien una regla «Se repite» más hora (evento periódico).
           Para cambiar un evento, edita ese evento concreto (por su id) en vez de reescribir la lista entera.
         options:
           eventTypesPath: "event-types.list"   # config dot-path to the event-types array
@@ -674,13 +680,13 @@ content:
   - name: event-types
     icon: false # this hides the tab
     type: tab
-    label: Tipos de Evento
+    label: Grupos de Eventos
     fields:
       - name: list
-        label: Tipos de evento
+        label: Grupos de eventos
         help: |-
-          Categorías de eventos (Eucaristía, Catequesis, Confesiones...). Cada evento del calendario pertenece a un tipo, guardado como el id de este elemento en el campo «type» del evento; por eso conviene no borrar un tipo que todavía tenga eventos.
-          Los «valores por defecto» son el punto de partida para los eventos de este tipo.
+          Grupos de eventos (Eucaristía, Catequesis, Confesiones...). Cada evento del calendario pertenece a un grupo, guardado como el id de este elemento en el campo «type» del evento; por eso conviene no borrar un grupo que todavía tenga eventos.
+          Los «valores por defecto» son el punto de partida para los eventos de este grupo.
         type: object
         list:
           collapsible:
@@ -689,18 +695,18 @@ content:
           sort: 'alphabetical'
         fields:
           - { name: id, label: Identificador, type: uuid, hidden: true }
-          - { name: label, label: "Tipo de evento (ej: Eucaristía)", type: string }
+          - { name: label, label: "Grupo de eventos (ej: Eucaristía)", type: string }
           - name: calendar
             label: "Calendario de Google a importar (opcional)"
             help: |-
-              Enlace de un calendario de Google (u otro calendario .ics) cuyos eventos se importan automáticamente como eventos de este tipo, con los «valores por defecto» de abajo para lo que les falte (imagen, lugar, nota...). Así, todo lo que se añada a ese calendario aparece en la web sin tocar el editor.
+              Enlace de un calendario de Google (u otro calendario .ics) cuyos eventos se importan automáticamente como eventos de este grupo, con los «valores por defecto» de abajo para lo que les falte (imagen, lugar, nota...). Así, todo lo que se añada a ese calendario aparece en la web sin tocar el editor.
               Admite: la «Dirección pública en formato iCal», el enlace público o de compartir del calendario, o su id (algo@group.calendar.google.com). El calendario debe ser público: este enlace es visible en la web, no uses la «dirección secreta».
               Se actualiza en cada publicación de la web.
             type: string
           - name: pageMode
-            label: Crear página para eventos de este tipo
+            label: Crear página para eventos de este grupo
             help: |-
-              none: los eventos solo aparecen en el calendario. type: se crea UNA página que agrupa todos los eventos de este tipo (lo habitual para un grupo con varias actividades, por ejemplo catequesis con muchas sesiones). event: se crea una página por cada evento (modo antiguo; solo si cada evento necesita su propia página).
+              none: los eventos solo aparecen en el calendario. type: se crea UNA página que agrupa todos los eventos de este grupo (lo habitual para un grupo con varias actividades, por ejemplo catequesis con muchas sesiones). event: se crea una página por cada evento (modo antiguo; solo si cada evento necesita su propia página).
               Las «Secciones de la página creada» solo se usan si el modo no es none.
             type: select
             options:
@@ -708,11 +714,11 @@ content:
               values:
                 [
                   { value: none, label: "Sin página propia (solo aparecen en el calendario)" },
-                  { value: type, label: "Crear una única página agrupando los eventos de este tipo" },
-                  { value: event, label: "Crear una página para cada evento de este tipo" },
+                  { value: type, label: "Crear una única página agrupando los eventos de este grupo" },
+                  { value: event, label: "Crear una página para cada evento de este grupo" },
                 ]
           - { name: sections, label: Secciones de la página creada, component: sections, showif: "pageMode != 'none'" } # TOOD: enable this or similar types of conditional rendering
-          - { name: defaults, label: "Valores por defecto para evento de este tipo", component: event }
+          - { name: defaults, label: "Valores por defecto para eventos de este grupo", component: event }
 
   - name: nerdy
     icon: false # hidden tab: edit whole config as JSON
@@ -784,7 +790,7 @@ content:
       - name: list
         label: Lista de páginas
         help: |-
-          Páginas de la web. Cada página tiene título, imagen y una lista de secciones con su contenido. Las páginas de cada templo y de cada tipo de evento se generan desde sus propias pestañas (Datos, Tipos de Evento), no se añaden aquí.
+          Páginas de la web. Cada página tiene título, imagen y una lista de secciones con su contenido. Las páginas de cada templo y de cada grupo de eventos se generan desde sus propias pestañas (Datos, Grupos de Eventos), no se añaden aquí.
         component: page
         list: { collapsible: { collapsed: true, summary: "{fields.title}" }, sort: "alphabetical", modal: false  }
       #- { name: pageperlocatoin, label: Crear una página para cada templo, type: boolean, default: true }  

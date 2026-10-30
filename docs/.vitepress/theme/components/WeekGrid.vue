@@ -247,7 +247,7 @@ function toggleAll() {
         </div>
       </div>
       <div class="toolbar-actions">
-        <button v-if="viewMode === 'byType' && typesEditable" class="add-type" @click="emit('add-type')">+ Tipo de evento</button>
+        <button v-if="viewMode === 'byType' && typesEditable" class="add-type" @click="emit('add-type')">+ Grupo de eventos</button>
         <button class="add-event" @click="emit('add-event', {})">+ Evento</button>
       </div>
     </div>
@@ -275,7 +275,7 @@ function toggleAll() {
     <!-- Event list grouped by type: collapsible groups; add-event in the title bar, edit-type in the body -->
     <div v-else-if="viewMode === 'byType'" class="event-list by-type">
       <p v-if="!eventsByType.length" class="empty-week">
-        No hay eventos ni tipos de evento. Usa <strong>+ Evento</strong> o <strong>+ Tipo de evento</strong> para añadir.
+        No hay eventos ni grupos de eventos. Usa <strong>+ Evento</strong> o <strong>+ Grupo de eventos</strong> para añadir.
       </p>
       <div v-for="group in eventsByType" :key="group.key" class="event-type-group">
         <div class="type-head">
@@ -293,14 +293,14 @@ function toggleAll() {
               </button>
             </div>
 
-            <button v-if="group.addType" class="type-action" title="Añadir evento de este tipo" aria-label="Añadir evento de este tipo" @click="emit('add-event', { type: group.addType })">
+            <button v-if="group.addType" class="type-action" title="Añadir evento a este grupo" aria-label="Añadir evento a este grupo" @click="emit('add-event', { type: group.addType })">
               <PeIcon name="plus" :size="18" />
             </button>
           </span>
         </div>
         <template v-if="!isCollapsed(group.key)">
           <p v-if="!group.events.length" class="type-empty">
-            {{ group.pastCount ? 'Solo hay eventos pasados.' : 'Sin eventos de este tipo.' }}
+            {{ group.pastCount ? 'Solo hay eventos pasados.' : 'Sin eventos en este grupo.' }}
           </p>
           <div v-for="row in group.events" :key="row.ev.id || row.index" class="event-row" :class="{ specific: row.specific, past: row.past }" @click="emit('edit-event', row.index)">
             <span class="event-when">{{ row.when }}</span>

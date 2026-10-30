@@ -127,6 +127,13 @@ export function parseDateToISO(s) {
 
 const ISO_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
+// The earliest date of a date value (a string, or a list of them), as ISO, or ''.
+// An event with several dates uses it as the anchor of yearly/monthly/biweekly rules
+// (the same one the website build starts from).
+export function firstDateISO(v) {
+  return toArray(v).map(parseDateToISO).filter((s) => ISO_RE.test(s)).sort()[0] || '';
+}
+
 // Short display form of a date (or list of dates): DD/MM, with the two-digit
 // year appended (DD/MM/YY) only when it is not the current year.
 export function formatShortDate(v, now = new Date()) {
@@ -310,7 +317,7 @@ export function expandRRule(rrule, dateISO, weekStart) {
     }
   }
 
-  const anchor = isoToDate(parseDateToISO(dateISO));
+  const anchor = isoToDate(firstDateISO(dateISO));
 
   // yearly: fires on the anchor's month/day, if it lands in this week
   if (freqTokens.has('yearly') && anchor) {

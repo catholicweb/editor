@@ -133,3 +133,10 @@ h1, h2, h3, h4, h5, h6 {
 [data-theme-button="pill"] .block-add > button {
   border-radius: 999px !important;
 }
+
+/* <fieldset> defaults to min-width: min-content, so a nowrap child (e.g. the
+   one-line repeat chips) stretched it, and the modal around it, past the
+   viewport. Let it shrink so such rows scroll inside their own box. */
+fieldset {
+  min-width: 0;
+}

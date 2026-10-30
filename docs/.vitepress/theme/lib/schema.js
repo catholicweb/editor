@@ -175,6 +175,9 @@ function isMultiImage(field) {
 function isMultiRef(field) {
   return field.type === 'reference' && field.options && field.options.multiple;
 }
+function isMultiDate(field) {
+  return field.type === 'date' && field.options && field.options.multiple;
+}
 export function isRepeatable(field) {
   return field.list === true || (field.list && typeof field.list === 'object');
 }
@@ -220,7 +223,7 @@ export function defaultForField(field) {
   }
   if (field.type === 'object') return defaultObject(field);
   if (field.type === 'block') return [];
-  if (isMultiSelect(field) || isMultiImage(field) || isMultiRef(field)) return [];
+  if (isMultiSelect(field) || isMultiImage(field) || isMultiRef(field) || isMultiDate(field)) return [];
   return scalarDefault(field);
 }
 
