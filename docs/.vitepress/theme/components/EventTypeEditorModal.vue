@@ -4,7 +4,8 @@ import FieldsGroup from './FieldsGroup.vue';
 import PeIcon from './PeIcon.vue';
 import { countEventsOfType, typeDisplayLabel } from '../lib/event-types.js';
 
-// Edits one event type. The form is generated from the schema: `fields` are the
+// Edits one event type (shown to the user as an event "group": only the UI
+// wording changed, `type`/`event-types` stay the internal names). The form is generated from the schema: `fields` are the
 // item fields of the `event-types.list` field in pages.yml, so adding or changing a
 // type setting there needs no change here.
 const props = defineProps({
@@ -19,7 +20,7 @@ const canDelete = computed(() => usedBy.value === 0);
 
 function remove() {
   if (!canDelete.value) return;
-  if (!confirm(`¿Eliminar el tipo «${typeDisplayLabel(props.type)}»?`)) return;
+  if (!confirm(`¿Eliminar el grupo «${typeDisplayLabel(props.type)}»?`)) return;
   emit('remove');
 }
 </script>
@@ -32,7 +33,7 @@ function remove() {
           <span class="type-dot">
             <PeIcon :name="type.icon || 'calendar'" :size="18" color="#fff" />
           </span>
-          <h2>{{ type.label?.trim() || 'Nuevo tipo de evento' }}</h2>
+          <h2>{{ type.label?.trim() || 'Nuevo grupo de eventos' }}</h2>
         </div>
         <div class="header-actions">
           <button class="close" @click="emit('close')" title="Cerrar">✕</button>
@@ -42,7 +43,7 @@ function remove() {
       <div class="modal-body">
         <FieldsGroup :fields="fields" :container="type" />
         <p v-if="!canDelete" class="in-use">
-          {{ usedBy }} evento(s) usan este tipo. Para borrarlo, cambia o elimina primero esos eventos.
+          {{ usedBy }} evento(s) usan este grupo. Para borrarlo, cambia o elimina primero esos eventos.
         </p>
       </div>
 
@@ -51,7 +52,7 @@ function remove() {
           <button
             class="btn btn-danger"
             :disabled="!canDelete"
-            :title="canDelete ? 'Borrar tipo' : `No se puede borrar: ${usedBy} evento(s) usan este tipo`"
+            :title="canDelete ? 'Borrar grupo' : `No se puede borrar: ${usedBy} evento(s) usan este grupo`"
             @click="remove"
           >
             Borrar
@@ -74,10 +75,13 @@ function remove() {
   justify-content: stretch;
   z-index: 1000;
   padding: 0;
+  overflow: hidden;
 }
 .modal {
   background: var(--pe-panel);
   width: 100%;
+  max-width: 100vw;
+  min-width: 0;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -136,7 +140,11 @@ function remove() {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  width: 100%;
   max-width: 760px;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: hidden; /* never scroll sideways: wide rows scroll inside their own box */
 }
 .in-use { margin: 0; font-size: 12px; color: var(--pe-muted); }
 
@@ -149,6 +157,7 @@ function remove() {
 }
 .footer-inner {
   max-width: 760px;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
