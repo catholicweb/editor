@@ -823,4 +823,4 @@ content:
       - { name: radius, label: "Redondeo de esquinas", component: radius }
       - { name: spacingDensity, label: "Espaciado de elementos", component: spacingDensity }
       #- { name: surfaceStyle, label: "Estilos de superficie", component: surfaceStyle }
-      #- { name: motionIntensity, label: "Diseño dinamismo, efectos visuales", component: motionIntensity }
+      #- { name: motionIntensity, label: "Dinamismo, efectos visuales", component: motionIntensity }
