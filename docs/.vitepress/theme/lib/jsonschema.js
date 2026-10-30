@@ -73,7 +73,16 @@ function leafSchema(field) {
     case 'rich-text': return { type: 'string', description: 'Markdown text (stored as Markdown, not HTML).' };
     case 'number': return { type: ['number', 'null'] };
     case 'boolean': return { type: 'boolean' };
-    case 'date': return { type: 'string', pattern: '^(\\d{4}-\\d{2}-\\d{2})?$', description: 'YYYY-MM-DD, or empty.' };
+    case 'date': {
+      const one = { type: 'string', pattern: '^(\\d{4}-\\d{2}-\\d{2})?$', description: 'YYYY-MM-DD, or empty.' };
+      if (!field.options?.multiple) return one;
+      // Several dates: a list of YYYY-MM-DD. A lone string stays valid so events saved
+      // when the field held a single date keep validating until they are next edited.
+      return {
+        anyOf: [{ type: 'array', items: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' } }, one],
+        description: 'List of dates, each YYYY-MM-DD (empty list = no date).',
+      };
+    }
     case 'uuid': return { type: 'string', minLength: 1 };
     case 'color': return { type: 'string', description: 'Hex color such as #aabbcc.' };
     case 'icon': return { type: 'string', description: 'Heroicon name.' };

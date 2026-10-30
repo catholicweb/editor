@@ -39,7 +39,7 @@ export function typeGroups(events = [], eventTypes = []) {
   events.forEach((ev, i) => {
     const raw = ev?.type;
     if (!raw) {
-      if (!groups.has('sin-tipo')) groups.set('sin-tipo', { key: 'sin-tipo', label: 'Sin tipo', type: null, indexes: [] });
+      if (!groups.has('sin-tipo')) groups.set('sin-tipo', { key: 'sin-tipo', label: 'Sin grupo', type: null, indexes: [] });
       groups.get('sin-tipo').indexes.push(i);
       return;
     }
