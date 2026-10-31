@@ -25,13 +25,21 @@ describe('event-types schema (pages.yml)', () => {
   it('defines the event-types list with its item fields', () => {
     expect(listField).toBeTruthy();
     const names = listField.fields.map((f) => f.name);
-    expect(names).toEqual(expect.arrayContaining(['id', 'label', 'calendar', 'pageMode', 'defaults']));
+    expect(names).toEqual(expect.arrayContaining(['id', 'label', 'calendar', 'createPage', 'defaults']));
   });
 
-  it('offers exactly the three page modes, with no default (so legacy configs are not rewritten)', () => {
-    const f = listField.fields.find((x) => x.name === 'pageMode');
-    expect(f.type).toBe('select');
-    expect(f.options.values.map((v) => v.value)).toEqual(['none', 'type', 'event']);
+  it('has a single on/off switch for the group page, off by default', () => {
+    const f = listField.fields.find((x) => x.name === 'createPage');
+    expect(f.type).toBe('boolean');
+    expect(f.default).toBe(false);
+    expect(listField.fields.find((x) => x.name === 'pageMode')).toBeUndefined();
+  });
+
+  it('has a per-event switch (also usable as a group default), with no default of its own', () => {
+    const defaults = listField.fields.find((x) => x.name === 'defaults');
+    const f = defaults.fields.find((x) => x.name === 'createPage');
+    expect(f.type).toBe('boolean');
+    expect(f.label).toBe('Crear página para este evento');
     expect(f.default).toBeUndefined();
   });
 
@@ -95,7 +103,7 @@ describe('addEventType / removeEventType', () => {
     const b = addEventType(config, listField);
     expect(config['event-types'].list).toHaveLength(5);
     expect(Object.keys(a).sort()).toEqual(listField.fields.map((f) => f.name).sort());
-    expect(a).toMatchObject({ label: '', pageMode: '' });
+    expect(a).toMatchObject({ label: '', createPage: false });
     expect(a.id).toBeTruthy();
     expect(a.id).not.toBe(b.id);
     expect(a.defaults).toBeTypeOf('object');
@@ -139,5 +147,25 @@ describe('event date field', () => {
     expect(date.type).toBe('date');
     expect(date.options.multiple).toBe(true);
     expect(defaultForField(date)).toEqual([]);
+  });
+});
+
+describe('migrateLegacyPageMode', () => {
+  it('maps the old three-way mode onto the new switches', async () => {
+    const { migrateLegacyPageMode } = await import('../docs/.vitepress/theme/lib/event-types.js');
+    const list = [
+      { id: 'a', pageMode: 'type', createPage: false },
+      { id: 'b', pageMode: 'event', createPage: false, defaults: { title: 'x' } },
+      { id: 'c', pageMode: 'none' },
+      { id: 'd', pageMode: '' },
+      { id: 'e', createPage: true },
+    ];
+    expect(migrateLegacyPageMode(list)).toBe(4);
+    expect(list[0]).toEqual({ id: 'a', createPage: true });
+    expect(list[1]).toEqual({ id: 'b', createPage: false, defaults: { title: 'x', createPage: true } });
+    expect(list[2]).toEqual({ id: 'c', createPage: false });
+    expect(list[3]).toEqual({ id: 'd', createPage: false });
+    expect(list[4]).toEqual({ id: 'e', createPage: true }); // already new: untouched
+    expect(migrateLegacyPageMode(list)).toBe(0); // idempotent
   });
 });
