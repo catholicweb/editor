@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import FieldRenderer from './FieldRenderer.vue';
 import PeIcon from './PeIcon.vue';
 import { state } from '../lib/store.js';
@@ -59,8 +59,25 @@ const typeDefaultFieldNames = computed(() => {
   );
 });
 
+// Fields hidden because the group gives them a default stay hidden until the user
+// asks for them with "Mostrar más opciones".
+const showHidden = ref(false);
+const hiddenCount = computed(() => typeDefaultFieldNames.value.size);
+
+// Clearing the last date of an event saved with a single date string leaves `[]`;
+// the save diff (lib/patch.js) treats a string -> [] change as "no change" and drops
+// it, so the date would come back after saving. Store a cleared date as '' instead
+// (a plain string -> string change, which is diffed correctly).
+watch(
+  () => props.event.date,
+  (now, before) => {
+    const hadValue = Array.isArray(before) ? before.length > 0 : !!before;
+    if (Array.isArray(now) && now.length === 0 && hadValue) props.event.date = '';
+  }
+);
+
 const eventFieldDefs = computed(() => {
-  const hidden = typeDefaultFieldNames.value;
+  const hidden = showHidden.value ? new Set() : typeDefaultFieldNames.value;
   const eventFields = state.schema?.eventFields || getEventFields();
   return [
     { name: 'id', label: 'Identificador', type: 'uuid', hidden: true }, // just in case
@@ -99,6 +116,9 @@ const headerIcon = computed(() => getTypeConfig(props.event.type, props.eventTyp
               :key-name="f.name"
             />
           </div>
+          <button v-if="hiddenCount" type="button" class="more-options" @click="showHidden = !showHidden">
+            {{ showHidden ? 'Mostrar menos opciones' : 'Mostrar más opciones' }}
+          </button>
         </section>
       </div>
 
@@ -261,4 +281,15 @@ const headerIcon = computed(() => getTypeConfig(props.event.type, props.eventTyp
   flex-direction: column;
   gap: 14px;
 }
+.more-options {
+  align-self: flex-start;
+  border: none;
+  background: transparent;
+  color: var(--pe-accent);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 2px;
+}
+.more-options:hover { text-decoration: underline; }
 </style>
