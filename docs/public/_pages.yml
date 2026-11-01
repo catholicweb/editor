@@ -12,6 +12,7 @@ components:
       Decide qué eventos del calendario aparecen en esta sección. Elige una de las opciones o escribe una expresión propia.
       Una expresión combina condiciones con & ("y"); el prefijo ! niega la condición; campo:empty significa «ese campo está vacío» (por ejemplo, !byday:empty = eventos que se repiten); una palabra suelta (mass, funeral) mantiene solo los eventos que la contienen.
       Los marcadores {name}, {title} y {type} se sustituyen por el templo, el evento o el grupo de eventos de la página donde se muestra la sección, así que la misma sección sirve en muchas páginas.
+      withinHorizon oculta los eventos cuya fecha de inicio está a más de 2 meses (los eventos periódicos sin fecha se muestran siempre). Sin esa condición se muestran todos los eventos, también los lejanos. Se combina con & como cualquier otra (por ejemplo, !mass&withinHorizon); con ! delante (!withinHorizon) deja solo los lejanos.
     type: select
     options:
       multiple: false
@@ -31,6 +32,10 @@ components:
           { value: "{name}", label: 'Solo los del templo de esta página' },
           { value: "{title}", label: 'Solo los del evento de esta página' },
           { value: '"type":"{type}"', label: 'Solo los del grupo de eventos de esta página' },
+          # Same filters limited to events that start within the next 2 months (web-template's `withinHorizon` term).
+          { value: "withinHorizon", label: 'Solo los que empiezan en los próximos 2 meses' },
+          { value: "!dates:empty&byday:empty&withinHorizon", label: 'Solo eventos puntuales, de los próximos 2 meses' },
+          { value: '"type":"{type}"&withinHorizon', label: 'Solo los del grupo de eventos de esta página, de los próximos 2 meses' },
         ]
   ordering:
     # Legacy: the editor no longer shows this field (the calendar section's `ordering` is `hidden: true`).
@@ -612,7 +617,9 @@ components:
         help: "Tarjetas de los grupos de eventos (grupos parroquiales) elegidos en «Eventos/grupos a mostrar». Los grupos se crean y editan en la pestaña Grupos de Eventos."
         fields:
           - { name: title, type: string, label: Titulo sección, default: "Nuestros parroquiales" }
-          - { name: eventsToShow, label: "Eventos/grupos a mostrar", type: select, options: { source: "event-types.list", multiple: true, label: "{title}" }  }  
+          # `values` are extra options listed after the groups (stored in the same list). `withinHorizon` is not a group:
+          # web-template reads it as a modifier that hides events starting more than 2 months away (never change its value).
+          - { name: eventsToShow, label: "Eventos/grupos a mostrar", help: "Elige los grupos de eventos. «Solo los que empiezan en los próximos 2 meses» oculta los eventos con fecha de inicio más lejana (los periódicos sin fecha se muestran siempre); si no eliges ningún grupo, se aplica a todos los eventos.", type: select, options: { source: "event-types.list", multiple: true, label: "{title}", values: [{ value: "withinHorizon", label: "Solo los que empiezan en los próximos 2 meses" }] }  }  
           - { name: filters, label: Filtros a mostrar, type: select, options: { multiple: true, creatable: true } }
           - { name: tags, label: Opciones de estilo, component: tags }
       - name: video
