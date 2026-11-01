@@ -50,6 +50,44 @@ describe('event-types schema (pages.yml)', () => {
   });
 });
 
+describe('withinHorizon filter (hides events starting more than 2 months away)', () => {
+  const raw = yaml.load(fs.readFileSync('docs/public/_pages.yml', 'utf8'));
+  // First object with `name: <name>` that has fields (a block variant), searched depth-first.
+  const findBlock = (node, name) => {
+    if (Array.isArray(node)) return node.map((n) => findBlock(n, name)).find(Boolean);
+    if (node && typeof node === 'object') {
+      if (node.name === name && Array.isArray(node.fields)) return node;
+      return Object.values(node).map((n) => findBlock(n, name)).find(Boolean);
+    }
+    return undefined;
+  };
+
+  it('the calendar filter offers presets with the withinHorizon term, and keeps the old values', () => {
+    const values = raw.components.calendarFilter.options.values.map((v) => v.value);
+    expect(values).toEqual(expect.arrayContaining(['withinHorizon', '!dates:empty&byday:empty&withinHorizon', '"type":"{type}"&withinHorizon']));
+    // stored in sites' config.json: never change a value
+    expect(values).toEqual(expect.arrayContaining(['mass', 'funeral', '!mass', '!dates:empty&byday:empty', '!byday:empty', '!byday:empty&!mass', '{name}', '{title}', '"type":"{type}"']));
+    expect(new Set(values).size).toBe(values.length);
+  });
+
+  it('the calendar filter help explains the term', () => {
+    expect(raw.components.calendarFilter.help).toContain('withinHorizon');
+  });
+
+  it('eventCards: eventsToShow lists the event groups plus the withinHorizon option', () => {
+    const f = findBlock(raw, 'eventCards').fields.find((x) => x.name === 'eventsToShow');
+    expect(f.options.source).toBe('event-types.list');
+    expect(f.options.multiple).toBe(true);
+    expect(f.options.values.map((v) => v.value)).toEqual(['withinHorizon']);
+  });
+
+  it('the JSON Schema of eventsToShow accepts it (sourced ids plus the extra value)', async () => {
+    const { pagesYmlToJsonSchema } = await import('../docs/.vitepress/theme/lib/jsonschema.js');
+    const text = JSON.stringify(await pagesYmlToJsonSchema(raw));
+    expect(text).toContain('Also accepts: withinHorizon.');
+  });
+});
+
 describe('findFieldByPath', () => {
   it('walks tab -> field -> nested field', () => {
     expect(findFieldByPath(schema, 'event-types.list').name).toBe('list');

@@ -23,25 +23,28 @@ const asChips = options.display === 'chips';
 // selecting any other value clears them (e.g. "never" repeats vs. weekdays).
 const exclusive = new Set(options.exclusive || []);
 
+// Static `values` from pages.yml; with a `source` they are listed after the sourced options.
+const staticOptions = (options.values || []).map((v) =>
+  typeof v === 'object' && v !== null ? v : { value: v, label: v }
+);
+
 // Reactively compute options from state.config if a source path is set
 const normalizedOptions = computed(() => {
   // Check if options should come from config (dot-path via shared resolver)
   if (options.source) {
     const data = resolvePath(state.config, options.source);
 
-    if (Array.isArray(data)) {
-      return data.map((item) => ({
-        value: item.id || item.name || item,
-        label: item.title || item.label || item.name || item.id || item,
-      }));
-    }
-    return [];
+    const sourced = Array.isArray(data)
+      ? data.map((item) => ({
+          value: item.id || item.name || item,
+          label: item.title || item.label || item.name || item.id || item,
+        }))
+      : [];
+    return [...sourced, ...staticOptions];
   }
 
   // Fallback to static values
-  return (options.values || []).map((v) =>
-    typeof v === 'object' && v !== null ? v : { value: v, label: v }
-  );
+  return staticOptions;
 });
 
 // Prevent empty strings from being stored in the model value.

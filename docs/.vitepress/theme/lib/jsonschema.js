@@ -49,6 +49,13 @@ function selectSchema(field) {
   if (o.source) {
     item['x-source'] = o.source; // value = id of an item in this config path (or free text if creatable)
     item.description = `Id of an item in config path "${o.source}"${o.creatable ? ' (free text also allowed)' : ''}.`;
+    // Static `values` next to a source are extra accepted entries (e.g. the `withinHorizon` modifier).
+    const extra = optValues(field);
+    if (extra.length) {
+      item.description += ` Also accepts: ${extra.map((v) => v.value).join(', ')}.`;
+      item.examples = extra.map((v) => v.value);
+      item['x-labels'] = Object.fromEntries(extra.map((v) => [v.value, v.label]));
+    }
   } else {
     const vals = optValues(field);
     const labels = Object.fromEntries(vals.map((v) => [v.value, v.label]));
