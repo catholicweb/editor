@@ -494,6 +494,11 @@ components:
       - { name: times, label: Hora, component: times }
       - { name: rrule, label: Se repite, component: rrule }
       - { name: description, label: Nota breve, type: string }
+      - name: createPage
+        label: Crear página para este evento
+        help: |-
+          Crea una página propia para este evento (además de la del grupo, si la tiene). Dentro de los «valores por defecto» de un grupo, crea una página para cada evento del grupo, salvo los que lo desactiven.
+        type: boolean
       #- { name: duration, label: Duración (min), type: number }
   page:
     label: Página
@@ -703,21 +708,15 @@ content:
               Admite: la «Dirección pública en formato iCal», el enlace público o de compartir del calendario, o su id (algo@group.calendar.google.com). El calendario debe ser público: este enlace es visible en la web, no uses la «dirección secreta».
               Se actualiza en cada publicación de la web.
             type: string
-          - name: pageMode
-            label: Crear página para eventos de este grupo
+          - name: createPage
+            label: Crear página para este grupo de eventos
             help: |-
-              none: los eventos solo aparecen en el calendario. type: se crea UNA página que agrupa todos los eventos de este grupo (lo habitual para un grupo con varias actividades, por ejemplo catequesis con muchas sesiones). event: se crea una página por cada evento (modo antiguo; solo si cada evento necesita su propia página).
-              Las «Secciones de la página creada» solo se usan si el modo no es none.
-            type: select
-            options:
-              multiple: false
-              values:
-                [
-                  { value: none, label: "Sin página propia (solo aparecen en el calendario)" },
-                  { value: type, label: "Crear una única página agrupando los eventos de este grupo" },
-                  { value: event, label: "Crear una página para cada evento de este grupo" },
-                ]
-          - { name: sections, label: Secciones de la página creada, component: sections, showif: "pageMode != 'none'" } # TOOD: enable this or similar types of conditional rendering
+              Si lo activas, se crea UNA página que agrupa todos los eventos de este grupo (lo habitual para un grupo con varias actividades, por ejemplo catequesis con muchas sesiones). Si no, los eventos solo aparecen en el calendario.
+              Para que un evento concreto tenga además su propia página, actívalo en ese evento («Crear página para este evento»).
+              Las «Secciones de la página creada» solo se usan si este interruptor está activado.
+            type: boolean
+            default: false
+          - { name: sections, label: Secciones de la página creada, component: sections, showif: "createPage == true" } # TOOD: enable this or similar types of conditional rendering
           - { name: defaults, label: "Valores por defecto para eventos de este grupo", component: event }
 
   - name: nerdy
@@ -751,6 +750,12 @@ content:
           - { name: createPage, label: "Crear una página para este lugar", type: boolean, default: true }
           - { name: sections, label: Secciones de la página creada, component: sections, showif: "createPage == true" } # TOOD: enable this or similar types of conditional rendering
 
+      - name: autodiscover
+        label: Encontrar templos
+        type: places-autodiscover
+        options:
+          listPath: "places"                   # field (relative to this tab) where selected places are appended
+          eventsPath: "calendar.events.list"   # config dot-path to the events ARRAY to import into
       - name: collaborators
         label: Lista de colaboradores
         type: object
@@ -764,12 +769,6 @@ content:
             type: string
             list: { collapsible: { collapsed: true } }
 
-      - name: autodiscover
-        label: Encontrar templos
-        type: places-autodiscover
-        options:
-          listPath: "places"                   # field (relative to this tab) where selected places are appended
-          eventsPath: "calendar.events.list"   # config dot-path to the events ARRAY to import into
       - name: bank
         label: Bizum y cuentas bancarias
         type: object

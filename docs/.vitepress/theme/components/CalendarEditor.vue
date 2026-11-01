@@ -6,7 +6,7 @@ import EventTypeEditorModal from './EventTypeEditorModal.vue';
 import { newEvent, generateId, startOfWeek, getEventFields } from '../lib/calendar.js';
 import { state } from '../lib/store.js';
 import { resolvePath } from '../lib/schema.js';
-import { addEventType, removeEventType, findFieldByPath } from '../lib/event-types.js';
+import { addEventType, removeEventType, findFieldByPath, migrateLegacyPageMode } from '../lib/event-types.js';
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -49,6 +49,9 @@ const eventTypes = computed(() => {
   const data = resolvePath(state.config, eventTypesPath);
   return Array.isArray(data) ? data : [];
 });
+
+// Groups saved with the old three-way `pageMode` are converted to the new switches.
+migrateLegacyPageMode(eventTypes.value);
 
 // The schema's definition of an event type (pages.yml, tab `event-types`). The
 // type editor is generated from its fields, so type editing is only offered when

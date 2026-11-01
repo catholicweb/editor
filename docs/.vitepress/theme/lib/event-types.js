@@ -1,6 +1,6 @@
 // Event-type helpers for the calendar UI (pure JS, no Vue), so they can be unit
 // tested. An event type is one item of `event-types.list` in config.json, and the
-// fields it has (name, icon, pageMode, defaults...) come from the schema
+// fields it has (name, icon, createPage, defaults...) come from the schema
 // (pages.yml, tab `event-types`), not from code. Events point at a type with
 // `event.type = <type id>`.
 import { resolvePath, ensurePath, defaultListItem } from './schema.js';
@@ -75,4 +75,27 @@ export function removeEventType(config, id, { events = [], path = EVENT_TYPES_PA
   if (i < 0) return false;
   list.splice(i, 1);
   return true;
+}
+
+// Legacy `pageMode` ('none' | 'type' | 'event') became two switches: `createPage`
+// on the group (ONE page for the whole group) and `createPage` on the event
+// (a page for that event, or, inside the group's `defaults`, for every event of
+// the group). Rewrites old groups in place so the switches show what the web
+// build already does: type -> group on; event -> group off + defaults on; none -> off.
+// Returns how many groups were migrated. The web-template build honours a
+// remaining `pageMode` first, so nothing changes for a site until this has run.
+export function migrateLegacyPageMode(types) {
+  let migrated = 0;
+  for (const t of Array.isArray(types) ? types : []) {
+    if (!t || typeof t !== 'object' || !('pageMode' in t)) continue;
+    const mode = t.pageMode;
+    delete t.pageMode;
+    t.createPage = mode === 'type';
+    if (mode === 'event') {
+      if (!t.defaults || typeof t.defaults !== 'object') t.defaults = {};
+      t.defaults.createPage = true;
+    }
+    migrated++;
+  }
+  return migrated;
 }

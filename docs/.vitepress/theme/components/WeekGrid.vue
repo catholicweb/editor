@@ -171,13 +171,14 @@ function togglePast() {
 
 // Every defined type gets a group (even with no events yet), so it can be edited
 // and given its first event from its header.
-const eventsByType = computed(() =>
+const allGroups = computed(() =>
   typeGroups(props.events || [], props.eventTypes || []).map((g) => {
     const rows = g.indexes
       .map((i) => rowFor(props.events[i], i))
       .sort((a, b) => compareEventOrder(a.order, b.order));
     const pastCount = rows.filter((r) => r.past).length;
     return {
+      total: rows.length,
       key: g.key,
       label: g.label,
       type: g.type,
@@ -188,38 +189,24 @@ const eventsByType = computed(() =>
     };
   })
 );
-const totalPast = computed(() => eventsByType.value.reduce((n, g) => n + g.pastCount, 0));
+// A group whose events are ALL in the past is hidden, unless "Ver pasados" is on.
+// Groups with no events at all stay (they still need editing / a first event).
+const eventsByType = computed(() =>
+  allGroups.value.filter((g) => showPast.value || !(g.total > 0 && g.pastCount === g.total))
+);
+// Counted over ALL groups, so "Ver pasados" stays available when the only past
+// events sit in hidden groups.
+const totalPast = computed(() => allGroups.value.reduce((n, g) => n + g.pastCount, 0));
 
-// Collapsed groups are remembered per browser (keyed by type id).
-const COLLAPSED_KEY = 'pe-collapsed-event-types';
-function loadCollapsed() {
-  try {
-    const arr = JSON.parse(localStorage.getItem(COLLAPSED_KEY) || '[]');
-    return new Set(Array.isArray(arr) ? arr.filter((k) => typeof k === 'string') : []);
-  } catch (_) {
-    return new Set();
-  }
-}
-const collapsed = ref(loadCollapsed());
-function saveCollapsed() {
-  try {
-    localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...collapsed.value]));
-  } catch (_) { /* storage unavailable: keep the in-memory state */ }
-}
-const isCollapsed = (key) => collapsed.value.has(key);
+// Every group starts collapsed each time the tab is opened; only the groups the
+// user expands are tracked (in memory, not remembered between visits).
+const expanded = ref(new Set());
+const isCollapsed = (key) => !expanded.value.has(key);
 function toggleGroup(key) {
-  const next = new Set(collapsed.value);
+  const next = new Set(expanded.value);
   if (next.has(key)) next.delete(key);
   else next.add(key);
-  collapsed.value = next;
-  saveCollapsed();
-}
-const allCollapsed = computed(
-  () => eventsByType.value.length > 0 && eventsByType.value.every((g) => collapsed.value.has(g.key))
-);
-function toggleAll() {
-  collapsed.value = allCollapsed.value ? new Set() : new Set(eventsByType.value.map((g) => g.key));
-  saveCollapsed();
+  expanded.value = next;
 }
 </script>
 
@@ -235,9 +222,6 @@ function toggleAll() {
         </div>
         <div v-if="viewMode === 'byType' && totalPast > 0" class="nav">
           <button @click="togglePast">{{ showPast ? 'Ocultar pasados' : `Ver pasados (${totalPast})` }}</button>
-        </div>
-        <div v-if="viewMode === 'byType' && eventsByType.length > 1" class="nav">
-          <button @click="toggleAll">{{ allCollapsed ? 'Expandir todo' : 'Colapsar todo' }}</button>
         </div>
         <!-- Week navigation only makes sense in the day-by-day view -->
         <div v-if="viewMode === 'list'" class="nav">
