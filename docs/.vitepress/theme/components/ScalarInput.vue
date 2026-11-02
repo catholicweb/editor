@@ -91,11 +91,18 @@ function imagePreviewUrl(value) {
 
 // ---- date --------------------------------------------------------------
 // A date field is either one date (`<input type=date>` + a button to clear it)
-// or, with `options.multiple`, a list of dates shown as removable chips with a
-// picker to add more. The list is kept sorted and without duplicates. Values
-// saved when the field held a single date (a plain string) are read as a
-// one-item list and only become an array once edited, so opening an event never
-// marks it as modified.
+// or, with `options.multiple`, a list of dates shown as removable chips plus a
+// "+ Añadir fecha" button. The button opens the browser's native date picker
+// (a visually hidden <input type=date>) and the chosen date is added as soon as
+// the picker commits it (the input's `change` event) — there is no second
+// "add" step. The list is kept sorted and without duplicates. Values saved when
+// the field held a single date (a plain string) are read as a one-item list and
+// only become an array once edited, so opening an event never marks it as
+// modified.
+//
+// "No date" is always written as '' (never []): lib/patch.js drops a
+// string -> [] change as "no change", so an emptied field would silently fail to
+// save. '' -> array and array -> '' are both diffed correctly.
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const dateMultiple = computed(() => props.field.type === 'date' && !!props.field.options?.multiple);
 const dateList = computed(() => {
@@ -103,25 +110,42 @@ const dateList = computed(() => {
   const arr = Array.isArray(v) ? v : v ? [v] : [];
   return arr.filter((d) => typeof d === 'string' && d.trim() !== '');
 });
-const pendingDate = ref('');
+const datePickerEl = ref(null);
 // 2026-12-24 -> 24/12/2026 (anything else is shown as stored)
 function dateChipLabel(iso) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
 }
-// Dates are added with an explicit button (or Enter) rather than on every input
-// event: while a year is being typed the browser reports a valid date for each
-// keystroke (0002-.., 0020-.., 0202-.., 2026-..), which would add junk entries.
-function addPendingDate() {
-  const d = pendingDate.value;
+// Open the native picker. showPicker() is the standard way; older browsers fall
+// back to focusing/clicking the hidden input.
+function openDatePicker() {
+  const el = datePickerEl.value;
+  if (!el) return;
+  el.value = '';
+  try {
+    if (typeof el.showPicker === 'function') {
+      el.showPicker();
+      return;
+    }
+  } catch {
+    /* e.g. NotAllowedError: fall through to the legacy path */
+  }
+  el.focus();
+  el.click();
+}
+// The hidden input is only ever changed through the picker, so each `change` is a
+// deliberate choice (unlike typing a year, which reports a valid date per keystroke).
+function onDatePicked(e) {
+  const d = e.target.value;
+  e.target.value = ''; // reset so the same day can be picked again later
   if (!ISO_DATE.test(d) || d < '1900-01-01') return;
-  if (!dateList.value.includes(d)) set([...dateList.value, d].sort());
-  pendingDate.value = '';
+  if (dateList.value.includes(d)) return;
+  set([...dateList.value, d].sort());
 }
 function removeDateAt(i) {
   const arr = dateList.value.slice();
   arr.splice(i, 1);
-  set(arr);
+  set(arr.length ? arr : '');
 }
 
 // ---- reference ----------------------------------------------------------
@@ -330,7 +354,7 @@ function updateRefDropdownPosition() {
     </div>
   </div>
 
-  <!-- date, several (options.multiple): removable chips + a picker to add more -->
+  <!-- date, several (options.multiple): removable chips + a button that opens the native picker -->
   <div v-else-if="field.type === 'date' && dateMultiple" class="date-multi">
     <div v-if="dateList.length" class="date-chips">
       <span v-for="(d, i) in dateList" :key="d" class="date-chip">
@@ -338,9 +362,17 @@ function updateRefDropdownPosition() {
         <button type="button" class="date-chip-x" @click="removeDateAt(i)" :aria-label="`Quitar ${dateChipLabel(d)}`" title="Quitar">✕</button>
       </span>
     </div>
-    <div class="date-row">
-      <input type="date" v-model="pendingDate" @keydown.enter.prevent="addPendingDate" />
-      <button type="button" class="date-btn" :disabled="!pendingDate" @click="addPendingDate">+ Añadir</button>
+    <div class="date-add">
+      <button type="button" class="date-btn" @click="openDatePicker">+ Añadir fecha</button>
+      <!-- Visually hidden: only used as the anchor/engine of the native picker. -->
+      <input
+        ref="datePickerEl"
+        type="date"
+        class="date-picker-hidden"
+        tabindex="-1"
+        aria-hidden="true"
+        @change="onDatePicked"
+      />
     </div>
   </div>
 
@@ -703,6 +735,24 @@ textarea.auto-grow {
 .date-row input {
   flex: 1;
   min-width: 0;
+}
+/* The button opens the native picker; the real input stays invisible but is
+   rendered (not display:none) and sits under the button so the picker pops up
+   right next to it. */
+.date-add {
+  position: relative;
+  align-self: flex-start;
+}
+.date-add .date-picker-hidden {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 .date-btn {
   flex-shrink: 0;

@@ -826,6 +826,16 @@ export async function saveCurrent({ keepalive = false } = {}) {
       const snapshot = plainSnapshot(state.config);
       const ops = diff(state.baselineConfig, snapshot);
       if (ops.length === 0) {
+        // Nothing to send. The whole-config text can still differ from the last
+        // confirmed copy when the only differences are ones the diff deliberately
+        // ignores (e.g. '' vs [] for an empty list field, or a schema default that
+        // materialised on open). Left alone, `isDirty` would stay true forever:
+        // the header would keep saying "unsaved" and refreshConfig() (which never
+        // runs while dirty) would stop picking up other editors' changes. There is
+        // no server state to reconcile, so just advance both baselines to what we
+        // have, exactly like the post-save tail below does.
+        state.baselineConfig = snapshot;
+        state.savedText = serializeCurrent();
         state.status = 'Guardado.';
         return;
       }
