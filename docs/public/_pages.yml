@@ -332,25 +332,6 @@ components:
     ],
     "customValueHint": "float multiplier, 0.8-1.4"
   }
-  "motionIntensity": {
-    "description": "Single 0-10 dial driving ALL motion: animation magnitude (duration/distance/scale), which elements get a scroll-reveal effect and how many, and the hover effect. Low = fewer elements, subtler effects. High = more elements, more dramatic effects (blur-in headings, slide-in quotes, combined zoom+glow hover). Implemented with pure CSS scroll-driven animations (animation-timeline: view()), wrapped in @supports so unsupported browsers just render static content — no JS, fails silently. 0 disables motion entirely.",
-    "type": "slider",
-    "min": 0,
-    "max": 10,
-    "step": 1,
-    "default": 0,
-    "marks": [
-      {
-        "value": 0,
-        "label": "Sin animaciones"
-      },
-      {
-        "value": 10,
-        "label": "Dramático"
-      }
-    ],
-    "customValueHint": "integer 0-10"
-  }
   surfaceStyle:
     "description": "Shadow depth + button fill as one coherent choice — these two properties read as a single 'flat vs. dimensional' design decision, and letting them vary independently risks incoherent combos (e.g. bold shadows + outline buttons rarely looks intentional)."
     "type": "select"
@@ -502,8 +483,9 @@ components:
       - name: createPage
         label: Crear página para este evento
         help: |-
-          Crea una página propia para este evento (además de la del grupo, si la tiene). Dentro de los «valores por defecto» de un grupo, crea una página para cada evento del grupo, salvo los que lo desactiven.
+          Crea una página propia para este evento (además de la del grupo, si la tiene)
         type: boolean
+      - { name: sections, label: Secciones de la página creada para el evento, component: sections, showif: "createPage == true" }
       #- { name: duration, label: Duración (min), type: number }
   page:
     label: Página
@@ -720,10 +702,9 @@ content:
             help: |-
               Si lo activas, se crea UNA página que agrupa todos los eventos de este grupo (lo habitual para un grupo con varias actividades, por ejemplo catequesis con muchas sesiones). Si no, los eventos solo aparecen en el calendario.
               Para que un evento concreto tenga además su propia página, actívalo en ese evento («Crear página para este evento»).
-              Las «Secciones de la página creada» solo se usan si este interruptor está activado.
             type: boolean
             default: false
-          - { name: sections, label: Secciones de la página creada, component: sections, showif: "createPage == true" } # TOOD: enable this or similar types of conditional rendering
+          - { name: sections, label: Secciones de la página creada, component: sections, showif: "createPage == true" }
           - { name: defaults, label: "Valores por defecto para eventos de este grupo", component: event }
 
   - name: nerdy
@@ -740,9 +721,6 @@ content:
     type: tab
     label: Datos
     fields:
-      - { name: title, label: Título del sitio web, type: string }
-      - { name: description, label: Breve descripción del sitio web, type: text }
-
       - name: places
         label: Lista de templos
         help: |-
@@ -755,7 +733,7 @@ content:
           - { name: geo, type: string, label: "Coordenadas (ej: 42.801941, -1.645660)" }
           - { name: address, type: string, label: "Dirección" }
           - { name: createPage, label: "Crear una página para este lugar", type: boolean, default: true }
-          - { name: sections, label: Secciones de la página creada, component: sections, showif: "createPage == true" } # TOOD: enable this or similar types of conditional rendering
+          - { name: sections, label: Secciones de la página creada, component: sections, showif: "createPage == true" }
 
       - name: autodiscover
         label: Encontrar templos
@@ -763,6 +741,10 @@ content:
         options:
           listPath: "places"                   # field (relative to this tab) where selected places are appended
           eventsPath: "calendar.events.list"   # config dot-path to the events ARRAY to import into
+
+      - { name: title, label: Título del sitio web, type: string }
+      - { name: description, label: Breve descripción del sitio web, type: text }
+
       - name: collaborators
         label: Lista de colaboradores
         type: object
@@ -799,8 +781,6 @@ content:
           Páginas de la web. Cada página tiene título, imagen y una lista de secciones con su contenido. Las páginas de cada templo y de cada grupo de eventos se generan desde sus propias pestañas (Datos, Grupos de Eventos), no se añaden aquí.
         component: page
         list: { collapsible: { collapsed: true, summary: "{fields.title}" }, sort: "alphabetical", modal: false  }
-      #- { name: pageperlocatoin, label: Crear una página para cada templo, type: boolean, default: true }  
-      #- { name: pageperevent, label: "Crear una página para cada evento de tipo (OBSOLETO: usa «Página en la web» en cada tipo de evento)", type: select, options: { source: "event-types.list", multiple: true, label: "{title}" }  }  
       - name: nav
         label: Menu de navegación
         help: "Menú de navegación de la web: cada elemento es un submenú con un título y una lista de enlaces a páginas, que se eligen de Lista de páginas."
