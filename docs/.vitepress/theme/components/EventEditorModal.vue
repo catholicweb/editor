@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import FieldRenderer from './FieldRenderer.vue';
 import PeIcon from './PeIcon.vue';
 import { state } from '../lib/store.js';
@@ -64,17 +64,10 @@ const typeDefaultFieldNames = computed(() => {
 const showHidden = ref(false);
 const hiddenCount = computed(() => typeDefaultFieldNames.value.size);
 
-// Clearing the last date of an event saved with a single date string leaves `[]`;
-// the save diff (lib/patch.js) treats a string -> [] change as "no change" and drops
-// it, so the date would come back after saving. Store a cleared date as '' instead
-// (a plain string -> string change, which is diffed correctly).
-watch(
-  () => props.event.date,
-  (now, before) => {
-    const hadValue = Array.isArray(before) ? before.length > 0 : !!before;
-    if (Array.isArray(now) && now.length === 0 && hadValue) props.event.date = '';
-  }
-);
+// NOTE: a cleared multi-date field is stored as '' (written by ScalarInput's
+// removeDateAt), never as []. The save diff (lib/patch.js) treats a string -> []
+// change as "no change" and drops it, so the cleared date would come back after
+// saving; '' -> string and array -> '' are both diffed correctly.
 
 const eventFieldDefs = computed(() => {
   const hidden = showHidden.value ? new Set() : typeDefaultFieldNames.value;
