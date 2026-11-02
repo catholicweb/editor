@@ -4,11 +4,13 @@ import FieldRenderer from './FieldRenderer.vue';
 import PeIcon from './PeIcon.vue';
 import { state } from '../lib/store.js';
 import { resolveFieldDef } from '../lib/schema.js';
+import { isVisible } from '../lib/showif.js';
 import {
   getEventFields,
   getTypeConfig,
   getTypeFieldDefaults,
   isFieldSet,
+  mergeTypeDefaults,
 } from '../lib/calendar.js';
 
 const props = defineProps({
@@ -72,11 +74,16 @@ const hiddenCount = computed(() => typeDefaultFieldNames.value.size);
 const eventFieldDefs = computed(() => {
   const hidden = showHidden.value ? new Set() : typeDefaultFieldNames.value;
   const eventFields = state.schema?.eventFields || getEventFields();
+  // `showif` conditions (see lib/showif.js) read the event as it is in effect:
+  // its own values, with the group's defaults filling what the event leaves
+  // empty. So a field hidden by a group default still counts for conditions
+  // that depend on it (e.g. `sections` with `showif: createPage == true`).
+  const scope = mergeTypeDefaults(props.event, props.eventTypes);
   return [
     { name: 'id', label: 'Identificador', type: 'uuid', hidden: true }, // just in case
     { name: 'type', label: 'Grupo de eventos', type: 'select', options: { source: props.eventTypesSource } },
     ...eventFields
-      .filter((f) => !hidden.has(f.name))
+      .filter((f) => !hidden.has(f.name) && isVisible(f, scope))
       .map(fieldDefFor),
   ];
 });
