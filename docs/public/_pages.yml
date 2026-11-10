@@ -485,6 +485,7 @@ components:
         help: |-
           Crea una página propia para este evento (además de la del grupo, si la tiene)
         type: boolean
+      - { name: registration, type: boolean, default: false, label: "Crear formulario de inscripción para este evento" }
       - { name: sections, label: Secciones de la página creada para el evento, component: sections, showif: "createPage == true" }
       #- { name: duration, label: Duración (min), type: number }
   page:
@@ -704,6 +705,7 @@ content:
               Para que un evento concreto tenga además su propia página, actívalo en ese evento («Crear página para este evento»).
             type: boolean
             default: false
+          - { name: registration, type: boolean, default: false, label: "Crear formulario de inscripción para este grupo de eventos" }
           - { name: sections, label: Secciones de la página creada, component: sections, showif: "createPage == true" }
           - { name: defaults, label: "Valores por defecto para eventos de este grupo", component: event }
 
