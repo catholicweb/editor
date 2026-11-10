@@ -1,19 +1,27 @@
 <script setup>
 import { computed } from 'vue';
 import { state, openEntry } from '../lib/store.js';
+import { regView } from '../lib/registrations.js';
 import PeIcon from './PeIcon.vue';
 
 // Show all entries from fileIndex (not grouped)
 const entries = computed(() => state.fileIndex.filter(e => e.icon));
 
 function isCurrentEntry(entry) {
-  return state.currentEntry && state.currentEntry === entry;
+  return !regView.open && state.currentEntry && state.currentEntry === entry;
+}
+
+// "Inscripciones" is a built-in tab (not a config.json key), so it is not in fileIndex.
+function selectRegistrations() {
+  state.info = '';
+  regView.open = true;
 }
 
 async function selectEntry(entry) {
   if (isCurrentEntry(entry)) return;
 
   state.info = '';  // user navigated — clear the welcome banner
+  regView.open = false;
 
   // Update URL with the current tab (for deep linking / browser history)
   const newUrl = `${window.location.pathname}?edit=${entry.tabPath}`;
@@ -38,6 +46,15 @@ async function selectEntry(entry) {
         <PeIcon :name="entry.icon" :size="20" />
       </span>
       <span class="name">{{ entry.contentLabel }}</span>
+    </button>
+    <button
+      v-if="state.fileIndex.length"
+      class="entry-item"
+      :class="{ active: regView.open }"
+      @click="selectRegistrations"
+    >
+      <span class="icon"><PeIcon name="clipboard-document-list" :size="20" /></span>
+      <span class="name">Inscripciones</span>
     </button>
     <p v-if="!state.fileIndex.length" class="empty">
       No hay ficheros gestionados por el esquema todavía.

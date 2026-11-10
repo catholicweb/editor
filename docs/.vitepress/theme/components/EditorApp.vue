@@ -4,6 +4,8 @@ import LoginView from './auth/LoginView.vue';
 import AdminView from './auth/AdminView.vue';
 import FieldBrowser from './FieldBrowser.vue';
 import FieldsGroup from './FieldsGroup.vue';
+import RegistrationsPanel from './RegistrationsPanel.vue';
+import { regView } from '../lib/registrations.js';
 import { state, isLoggedIn, isDirty, currentData, login, redeemMagic, loadSavedSession, initBeforeUnloadHandler, openEntry, saveCurrent, restoreConfig, DEFAULTS, applyNerdyConfig } from '../lib/store.js';
 import UserAvatar from './UserAvatar.vue';
 import PeIcon from './PeIcon.vue';
@@ -43,6 +45,7 @@ async function parseDeepLink(retryCount = 0) {
   }
 
   // Open the entry
+  regView.open = false;
   await openEntry(entry);
 
   // If field specified, focus it
@@ -148,6 +151,7 @@ const view = ref('editor');
 watch(isLoggedIn, (loggedIn) => {
   if (loggedIn) {
     view.value = 'editor';
+    regView.open = false;
     // Small delay to ensure fileIndex is populated
     setTimeout(parseDeepLink, 100);
   }
@@ -256,8 +260,11 @@ const showPreviewSide = computed(() => state.currentEntry?.tabPath === 'theme' |
       </transition>
 
       <div :class="{ 'with-preview': showPreviewSide }">
+        <div v-if="regView.open" class="document document-wide">
+          <RegistrationsPanel />
+        </div>
         <div
-          v-if="state.currentEntry"
+          v-else-if="state.currentEntry"
           class="document"
           :class="{ 'document-wide': isCalendarDoc }"
         >
