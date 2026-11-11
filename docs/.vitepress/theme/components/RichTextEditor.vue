@@ -6,6 +6,7 @@ import PeIcon from './PeIcon.vue';
 import ImagePickerModal from './ImagePickerModal.vue';
 import { state } from '../lib/store.js';
 import { resolvePath } from '../lib/schema.js';
+import { normalizeNewlines, normalizeExternalUrl, sanitizeHtml } from '../lib/richtext.js';
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -30,13 +31,19 @@ const lastEmitted = ref(props.modelValue ?? '');
 let lastHtml = ''; // HTML snapshot of the editable as last rendered/synced
 
 function renderHtml(mdText) {
-  if (Array.isArray(mdText)) mdText = mdText[0] ?? ''
-  return md.render(mdText ?? '');
+  if (Array.isArray(mdText)) mdText = mdText[0] ?? '';
+  // Legacy values may hold literal "\n" sequences (shown verbatim, then escaped
+  // to "\\n" by turndown on save): turn them into real newlines first. The
+  // result is sanitized because markdown-it runs with html:true.
+  return sanitizeHtml(md.render(normalizeNewlines(mdText)));
 }
 function renderInto(html) {
   if (richEl.value) {
     richEl.value.innerHTML = html;
-    lastHtml = html;
+    // Snapshot what the browser actually serialized, not the string we assigned:
+    // the two usually differ (entities, attribute order), which made onBlur see
+    // "changes" on untouched content and rewrite it.
+    lastHtml = richEl.value.innerHTML;
   }
 }
 function syncFromEditor() {
@@ -46,6 +53,9 @@ function syncFromEditor() {
   // An empty contenteditable may hold a stray <br> (browsers insert one on
   // focus); collapse whitespace-only output so that isn't stored as a newline.
   if (!markdown.trim()) markdown = '';
+  // Typing a trailing/double space makes the browser insert &nbsp;; keep stored
+  // markdown free of NBSP characters.
+  markdown = markdown.replace(/\u00a0/g, ' ');
   lastHtml = html;
   lastEmitted.value = markdown;
   if (markdown !== props.modelValue) emit('update:modelValue', markdown);
@@ -85,24 +95,60 @@ const toolbar = [
   { id: 'clear', icon: 'material-symbols:delete', tip: 'Quitar formato' },
 ];
 
+function selectionInEditor() {
+  const sel = window.getSelection();
+  return !!(sel && sel.rangeCount && richEl.value && richEl.value.contains(sel.anchorNode));
+}
+function focusEditor() {
+  const el = richEl.value;
+  if (!el) return;
+  el.focus();
+  if (!selectionInEditor()) {
+    // No caret inside the editor (never clicked / selection elsewhere): put it
+    // at the end instead of letting execCommand act on nothing.
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+}
+
 function exec(cmd, val = null) {
-  richEl.value?.focus();
+  focusEditor();
   document.execCommand(cmd, false, val);
   syncFromEditor();
+}
+
+function currentBlock() {
+  focusEditor();
+  const v = String(document.queryCommandValue('formatBlock') || '').toLowerCase().replace(/[<>]/g, '').trim();
+  const m = /^heading\s*(\d)$/.exec(v); // some browsers answer "Heading 2"
+  return m ? 'h' + m[1] : v;
+}
+// Clicking the active heading again goes back to a normal paragraph.
+function toggleBlock(tag) {
+  exec('formatBlock', currentBlock() === tag ? '<p>' : `<${tag}>`);
+}
+function clearFormat() {
+  exec('removeFormat');
+  // removeFormat leaves headings alone; "Quitar formato" should drop them too.
+  if (/^h[1-6]$/.test(currentBlock())) exec('formatBlock', '<p>');
 }
 
 function onToolbar(id) {
   switch (id) {
     case 'bold': exec('bold'); break;
     case 'italic': exec('italic'); break;
-    case 'h2': exec('formatBlock', '<h2>'); break;
-    case 'h3': exec('formatBlock', '<h3>'); break;
-    case 'h4': exec('formatBlock', '<h4>'); break;
+    case 'h2': toggleBlock('h2'); break;
+    case 'h3': toggleBlock('h3'); break;
+    case 'h4': toggleBlock('h4'); break;
     case 'ul': exec('insertUnorderedList'); break;
     case 'ol': exec('insertOrderedList'); break;
     case 'image': captureSelection(); pickerOpen.value = true; break;
     case 'link-external': insertExternalLink(); break;
-    case 'clear': exec('removeFormat'); break;
+    case 'clear': clearFormat(); break;
   }
 }
 
@@ -112,8 +158,9 @@ function onToolbar(id) {
 // so an insert can put the caret back where it was instead of at the last spot.
 let savedRange = null;
 function captureSelection() {
-  const sel = window.getSelection();
-  savedRange = sel && sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+  // Only remember a selection that is really inside the editor; a range from
+  // elsewhere on the page would make the later insert land outside it.
+  savedRange = selectionInEditor() ? window.getSelection().getRangeAt(0).cloneRange() : null;
 }
 function restoreSelection() {
   if (!savedRange) return false;
@@ -129,7 +176,7 @@ const pickerOpen = ref(false);
 function onImagePicked(url) {
   pickerOpen.value = false;
   richEl.value?.focus();
-  restoreSelection(); // the modal stole focus; put the caret back where it was
+  if (!restoreSelection()) focusEditor(); // the modal stole focus; put the caret back where it was
   document.execCommand('insertImage', false, url); // caret stays after the <img>
   syncFromEditor(); // turndown -> ![](https://...)
 }
@@ -155,17 +202,21 @@ function escapeHtml(s) {
 }
 
 function insertExternalLink() {
-  const url = prompt('URL del enlace:');
-  if (!url) return;
+  captureSelection(); // prompt() can drop the selection; remember it (editor-only)
+  const hadSelection = !!savedRange && !savedRange.collapsed;
+  const url = normalizeExternalUrl(prompt('URL del enlace:'));
+  if (!url) { savedRange = null; return; }
   if (!isSafeLinkUrl(url)) {
+    savedRange = null;
     alert('Solo se permiten enlaces http, https, mailto o tel.');
     return;
   }
-  const sel = window.getSelection()?.toString();
-  if (sel) {
+  const text = hadSelection ? '' : prompt('Texto del enlace:', url) || url;
+  richEl.value?.focus();
+  if (!restoreSelection()) focusEditor();
+  if (hadSelection) {
     exec('createLink', url);
   } else {
-    const text = prompt('Texto del enlace:', url) || url;
     exec('insertHTML', `<a href="${escapeHtml(url)}">${escapeHtml(text)}</a>`);
   }
 }
@@ -213,8 +264,8 @@ function onInternalLinkPicked(page) {
   richEl.value?.focus();
   // Restore the selection the user had when they opened the picker, so a link
   // wraps it instead of inserting a fresh one (the search input stole focus).
-  restoreSelection();
-  const selText = window.getSelection()?.toString();
+  if (!restoreSelection()) focusEditor();
+  const selText = selectionInEditor() ? window.getSelection().toString() : '';
   if (selText) {
     // href is generated by us, so it bypasses isSafeLinkUrl on purpose.
     document.execCommand('createLink', false, 'page:' + page.id);
@@ -222,13 +273,37 @@ function onInternalLinkPicked(page) {
     document.execCommand(
       'insertHTML',
       false,
-      `<a href="page:${page.id}">${escapeHtml(page.label)}</a>`
+      `<a href="page:${escapeHtml(page.id)}">${escapeHtml(page.label)}</a>`
     );
   }
   syncFromEditor();
 }
 
+// ---- paste -----------------------------------------------------------------
+// Never let the browser drop raw clipboard HTML into the editable: Word/Docs
+// markup is full of junk, and `javascript:` hrefs / event handlers would bypass
+// isSafeLinkUrl. Rich clipboards are sanitized; plain text keeps its line breaks
+// (single newline -> <br>, blank line -> new paragraph) instead of collapsing.
+function textToHtml(text) {
+  const paragraphs = normalizeNewlines(text).trim().split(/\n{2,}/);
+  const inline = (p) => escapeHtml(p).replace(/\n/g, '<br>');
+  return paragraphs.length === 1 ? inline(paragraphs[0]) : paragraphs.map((p) => `<p>${inline(p)}</p>`).join('');
+}
+function onPaste(e) {
+  const cd = e.clipboardData;
+  if (!cd) return;
+  const html = cd.getData('text/html');
+  const text = cd.getData('text/plain');
+  if (!html && !text) return; // e.g. a pasted image file: leave it to the browser
+  e.preventDefault();
+  focusEditor();
+  document.execCommand('insertHTML', false, html ? sanitizeHtml(html) : textToHtml(text));
+  syncFromEditor();
+}
+
 onMounted(() => {
+  // Enter should create <p> (what markdown-it emits) rather than a browser-specific <div>.
+  try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch { /* unsupported */ }
   renderInto(renderHtml(props.modelValue));
 });
 </script>
@@ -254,6 +329,7 @@ onMounted(() => {
       class="rich-editable"
       contenteditable="true"
       @input="onRichInput"
+      @paste="onPaste"
       @blur="onBlur"
     ></div>
     <ImagePickerModal
