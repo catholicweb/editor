@@ -2,7 +2,7 @@
 // Pestaña "Inscripciones": inscripciones recibidas por los formularios de la web.
 // Todos los editores del sitio ven los datos. Se cargan al abrir la pestaña y no se
 // guardan en el navegador. Las inscripciones se borran solas un año después de su
-// última modificación.
+// última modificación (no se anima a conservar copias).
 import { ref, computed, onMounted, watch } from 'vue';
 import { state } from '../lib/store.js';
 import * as regs from '../lib/registrations.js';
@@ -125,13 +125,13 @@ watch(
       <span>
         <strong>Avisarme por correo</strong> de cada inscripción nueva, modificada o cancelada
         <span v-if="state.email" class="muted">(a {{ state.email }})</span>.
-        <span class="muted">Recibirás los datos personales en tu bandeja de entrada.</span>
+        <span class="muted">El aviso no incluye datos personales: para verlos, entra en esta pestaña.</span>
       </span>
     </label>
     <p v-if="subError" class="msg error">{{ subError }}</p>
 
     <p class="muted retention">
-      Las inscripciones se borran automáticamente un año después de su última modificación: descarga lo que necesites antes.
+      Las inscripciones se borran automáticamente un año después de su última modificación.
       Contienen datos personales (y a veces de salud, como alergias): úsalos solo para organizar el evento.
     </p>
 
