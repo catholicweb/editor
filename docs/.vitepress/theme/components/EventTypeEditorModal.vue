@@ -15,6 +15,20 @@ const props = defineProps({
 });
 const emit = defineEmits(['close', 'remove']);
 
+// The group's `defaults` object (the starting point for its events; the same
+// key getTypeFieldDefaults in lib/calendar.js reads) is long, so it sits in its
+// own block that starts COLLAPSED. Every other field renders as before.
+const DEFAULTS_KEY = 'defaults';
+const defaultsField = computed(() => props.fields.find((f) => f.name === DEFAULTS_KEY && f.type === 'object') || null);
+const otherFields = computed(() => props.fields.filter((f) => f !== defaultsField.value));
+
+// FieldRenderer would create the object lazily when it renders it; since the
+// block renders the object's fields directly, make sure it exists here.
+if (defaultsField.value) {
+  const d = props.type[DEFAULTS_KEY];
+  if (d == null || typeof d !== 'object' || Array.isArray(d)) props.type[DEFAULTS_KEY] = {};
+}
+
 const usedBy = computed(() => countEventsOfType(props.events, props.type.id));
 const canDelete = computed(() => usedBy.value === 0);
 
@@ -41,7 +55,14 @@ function remove() {
       </header>
 
       <div class="modal-body">
-        <FieldsGroup :fields="fields" :container="type" />
+        <FieldsGroup :fields="otherFields" :container="type" />
+
+        <!-- No `open` attribute: collapsed by default (the modal is re-created each time it opens). -->
+        <details v-if="defaultsField" class="defaults-block">
+          <summary>{{ defaultsField.label || 'Valores por defecto' }}</summary>
+          <FieldsGroup :fields="defaultsField.fields" :container="type[DEFAULTS_KEY]" />
+        </details>
+
         <p v-if="!canDelete" class="in-use">
           {{ usedBy }} evento(s) usan este grupo. Para borrarlo, cambia o elimina primero esos eventos.
         </p>
@@ -147,6 +168,41 @@ function remove() {
   overflow-x: hidden; /* never scroll sideways: wide rows scroll inside their own box */
 }
 .in-use { margin: 0; font-size: 12px; color: var(--pe-muted); }
+
+/* ---- collapsible group defaults ---- */
+.defaults-block {
+  border: 1px solid var(--pe-border);
+  border-radius: var(--pe-radius);
+  background: var(--pe-panel);
+  transition: border-color var(--pe-transition), box-shadow var(--pe-transition);
+}
+.defaults-block[open] {
+  border-color: var(--pe-border-strong);
+  box-shadow: var(--pe-shadow-sm);
+}
+.defaults-block > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--pe-text);
+  list-style: none;
+}
+.defaults-block > summary::-webkit-details-marker { display: none; }
+.defaults-block > summary::before {
+  content: '▸';
+  font-size: 9px;
+  color: var(--pe-muted);
+  transition: transform var(--pe-transition);
+}
+.defaults-block[open] > summary::before { transform: rotate(90deg); }
+.defaults-block > *:not(summary) {
+  padding: 14px 12px;
+  border-top: 1px solid var(--pe-border);
+}
 
 /* ---- footer actions ---- */
 .modal-footer {

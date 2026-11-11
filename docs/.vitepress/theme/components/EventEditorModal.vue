@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import FieldRenderer from './FieldRenderer.vue';
+import InheritField from './InheritField.vue';
 import PeIcon from './PeIcon.vue';
 import { state } from '../lib/store.js';
 import { resolveFieldDef } from '../lib/schema.js';
@@ -9,6 +10,7 @@ import {
   getEventFields,
   getTypeConfig,
   getTypeFieldDefaults,
+  inheritedBoolean,
   isFieldSet,
   mergeTypeDefaults,
 } from '../lib/calendar.js';
@@ -23,6 +25,16 @@ const props = defineProps({
 const emit = defineEmits(['close', 'remove', 'duplicate']);
 
 const components = computed(() => state.schema?.components || {});
+
+// The schema's event field set (pages.yml `components.event`).
+const eventFieldList = computed(() => state.schema?.eventFields || getEventFields());
+
+// Switches (boolean fields) are never hidden by a group default: they show a
+// third "inherit from the group" state (InheritField) that already says what the
+// group's value is.
+const switchNames = computed(
+  () => new Set(eventFieldList.value.filter((f) => f.type === 'boolean').map((f) => f.name))
+);
 
 // Build a concrete, resolved field def for a logical event field. Fields
 // declared with `component:` borrow their type/options from pages.yml's
@@ -42,6 +54,11 @@ function fieldDefFor(f) {
   return { ...f };
 }
 
+// What a switch the event leaves unset resolves to (the group's value, else No).
+function inheritedFor(f) {
+  return inheritedBoolean(f, props.event.type, props.eventTypes);
+}
+
 // Field names that the selected type defines as defaults. An input is hidden
 // only when BOTH conditions hold:
 //   1) the type defines a default for that field, AND
@@ -49,11 +66,13 @@ function fieldDefFor(f) {
 // This way a user can always override a type default on a specific event.
 // The rrule 'never' marker is a non-empty value, so setting a type's rrule
 // to 'never' hides the rrule input (useful for funerals / non-repeating events).
+// Switches are excluded: they are always shown, with their inherit state.
 const typeDefaultFieldNames = computed(() => {
   const defaults = getTypeFieldDefaults(props.event.type, props.eventTypes);
   const event = props.event;
   return new Set(
     Object.keys(defaults).filter((name) => {
+      if (switchNames.value.has(name)) return false; // switches always visible
       if (!isFieldSet(defaults[name])) return false; // type has no default → never hide
       // type has a default → hide only if the event itself is empty for this field
       return !isFieldSet(event[name]);
@@ -73,12 +92,13 @@ const hiddenCount = computed(() => typeDefaultFieldNames.value.size);
 
 const eventFieldDefs = computed(() => {
   const hidden = showHidden.value ? new Set() : typeDefaultFieldNames.value;
-  const eventFields = state.schema?.eventFields || getEventFields();
+  const eventFields = eventFieldList.value;
   // `showif` conditions (see lib/showif.js) read the event as it is in effect:
   // its own values, with the group's defaults filling what the event leaves
-  // empty. So a field hidden by a group default still counts for conditions
-  // that depend on it (e.g. `sections` with `showif: createPage == true`).
-  const scope = mergeTypeDefaults(props.event, props.eventTypes);
+  // empty (switches included). So a field hidden by a group default still counts
+  // for conditions that depend on it (e.g. `sections` with
+  // `showif: createPage == true`, also when the group is what turns the page on).
+  const scope = mergeTypeDefaults(props.event, props.eventTypes, eventFields);
   return [
     { name: 'id', label: 'Identificador', type: 'uuid', hidden: true }, // just in case
     { name: 'type', label: 'Grupo de eventos', type: 'select', options: { source: props.eventTypesSource } },
@@ -108,13 +128,15 @@ const headerIcon = computed(() => getTypeConfig(props.event.type, props.eventTyp
       <div class="modal-body">
         <section class="event-section">
           <div class="event-fields">
-            <FieldRenderer
-              v-for="f in eventFieldDefs"
-              :key="f.name"
-              :field="f"
-              :container="event"
-              :key-name="f.name"
-            />
+            <template v-for="f in eventFieldDefs" :key="f.name">
+              <InheritField
+                v-if="f.type === 'boolean'"
+                :field="f"
+                :container="event"
+                :inherited="inheritedFor(f)"
+              />
+              <FieldRenderer v-else :field="f" :container="event" :key-name="f.name" />
+            </template>
           </div>
           <button v-if="hiddenCount" type="button" class="more-options" @click="showHidden = !showHidden">
             {{ showHidden ? 'Mostrar menos opciones' : 'Mostrar más opciones' }}

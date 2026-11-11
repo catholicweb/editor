@@ -35,18 +35,31 @@ export function getTypeFieldDefaults(type, eventTypes) {
 // display/expansion time — so changing a type's defaults updates all events
 // of that type without rewriting them. A non-empty event value always wins
 // over the type default.
+// Switches (booleans) follow the same rule: an event that leaves one UNSET
+// (key absent, or null) inherits the group's value, while an explicit true or
+// false is the event's own choice and wins.
 // Fields with nodefault: true in the schema will not inherit type defaults.
-export function mergeTypeDefaults(event, eventTypes) {
+// `eventFields` is the schema's event field set (state.schema.eventFields); it
+// defaults to the built-in fallback set, which only knows the basic fields.
+export function mergeTypeDefaults(event, eventTypes, eventFields) {
   const tf = getTypeFieldDefaults(event?.type, eventTypes);
   if (!tf || !Object.keys(tf).length) return { ...event };
   const eff = { ...event };
-  const eventFields = getEventFields();
-  for (const f of eventFields) {
+  for (const f of getEventFields(eventFields)) {
     // Skip fields with nodefault: true
     if (f.nodefault) continue;
     if (isEmpty(eff[f.name]) && tf[f.name] !== undefined) eff[f.name] = tf[f.name];
   }
   return eff;
+}
+
+// The value a switch (boolean field) takes in an event that leaves it unset:
+// the group's default when that is a real boolean, else false. `field` is the
+// field definition (to honour `nodefault`).
+export function inheritedBoolean(field, type, eventTypes) {
+  if (!field || field.nodefault) return false;
+  const v = getTypeFieldDefaults(type, eventTypes)[field.name];
+  return typeof v === 'boolean' ? v : false;
 }
 
 // The ordered event-field set, used to render the event editor. `component`
@@ -203,6 +216,8 @@ export function nthWeekdayOfMonth(d) {
 // (e.g. ['']) as "not set". Exported so components share one definition of
 // what counts as a set field value. Note: a non-empty token like 'never' is
 // NOT empty — the rrule 'never' marker is a real value that hides the input.
+// null/undefined are unset too, but a boolean false is NOT: it is the event's
+// own explicit "no" (an unset switch is a missing key, see InheritField.vue).
 export function isEmpty(v) {
   if (v == null || v === '') return true;
   if (Array.isArray(v)) {
@@ -419,6 +434,9 @@ export function expandAllEvents(events, weekStart, defaults = {}, eventTypes = n
 
 // Create a new empty event with defaults.
 // eventFields: array of field definitions from schema
+// Switches (boolean fields) are left UNSET (no key at all), so the new event
+// inherits its group's value until the user picks an explicit Sí/No; writing
+// `false` here would pin the event to "no" and break inheritance.
 export function newEvent(type = 'funeral', eventFields = null) {
   const event = {
     id: generateId('evt'),
@@ -429,6 +447,7 @@ export function newEvent(type = 'funeral', eventFields = null) {
   if (eventFields && eventFields.length) {
     for (const f of eventFields) {
       if (f.name === 'type') continue; // already set
+      if (f.type === 'boolean') continue; // unset = inherit from the group
       event[f.name] = f.default !== undefined ? f.default : getDefaultForType(f.type);
     }
   } else {
