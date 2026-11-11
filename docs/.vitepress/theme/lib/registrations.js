@@ -138,7 +138,7 @@ tr { break-inside: avoid; }
 small { color: #555; }
 </style></head><body>
 <h1>${esc(title)}</h1>
-<p class="top">Impreso el ${esc(date.toLocaleDateString('es-ES', { dateStyle: 'long' }))}. Contiene datos personales: guárdalo en lugar seguro y destrúyelo cuando ya no haga falta.</p>
+<p class="top">Impreso el ${esc(date.toLocaleDateString('es-ES', { dateStyle: 'long' }))}. Contiene datos personales: no lo compartas y destrúyelo cuando termine el evento.</p>
 ${sections || '<p>No hay inscripciones.</p>'}
 </body></html>`;
 }

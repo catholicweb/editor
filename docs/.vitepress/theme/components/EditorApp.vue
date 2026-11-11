@@ -200,7 +200,8 @@ function onRestore({ config }) {
 const isCalendarDoc = computed(() =>
   (state.currentEntry?.fields || []).some((f) => f.type === 'calendario')
 );
-const showPreviewSide = computed(() => state.currentEntry?.tabPath === 'theme' || state.currentEntry?.tabPath === 'pages' ); //
+// The live site preview belongs to the theme/pages tabs only: never next to the built-in Inscripciones tab.
+const showPreviewSide = computed(() => !regView.open && (state.currentEntry?.tabPath === 'theme' || state.currentEntry?.tabPath === 'pages')); //
 </script>
 
 <template>
