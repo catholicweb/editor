@@ -29,9 +29,11 @@ const components = computed(() => state.schema?.components || {});
 // The schema's event field set (pages.yml `components.event`).
 const eventFieldList = computed(() => state.schema?.eventFields || getEventFields());
 
-// Switches (boolean fields) are never hidden by a group default: they show a
-// third "inherit from the group" state (InheritField) that already says what the
-// group's value is.
+// Switches (boolean fields) never follow the "group default" rule below: they
+// have their own third "inherit from the group" state (InheritField), which
+// already says what the group's value is. A switch is hidden behind
+// "Mostrar más opciones" exactly while it is in that inherit state (key absent
+// from the event) and shown as soon as the event sets an explicit Sí / No.
 const switchNames = computed(
   () => new Set(eventFieldList.value.filter((f) => f.type === 'boolean').map((f) => f.name))
 );
@@ -59,29 +61,33 @@ function inheritedFor(f) {
   return inheritedBoolean(f, props.event.type, props.eventTypes);
 }
 
-// Field names that the selected type defines as defaults. An input is hidden
-// only when BOTH conditions hold:
-//   1) the type defines a default for that field, AND
-//   2) the event itself has no value set (empty/unset).
-// This way a user can always override a type default on a specific event.
-// The rrule 'never' marker is a non-empty value, so setting a type's rrule
-// to 'never' hides the rrule input (useful for funerals / non-repeating events).
-// Switches are excluded: they are always shown, with their inherit state.
+// Field names that are hidden until the user asks for "Mostrar más opciones":
+//  - Regular fields: hidden only when BOTH hold: 1) the type defines a default
+//    for that field, AND 2) the event itself has no value set (empty/unset).
+//    This way a user can always override a type default on a specific event.
+//    The rrule 'never' marker is a non-empty value, so setting a type's rrule
+//    to 'never' hides the rrule input (useful for funerals / non-repeating events).
+//  - Switches: hidden whenever the event leaves them on "Heredar" (no explicit
+//    true/false on the event), so the value is inherited from the group.
 const typeDefaultFieldNames = computed(() => {
   const defaults = getTypeFieldDefaults(props.event.type, props.eventTypes);
   const event = props.event;
-  return new Set(
+  const names = new Set(
     Object.keys(defaults).filter((name) => {
-      if (switchNames.value.has(name)) return false; // switches always visible
+      if (switchNames.value.has(name)) return false; // switches: handled below
       if (!isFieldSet(defaults[name])) return false; // type has no default → never hide
       // type has a default → hide only if the event itself is empty for this field
       return !isFieldSet(event[name]);
     })
   );
+  for (const name of switchNames.value) {
+    if (typeof event[name] !== 'boolean') names.add(name); // inheriting → hidden
+  }
+  return names;
 });
 
-// Fields hidden because the group gives them a default stay hidden until the user
-// asks for them with "Mostrar más opciones".
+// Fields hidden because they inherit (a group default, or a switch on "Heredar")
+// stay hidden until the user asks for them with "Mostrar más opciones".
 const showHidden = ref(false);
 const hiddenCount = computed(() => typeDefaultFieldNames.value.size);
 
