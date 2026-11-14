@@ -622,13 +622,29 @@ components:
           - { name: tags, label: Opciones de estilo, component: tags }
       - name: fundraising
         label: Campaña financiación
-        help: "Campaña de financiación con barra de progreso: «Recaudado hasta la fecha» y «Total a recaudar» son números (sin símbolo de moneda) y la barra se calcula con ambos."
+        help: |-
+          Campaña de financiación con barra de progreso. «Recaudado hasta la fecha» y «Total a recaudar» son números (sin símbolo de moneda) y la barra se calcula con ambos.
+          Si indicas las «Fuentes de la financiación» (subvención, donaciones, obispado...), la barra se divide en colores, uno por fuente, con una leyenda. El botón Donar muestra cómo donar (Bizum, transferencia...) con los datos de «Datos > Bizum y cuentas bancarias».
         fields:
           - { name: title, type: string, label: Titulo sección, default: "Ayudanos a llegar a más" }
           - { name: name, type: string, label: "Nombre causa (ej: Nuevo tejado)" }
           - { name: description, type: string, label: Descripcion }
-          - { name: raised, type: number, label: Recaudado hasta la fecha }
+          - { name: raised, type: number, label: Recaudado hasta la fecha, help: "Total recaudado. Si rellenas las fuentes de abajo y su suma es menor que este número, la diferencia aparece como «Otros»; si es mayor, manda la suma de las fuentes." }
           - { name: goal, type: number, label: Total a recaudar }
+          - name: sources
+            label: "Fuentes de la financiación (opcional)"
+            help: "Reparte lo recaudado por origen (ej: «Subvención del Gobierno» 6000, «Donaciones» 4500, «Obispado» 1500). La barra se divide en un color por fuente."
+            type: object
+            list: { collapsible: { collapsed: true, summary: "{fields.title}" } }
+            fields:
+              - { name: title, label: "Origen (ej: Donaciones)", type: string }
+              - { name: amount, label: Importe, type: number }
+          - { name: code, type: string, label: "Código de referencia (ej: tejado)", help: "Palabra corta que el donante escribe como concepto en el Bizum o la transferencia para que sepamos a qué campaña va su donativo. Si lo dejas vacío no se muestra." }
+          - name: notes
+            label: "Información adicional (deducciones fiscales...)"
+            help: "Se muestra plegada bajo «Más información» al pulsar Donar. El texto propuesto resume la deducción estatal en el IRPF (Ley 49/2002); revísalo cada año y quítalo si no te aplica. En Navarra y País Vasco rige la normativa foral."
+            type: text
+            default: "Los donativos a la Iglesia son deducibles en la declaración de la renta (Ley 49/2002): 80 % de los primeros 250 € y 40 % del resto (45 % si llevas 3 años seguidos donando lo mismo o más a la misma entidad). Pide tu certificado indicando nombre y NIF. En Navarra y País Vasco se aplica la normativa foral: consulta con tu gestor."
           - { name: action, type: string, label: Nombre acción, hidden: true, default: Donar }
           - { name: image, type: image, label: Imagen }
           - { name: tags, label: Opciones de estilo, component: tags }
@@ -762,11 +778,22 @@ content:
 
       - name: bank
         label: Bizum y cuentas bancarias
+        help: "Se muestran en el pie de página y en el botón Donar de las campañas, con Bizum primero y después las transferencias. Para Bizum escribe «Bizum» en el nombre y el número de la parroquia/ONG; para transferencias, el IBAN; también vale un enlace de pago (https://...)."
         type: object
         list: { collapsible: { collapsed: true, summary: "{fields.title}" } }
         fields:
           - { name: title, label: "Nombre (ej: BIZUM/BBVA/...)", type: string }
           - { name: account, label: Número de cuenta/bizum, type: string }
+          - name: type
+            label: "Tipo (opcional, se detecta solo)"
+            help: "Normalmente no hace falta: se reconoce por el nombre («Bizum»), por ser un IBAN o por ser un enlace. Elígelo solo si se detecta mal."
+            type: select
+            options:
+              multiple: false
+              values:
+                - { value: bizum, label: Bizum }
+                - { value: transfer, label: Transferencia bancaria }
+                - { value: link, label: Enlace de pago online }
       - name: social
         label: Redes sociales, youtube...
         type: string
@@ -793,7 +820,7 @@ content:
           - name: links
             label: Enlaces
             type: select
-            options: { source: "pages.list", multiple: true, label: "{title}" }
+            options: { source: "pages.list", multiple: true, label: "{title}", creatable: true }
       - name: languages
         label: Idiomas de la web
         component: languages
