@@ -820,7 +820,7 @@ content:
           - name: links
             label: Enlaces
             type: select
-            options: { source: "pages.list", multiple: true, label: "{title}", creatable: true }
+            options: { source: "pages.list", multiple: true, label: "{title}" }
       - name: languages
         label: Idiomas de la web
         component: languages
