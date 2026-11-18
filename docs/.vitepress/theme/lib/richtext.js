@@ -83,3 +83,29 @@ export function sanitizeHtml(html) {
   }
   return body.innerHTML;
 }
+
+// Does a plain-text clipboard look like markdown (written elsewhere, e.g. in
+// Claude, VS Code or Obsidian) rather than ordinary prose? Deliberately
+// conservative: one clear marker is enough, but a lone `*` or `_` is not.
+const MARKDOWN_MARKERS = [
+  /^ {0,3}#{1,6}[ \t]+\S/m, // # heading
+  /^ {0,3}(?:[-*+]|\d{1,9}[.)])[ \t]+\S/m, // - item / 1. item
+  /^ {0,3}>[ \t]?\S/m, // > quote
+  /^ {0,3}(?:```|~~~)/m, // code fence
+  /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/m, // --- horizontal rule
+  /^\|.+\|[ \t]*$/m, // | table |
+  /\*\*[^*\n]+\*\*|__[^_\n]+__/, // **bold**
+  /!?\[[^\]\n]+\]\([^)\s]+\)/, // [link](url) / ![img](url)
+];
+export function looksLikeMarkdown(text) {
+  if (typeof text !== 'string' || !text.trim()) return false;
+  return MARKDOWN_MARKERS.some((re) => re.test(text));
+}
+
+// Code editors (VS Code...) put syntax-highlighted <div>/<span> soup in
+// text/html next to the raw text. Real rich sources (web pages, Word, Docs)
+// carry semantic tags. Only the latter should win over markdown detection.
+export function clipboardHtmlIsStructured(html) {
+  if (!html) return false;
+  return /<(?:h[1-6]|p|ul|ol|li|table|blockquote|pre|strong|b|em|i|a|img)[\s>/]/i.test(String(html));
+}

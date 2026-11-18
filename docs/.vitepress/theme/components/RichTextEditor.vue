@@ -6,7 +6,13 @@ import PeIcon from './PeIcon.vue';
 import ImagePickerModal from './ImagePickerModal.vue';
 import { state } from '../lib/store.js';
 import { resolvePath } from '../lib/schema.js';
-import { normalizeNewlines, normalizeExternalUrl, sanitizeHtml } from '../lib/richtext.js';
+import {
+  normalizeNewlines,
+  normalizeExternalUrl,
+  sanitizeHtml,
+  looksLikeMarkdown,
+  clipboardHtmlIsStructured,
+} from '../lib/richtext.js';
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -289,6 +295,15 @@ function textToHtml(text) {
   const inline = (p) => escapeHtml(p).replace(/\n/g, '<br>');
   return paragraphs.length === 1 ? inline(paragraphs[0]) : paragraphs.map((p) => `<p>${inline(p)}</p>`).join('');
 }
+// Markdown written elsewhere (Claude, VS Code, Obsidian...) arrives as plain
+// text: render it with the same markdown-it config as the public site instead
+// of inserting it escaped. A single paragraph is inserted without its <p> so it
+// merges into the current line rather than splitting the block at the caret.
+function markdownToPasteHtml(text) {
+  const html = sanitizeHtml(md.render(normalizeNewlines(text).trim()));
+  const single = /^<p>([\s\S]*)<\/p>\s*$/.exec(html);
+  return single && !single[1].includes('<p>') ? single[1] : html;
+}
 function onPaste(e) {
   const cd = e.clipboardData;
   if (!cd) return;
@@ -297,7 +312,10 @@ function onPaste(e) {
   if (!html && !text) return; // e.g. a pasted image file: leave it to the browser
   e.preventDefault();
   focusEditor();
-  document.execCommand('insertHTML', false, html ? sanitizeHtml(html) : textToHtml(text));
+  let out;
+  if (text && looksLikeMarkdown(text) && !clipboardHtmlIsStructured(html)) out = markdownToPasteHtml(text);
+  else out = html ? sanitizeHtml(html) : textToHtml(text);
+  document.execCommand('insertHTML', false, out);
   syncFromEditor();
 }
 

@@ -5,6 +5,8 @@ import {
   normalizeNewlines,
   isSafeUrl,
   normalizeExternalUrl,
+  looksLikeMarkdown,
+  clipboardHtmlIsStructured,
 } from '../docs/.vitepress/theme/lib/richtext.js';
 
 describe('normalizeNewlines', () => {
@@ -76,5 +78,40 @@ describe('normalizeExternalUrl', () => {
     expect(normalizeExternalUrl(' mailto:a@b.es ')).toBe('mailto:a@b.es');
     expect(normalizeExternalUrl('#seccion')).toBe('#seccion');
     expect(normalizeExternalUrl('')).toBe('');
+  });
+});
+
+describe('looksLikeMarkdown', () => {
+  it('detects common markdown markers', () => {
+    for (const s of [
+      '## Título\n\nTexto',
+      '- uno\n- dos',
+      '1. uno\n2. dos',
+      '> cita',
+      'Hola **mundo**',
+      'Ver [web](https://a.com)',
+      '![foto](https://a.com/x.webp)',
+      '```\ncódigo\n```',
+      '| a | b |\n|---|---|\n| 1 | 2 |',
+      'uno\n\n---\n\ndos',
+    ])
+      expect(looksLikeMarkdown(s)).toBe(true);
+  });
+  it('leaves ordinary prose alone', () => {
+    for (const s of ['', '   ', 'Hola mundo', 'Misa a las 12:00.\nBienvenidos.', '#sinespacio', 'a * b * c', 'un_guion_bajo', '-5 grados'])
+      expect(looksLikeMarkdown(s)).toBe(false);
+  });
+});
+
+describe('clipboardHtmlIsStructured', () => {
+  it('is true for semantic rich clipboards', () => {
+    expect(clipboardHtmlIsStructured('<p>Hola <b>mundo</b></p>')).toBe(true);
+    expect(clipboardHtmlIsStructured('<h2>T</h2>')).toBe(true);
+    expect(clipboardHtmlIsStructured('<ul><li>x</li></ul>')).toBe(true);
+  });
+  it('is false for empty or code-editor span soup', () => {
+    expect(clipboardHtmlIsStructured('')).toBe(false);
+    expect(clipboardHtmlIsStructured(undefined)).toBe(false);
+    expect(clipboardHtmlIsStructured('<meta charset="utf-8"><div style="color:#ccc"><div><span style="color:#569cd6">## Título</span></div></div>')).toBe(false);
   });
 });
