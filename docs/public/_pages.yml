@@ -542,7 +542,6 @@ components:
       - name: text
         label: Texto
         help: "Sección de texto libre: el contenido va en el campo «Texto largo», escrito en Markdown (no HTML)."
-        modal: true # enabling this is a pending TODO
         fields:
           - { name: title, type: string, label: Titulo sección }
           - { name: html, label: Texto largo, type: rich-text }
@@ -552,8 +551,8 @@ components:
         fields:
           - { name: title, type: string, label: Titulo sección, default: "Evangelio de hoy" }
           - { name: readings, label: Mostrar primera/segunda y salmo, type: boolean, default: false }
-          - { name: audio, label: Añadir audio, type: boolean, default: false }
-          - { name: images, label: Mostrar imagenes, type: boolean, default: true }
+          #- { name: audio, label: Añadir audio, type: boolean, default: false }
+          #- { name: images, label: Mostrar imagenes, type: boolean, default: false }
           - { name: tags, label: Opciones de estilo, component: tags }
       - name: calendar
         label: Eventos
@@ -809,7 +808,7 @@ content:
         help: |-
           Páginas de la web. Cada página tiene título, imagen y una lista de secciones con su contenido. Las páginas de cada templo y de cada grupo de eventos se generan desde sus propias pestañas (Datos, Grupos de Eventos), no se añaden aquí.
         component: page
-        list: { collapsible: { collapsed: true, summary: "{fields.title}" }, sort: "alphabetical", modal: false  }
+        list: { collapsible: { collapsed: true, summary: "{fields.title}" }, sort: "alphabetical", modal: true  }
       - name: nav
         label: Menu de navegación
         help: "Menú de navegación de la web: cada elemento es un submenú con un título y una lista de enlaces a páginas, que se eligen de Lista de páginas."
