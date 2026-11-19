@@ -8,13 +8,13 @@
 // item needs to remember which variant it is. If your static-site generator
 // expects a different discriminator key, change it here — it's the only
 // place this convention is encoded.
-const BLOCK_TYPE_KEY = 'type';
+export const BLOCK_TYPE_KEY = 'type';
 
 // The canonical key each object-list/block-list item stores its stable identity
 // under, so the patch layer (lib/patch.js) can diff and address items by a
 // stable identity (unlike content hashes, a uuid survives field edits). MUST
 // equal ID_KEY in lib/patch.js and config-api/src/patch.js.
-const ID_KEY = 'id';
+export const ID_KEY = 'id';
 
 const LOCAL_ROOT_PREFIXES = ['docs/public/', 'docs/public']; // strip to get relPath
 
@@ -313,12 +313,15 @@ export function getCollapsibleConfig(field) {
 }
 
 // Get list configuration for a repeatable field.
-// Returns { sort, modal } or null if not repeatable.
+// Returns { sort, modal, document } or null if not repeatable. `document: true`
+// on a block list shows it as one flowing document (components/DocumentEditor.vue)
+// instead of the list of collapsible sections.
 export function getListConfig(field) {
   if (!field.list) return null;
   const listConfig = field.list === true ? {} : field.list;
   return {
     sort: listConfig.sort || 'manual', // manual, alphabetical, raw
     modal: listConfig.modal || false, // true for modal editing
+    document: listConfig.document === true, // block lists: edit as one document
   };
 }

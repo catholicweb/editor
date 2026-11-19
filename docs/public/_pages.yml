@@ -506,7 +506,7 @@ components:
       Contenido de la página como una lista de secciones; el orden de la lista es el orden en que aparecen en la web. Cada sección tiene un tipo (texto, preguntas frecuentes, galería, eventos, vídeo, mapa, campaña de financiación...) y solo admite los campos de ese tipo.
       Casi todas tienen un título y «Opciones de estilo». Los textos largos («Texto largo», respuestas de las preguntas frecuentes...) se escriben en Markdown. Para esconder una sección sin borrarla usa la opción de estilo «hidden».
     type: block
-    list: { collapsible: { collapsed: true, summary: "{fields.title}" },  modal: false }
+    list: { collapsible: { collapsed: true, summary: "{fields.title}" },  modal: false, document: true }
     blocks:
       - name: accordion
         label: FAQ

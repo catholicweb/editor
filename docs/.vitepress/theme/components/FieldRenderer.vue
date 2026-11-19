@@ -7,6 +7,8 @@ import HelpTip from './HelpTip.vue';
 import CalendarEditor from './CalendarEditor.vue';
 import PlacesAutodiscover from './PlacesAutodiscover.vue';
 import Preview from './Preview.vue';
+import DocumentEditor from './DocumentEditor.vue';
+import { docView, toggleDocView } from '../lib/docview.js';
 import {
   isRepeatable,
   defaultForField,
@@ -65,6 +67,10 @@ const isScalarList = computed(() => !isObject.value && !isBlock.value && isRepea
 
 const collapsible = computed(() => getCollapsibleConfig(props.field));
 const listConfig = computed(() => getListConfig(props.field));
+// Block lists flagged `list: { document: true }` open as one document by default;
+// a per-browser toggle brings the classic list back (lib/docview.js).
+const isDocumentBlock = computed(() => isBlock.value && !!listConfig.value?.document);
+const showDocument = computed(() => isDocumentBlock.value && docView.value);
 
 // Items in their stored order. ('alphabetical' client-side sorting was
 // removed because it fought the item index used for in-place editing.)
@@ -158,8 +164,14 @@ const editingTitle = computed(() => {
   <div v-if="field.hidden"></div>
   <!-- BLOCK: polymorphic list of named block variants -->
   <div v-else-if="isBlock" class="field block-field" :data-field-name="field.name">
-    <label class="field-label"><span class="label-text">{{ field.label || field.name }}<HelpTip :text="field.help" /></span></label>
-    <div class="block-list">
+    <label class="field-label">
+      <span class="label-text">{{ field.label || field.name }}<HelpTip :text="field.help" /></span>
+      <button v-if="isDocumentBlock" type="button" class="view-toggle" @click="toggleDocView">
+        {{ docView ? 'Ver como lista' : 'Ver como documento' }}
+      </button>
+    </label>
+    <DocumentEditor v-if="showDocument" :field="field" :container="container" :key-name="keyName" />
+    <div v-if="!showDocument" class="block-list">
       <div v-for="(item, i) in scalarValue" :key="i" class="block-item" @click="listConfig?.modal ? editInModal(item, i) : null">
         <details v-if="!listConfig?.modal" :open="isOpen(i)" @toggle="toggleOpen(i)">
           <summary>
@@ -184,7 +196,7 @@ const editingTitle = computed(() => {
       </div>
     </div>
 
-    <div class="block-add">
+    <div v-if="!showDocument" class="block-add">
       <button type="button" @click="showBlockPicker = !showBlockPicker">+ Añadir sección</button>
       <div v-if="showBlockPicker" class="block-picker">
         <button v-for="b in field.blocks" :key="b.name" type="button" @click="addBlock(b)">
@@ -493,6 +505,18 @@ fieldset.object-field legend {
 }
 .block-picker button:hover {
   background: var(--pe-hover);
+}
+.view-toggle {
+  border: none;
+  background: transparent;
+  color: var(--pe-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.view-toggle:hover {
+  color: var(--pe-accent);
 }
 .scalar-list {
   display: flex;
