@@ -486,7 +486,7 @@ components:
           Crea una página propia para este evento (además de la del grupo, si la tiene)
         type: boolean
       - { name: registration, type: boolean, default: false, label: "Crear formulario de inscripción para este evento" }
-      - { name: sections, label: Secciones de la página creada para el evento, component: sections, showif: "createPage == true" }
+      - { name: sections, label: Contenido de la página creada para el evento, component: sections, showif: "createPage == true" }
       #- { name: duration, label: Duración (min), type: number }
   page:
     label: Página
@@ -497,11 +497,11 @@ components:
         #- { name: description, label: Subtitulo, type: string }
         - { name: image, label: Imagen, type: image }
         #- { name: hideHero, label: Esconder cabezera por defecto, type: boolean, default: false }
-        - { name: sections, label: Secciones, component: sections }
+        - { name: sections, label: Contenido de la página, component: sections }
 
   sections:
     name: sections
-    label: Secciones
+    label: Contenido
     help: |-
       Contenido de la página como una lista de secciones; el orden de la lista es el orden en que aparecen en la web. Cada sección tiene un tipo (texto, preguntas frecuentes, galería, eventos, vídeo, mapa, campaña de financiación...) y solo admite los campos de ese tipo.
       Casi todas tienen un título y «Opciones de estilo». Los textos largos («Texto largo», respuestas de las preguntas frecuentes...) se escriben en Markdown. Para esconder una sección sin borrarla usa la opción de estilo «hidden».
@@ -721,7 +721,7 @@ content:
             type: boolean
             default: false
           - { name: registration, type: boolean, default: false, label: "Crear formulario de inscripción para este grupo de eventos" }
-          - { name: sections, label: Secciones de la página creada, component: sections, showif: "createPage == true" }
+          - { name: sections, label: Contenido de la página creada para el grupo de eventos, component: sections, showif: "createPage == true" }
           - { name: defaults, label: "Valores por defecto para eventos de este grupo", component: event }
 
   - name: nerdy
@@ -797,7 +797,7 @@ content:
           - { name: geo, type: string, label: "Coordenadas (ej: 42.801941, -1.645660)" }
           - { name: address, type: string, label: "Dirección" }
           - { name: createPage, label: "Crear una página para este lugar", type: boolean, default: true }
-          - { name: sections, label: Secciones de la página creada, component: sections, showif: "createPage == true" }
+          - { name: sections, label: Contenido de la página creada para el lugar, component: sections, showif: "createPage == true" }
 
       - name: autodiscover
         label: Encontrar templos
@@ -816,7 +816,7 @@ content:
         help: |-
           Páginas de la web. Cada página tiene título, imagen y una lista de secciones con su contenido. Las páginas de cada templo y de cada grupo de eventos se generan desde sus propias pestañas (Datos, Grupos de Eventos), no se añaden aquí.
         component: page
-        list: { collapsible: { collapsed: true, summary: "{fields.title}" }, sort: "alphabetical", modal: true  }
+        list: { collapsible: { collapsed: true, summary: "{fields.title}" }, sort: "alphabetical" }
       - name: nav
         label: Menu de navegación
         help: "Menú de navegación de la web: cada elemento es un submenú con un título y una lista de enlaces a páginas, que se eligen de Lista de páginas."
