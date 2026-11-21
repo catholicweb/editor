@@ -7,7 +7,6 @@ import HelpTip from './HelpTip.vue';
 import CalendarEditor from './CalendarEditor.vue';
 import PlacesAutodiscover from './PlacesAutodiscover.vue';
 import Preview from './Preview.vue';
-import DocumentEditor from './DocumentEditor.vue';
 import DocumentPreviewModal from './DocumentPreviewModal.vue';
 import { docView, toggleDocView } from '../lib/docview.js';
 import {
@@ -170,16 +169,15 @@ const editingTitle = computed(() => {
     <label class="field-label">
       <span class="label-text">{{ field.label || field.name }}<HelpTip :text="field.help" /></span>
       <span v-if="isDocumentBlock" class="label-actions">
-        <button v-if="showDocument" type="button" class="view-toggle" @click="docModalOpen = true">
-          Abrir con vista previa
-        </button>
         <button type="button" class="view-toggle" @click="toggleDocView">
-          {{ docView ? 'Ver como lista' : 'Ver como documento' }}
+          {{ docView ? 'Ver como lista' : 'Ocultar lista' }}
         </button>
       </span>
     </label>
-    <DocumentEditor v-if="showDocument && !docModalOpen" :field="field" :container="container" :key-name="keyName" />
-    <p v-else-if="showDocument" class="hint">Editando en pantalla completa…</p>
+    <!-- The Tiptap editor only lives in the modal (editor + live preview). -->
+    <button v-if="showDocument" type="button" class="edit-content-btn" @click="docModalOpen = true">
+      Editar contenido
+    </button>
     <DocumentPreviewModal
       v-if="docModalOpen"
       :field="field"
@@ -550,6 +548,22 @@ fieldset.object-field legend {
 .hint {
   font-size: 12px;
   color: var(--pe-muted);
+}
+.edit-content-btn {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--pe-accent);
+  background: transparent;
+  border: 1px solid var(--pe-accent);
+  border-radius: var(--pe-radius);
+  cursor: pointer;
+  transition: background var(--pe-transition);
+}
+.edit-content-btn:hover {
+  background: var(--pe-hover);
 }
 </style>
 
