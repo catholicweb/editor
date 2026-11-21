@@ -188,9 +188,15 @@ export async function pagesYmlToJsonSchema(rawPages, { title = 'parroquia config
   const properties = {};
   for (const tab of schema.content) {
     if (tab.type !== 'tab') continue;
-    const obj = objectSchema(tab.fields, tab.name);
+    // `path:` makes several tabs edit one config key: merge their fields.
+    const key = tab.path || tab.name;
+    const obj = objectSchema(tab.fields, key);
     if (!Object.keys(obj.properties).length) continue;
-    properties[tab.name] = annotate({ ...obj, additionalProperties: true }, tab);
+    if (properties[key]) {
+      Object.assign(properties[key].properties, obj.properties);
+      continue;
+    }
+    properties[key] = annotate({ ...obj, additionalProperties: true }, tab);
   }
   EVENT_SCHEMA = null;
 

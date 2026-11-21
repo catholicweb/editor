@@ -738,27 +738,6 @@ content:
     type: tab
     label: Datos
     fields:
-      - name: places
-        label: Lista de templos
-        help: |-
-          Templos e iglesias de la parroquia. Cada uno puede tener su propia página en la web (opción «Crear una página para este lugar»), cuyo contenido son sus secciones. Los eventos y algunas secciones se refieren a un templo por su id.
-        type: object
-        list: { collapsible: { collapsed: true, summary: "{fields.name}" }, sort: "alphabetical", modal: false }
-        fields:
-          - { name: name, type: string, label: Nombre }
-          - { name: images, type: image, label: Imagenes, options: { multiple: true } }
-          - { name: geo, type: string, label: "Coordenadas (ej: 42.801941, -1.645660)" }
-          - { name: address, type: string, label: "Dirección" }
-          - { name: createPage, label: "Crear una página para este lugar", type: boolean, default: true }
-          - { name: sections, label: Secciones de la página creada, component: sections, showif: "createPage == true" }
-
-      - name: autodiscover
-        label: Encontrar templos
-        type: places-autodiscover
-        options:
-          listPath: "places"                   # field (relative to this tab) where selected places are appended
-          eventsPath: "calendar.events.list"   # config dot-path to the events ARRAY to import into
-
       - { name: title, label: Título del sitio web, type: string }
       - { name: description, label: Breve descripción del sitio web, type: text }
 
@@ -797,6 +776,35 @@ content:
         label: Redes sociales, youtube...
         type: string
         list: { collapsible: { collapsed: true } }
+
+  # Editor-only tab: `path: info` says its fields live in config.json under `info`
+  # (info.places), so no data is migrated. Several tabs may share one `path`.
+  - name: places
+    icon: building-library
+    type: tab
+    label: Templos
+    path: info
+    fields:
+      - name: places
+        label: Lista de templos
+        help: |-
+          Templos e iglesias de la parroquia. Cada uno puede tener su propia página en la web (opción «Crear una página para este lugar»), cuyo contenido son sus secciones. Los eventos y algunas secciones se refieren a un templo por su id.
+        type: object
+        list: { collapsible: { collapsed: true, summary: "{fields.name}" }, sort: "alphabetical", modal: false }
+        fields:
+          - { name: name, type: string, label: Nombre }
+          - { name: images, type: image, label: Imagenes, options: { multiple: true } }
+          - { name: geo, type: string, label: "Coordenadas (ej: 42.801941, -1.645660)" }
+          - { name: address, type: string, label: "Dirección" }
+          - { name: createPage, label: "Crear una página para este lugar", type: boolean, default: true }
+          - { name: sections, label: Secciones de la página creada, component: sections, showif: "createPage == true" }
+
+      - name: autodiscover
+        label: Encontrar templos
+        type: places-autodiscover
+        options:
+          listPath: "places"                   # field (relative to this tab's data, config.info) where selected places are appended
+          eventsPath: "calendar.events.list"   # config dot-path to the events ARRAY to import into
 
   - name: pages
     icon: document-text

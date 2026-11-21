@@ -36,7 +36,16 @@ function getFieldNames(fields) {
 function checkLegacyData(config, fileIndex) {
   if (!config || typeof config !== 'object') return [];
   const messages = [];
-  const allowedTabs = new Set(fileIndex.content.map(e => e.name));
+  // Tabs sharing a config key (`path:` in pages.yml) are checked together.
+  const merged = new Map();
+  for (const e of fileIndex.content) {
+    const key = e.path || e.name;
+    const prev = merged.get(key);
+    if (prev) prev.fields = [...prev.fields, ...(e.fields || [])];
+    else merged.set(key, { name: key, fields: [...(e.fields || [])] });
+  }
+  const content = [...merged.values()];
+  const allowedTabs = new Set(content.map(e => e.name));
   allowedTabs.add('dev')
   for (const topKey of Object.keys(config)) {
     if (!allowedTabs.has(topKey)) {
@@ -44,7 +53,7 @@ function checkLegacyData(config, fileIndex) {
       console.error('[Legacy data] Unreachable config property at top level:', topKey, '| snippet:', snippet);
       messages.push(topKey);
     } else {
-      const entry = fileIndex.content.find(e => e.name === topKey);
+      const entry = content.find(e => e.name === topKey);
       if (entry && config[topKey] && typeof config[topKey] === 'object' && !Array.isArray(config[topKey])) {
         const allowedNested = getFieldNames(entry.fields);
         for (const nestedKey of Object.keys(config[topKey])) {

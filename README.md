@@ -114,8 +114,8 @@ siempre tienen prioridad. Esto cubre tanto el uso como "atajo de tipo"
 
 ### Tipos soportados
 
-`string`, `text`, `rich-text` (editor enriquecido básico basado en
-`contenteditable`, no un editor WYSIWYG completo), `number`, `boolean`,
+`string`, `text`, `rich-text` (Markdown en bruto en un textarea; la edición
+visual está en `DocumentEditor`, con Tiptap), `number`, `boolean`,
 `date`, `select` (valores string u objetos `{value,label}`, simple/múltiple,
 con o sin `creatable`), `image` (simple/múltiple, selector + subida),
 `object` (simple o repetible, con resumen `collapsible` interpolado tipo
@@ -156,11 +156,9 @@ te avisa y los recupera automáticametne desde `localStorage`.
   dejado así por coste. Si quieres el título real, es un cambio localizado
   en `buildCollectionRefIndex` (content-index.js): habría que hacer fetch
   de cada fichero de la colección y leer su campo `primary`.
-- **`rich-text`** usa `document.execCommand`, que está obsoleto pero
-  ampliamente soportado; es intencionadamente básico (negrita, cursiva,
-  listas, enlace, limpiar formato). Si el HTML resultante necesita ser más
-  controlado, esto es candidato a sustituirse por un editor real (Tiptap,
-  ProseMirror...).
+- **`rich-text`** se edita como Markdown en bruto (textarea). El editor
+  visual (Tiptap) solo se usa en la vista «documento» de las secciones de
+  una página (`DocumentEditor.vue`).
 - **Reordenar** listas/bloques usa botones ↑/↓, no drag-and-drop.
 - **Clave discriminadora de bloques**: cada elemento de un campo `block` se
   guarda como `{ type: "<nombre-del-bloque>", ...campos }`. Si tu generador

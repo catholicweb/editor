@@ -18,8 +18,9 @@ async function defaultConfig() {
   const cfg = {};
   for (const tab of s.content) {
     if (tab.type !== 'tab') continue;
-    cfg[tab.name] = {};
-    for (const f of tab.fields) if (f.type !== 'places-autodiscover') cfg[tab.name][f.name] = defaultForField(f);
+    const key = tab.path || tab.name; // tabs with `path:` share another tab's config key
+    cfg[key] ??= {};
+    for (const f of tab.fields) if (f.type !== 'places-autodiscover') cfg[key][f.name] = defaultForField(f);
   }
   return { cfg, s };
 }

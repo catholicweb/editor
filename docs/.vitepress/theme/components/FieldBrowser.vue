@@ -24,7 +24,7 @@ async function selectEntry(entry) {
   regView.open = false;
 
   // Update URL with the current tab (for deep linking / browser history)
-  const newUrl = `${window.location.pathname}?edit=${entry.tabPath}`;
+  const newUrl = `${window.location.pathname}?edit=${entry.contentName}`;
   window.history.pushState({}, '', newUrl);
 
   // openEntry() switches tabs; dirty state is tracked against the whole config,

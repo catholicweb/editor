@@ -8,6 +8,7 @@ import CalendarEditor from './CalendarEditor.vue';
 import PlacesAutodiscover from './PlacesAutodiscover.vue';
 import Preview from './Preview.vue';
 import DocumentEditor from './DocumentEditor.vue';
+import DocumentPreviewModal from './DocumentPreviewModal.vue';
 import { docView, toggleDocView } from '../lib/docview.js';
 import {
   isRepeatable,
@@ -71,6 +72,8 @@ const listConfig = computed(() => getListConfig(props.field));
 // a per-browser toggle brings the classic list back (lib/docview.js).
 const isDocumentBlock = computed(() => isBlock.value && !!listConfig.value?.document);
 const showDocument = computed(() => isDocumentBlock.value && docView.value);
+// Full-screen modal: the document editor next to the live preview of this page.
+const docModalOpen = ref(false);
 
 // Items in their stored order. ('alphabetical' client-side sorting was
 // removed because it fought the item index used for in-place editing.)
@@ -166,11 +169,24 @@ const editingTitle = computed(() => {
   <div v-else-if="isBlock" class="field block-field" :data-field-name="field.name">
     <label class="field-label">
       <span class="label-text">{{ field.label || field.name }}<HelpTip :text="field.help" /></span>
-      <button v-if="isDocumentBlock" type="button" class="view-toggle" @click="toggleDocView">
-        {{ docView ? 'Ver como lista' : 'Ver como documento' }}
-      </button>
+      <span v-if="isDocumentBlock" class="label-actions">
+        <button v-if="showDocument" type="button" class="view-toggle" @click="docModalOpen = true">
+          Abrir con vista previa
+        </button>
+        <button type="button" class="view-toggle" @click="toggleDocView">
+          {{ docView ? 'Ver como lista' : 'Ver como documento' }}
+        </button>
+      </span>
     </label>
-    <DocumentEditor v-if="showDocument" :field="field" :container="container" :key-name="keyName" />
+    <DocumentEditor v-if="showDocument && !docModalOpen" :field="field" :container="container" :key-name="keyName" />
+    <p v-else-if="showDocument" class="hint">Editando en pantalla completa…</p>
+    <DocumentPreviewModal
+      v-if="docModalOpen"
+      :field="field"
+      :container="container"
+      :key-name="keyName"
+      @close="docModalOpen = false"
+    />
     <div v-if="!showDocument" class="block-list">
       <div v-for="(item, i) in scalarValue" :key="i" class="block-item" @click="listConfig?.modal ? editInModal(item, i) : null">
         <details v-if="!listConfig?.modal" :open="isOpen(i)" @toggle="toggleOpen(i)">
