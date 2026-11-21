@@ -4,7 +4,6 @@ import SelectField from './SelectField.vue';
 import ImagePickerModal from './ImagePickerModal.vue';
 import PeIcon from './PeIcon.vue';
 import IconPicker from './fields/IconPicker.vue';
-import RichTextEditor from './RichTextEditor.vue';
 import { state } from '../lib/store.js';
 import { resolvePath } from '../lib/schema.js';
 
@@ -263,22 +262,16 @@ function updateRefDropdownPosition() {
     @input="set($event.target.value)"
   />
 
-  <!-- text (long plain text) -->
+  <!-- text / rich-text: long plain text. rich-text is stored as Markdown and edited raw here;
+       the visual (Tiptap) editor lives in DocumentEditor.vue -->
   <textarea
-    v-else-if="field.type === 'text'"
+    v-else-if="field.type === 'text' || field.type === 'rich-text'"
     ref="textEl"
     class="auto-grow"
+    :class="{ 'raw-markdown': field.type === 'rich-text' }"
     :value="modelValue ?? ''"
     rows="2"
     @input="onTextInput"
-  />
-
-  <!-- rich-text (markdown-backed WYSIWYG; see RichTextEditor.vue) -->
-  <RichTextEditor
-    v-else-if="field.type === 'rich-text'"
-    :field="field"
-    :model-value="modelValue"
-    @update:model-value="set"
   />
 
   <!-- number -->
@@ -508,6 +501,10 @@ select:focus-visible {
 }
 textarea {
   resize: vertical;
+}
+textarea.raw-markdown {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
 }
 textarea.auto-grow {
   resize: none;

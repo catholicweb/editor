@@ -10,7 +10,7 @@ A **schema-driven CMS editor** for non-technical users. The form is not hardcode
 
 It is built as a **VitePress site** that embeds a full Vue app (`EditorApp.vue`) as a component — VitePress is the app shell/build tooling, not a content site.
 
-**Important — current editing model.** As of the "single-file editing" simplification, the editor no longer edits individual `.md`/token files. It edits exactly **one file, `config.json`**, presented as **tabs**: each `content:` entry in `pages.yml` with `type: tab` maps to a top-level JSON key inside `config.json` (its `tabPath`), and that entry's `fields` describe the form for that tab. `file`/`collection` content types are no longer supported. UI texts elsewhere that still say "Guardar fichero / documento" are legacy wording.
+**Important — current editing model.** As of the "single-file editing" simplification, the editor no longer edits individual `.md`/token files. It edits exactly **one file, `config.json`**, presented as **tabs**: each `content:` entry in `pages.yml` with `type: tab` maps to a top-level JSON key inside `config.json` (its `tabPath`), and that entry's `fields` describe the form for that tab. An optional `path:` on a tab names the `config.json` key it edits instead (default: its own name), so several tabs can share one key without migrating data (e.g. the `places` tab has `path: info`, data stays in `info.places`). In `content-index.js` that key is `entry.tabPath`; the tab's own identity is `entry.contentName` (used for `?edit=` deep links). Top-level keys only, not dotted paths. `file`/`collection` content types are no longer supported. UI texts elsewhere that still say "Guardar fichero / documento" are legacy wording.
 
 ## Commands
 
@@ -48,9 +48,12 @@ Everything lives under `docs/.vitepress/theme/`. `docs/index.md` mounts `<Editor
 - **`LoginView.vue`** — email-only login: asks for the editor's email, calls `POST /auth/request` (the API emails a magic link per slug the address can edit), then shows a "check your email" panel. `docs/magic.md` serves the app at `/magic` (the magic-link base) where `EditorApp` redeems the emailed `?code=`.
 - **`FieldBrowser.vue`** — sidebar of tabs, ordered per `pages.yml`'s `content:`.
 - **`FieldsGroup.vue`** / **`FieldRenderer.vue`** — recursive field dispatch: object / object-list / polymorphic `block` (list of variants discriminated by `BLOCK_TYPE_KEY`) / scalar list / leaf.
-- **`ScalarInput.vue`** — leaf types: string, text, rich-text (`contenteditable` + obsolete `document.execCommand`, intentionally basic), number, boolean, date, select, image, reference, uuid.
+- **`ScalarInput.vue`** — leaf types: string, text, rich-text (raw Markdown in an auto-growing textarea; the visual editor is `DocumentEditor.vue`), number, boolean, date, select, image, reference, uuid.
 - **`SelectField.vue`**, **`ImagePickerModal.vue`**, **`fields/IconPicker.vue`** — select (multi/creatable), image picker + upload, icon picker (Heroicon names via `PeIcon.vue`).
 - **`CalendarEditor.vue`** / **`WeekGrid.vue`** / **`EventEditorModal.vue`** / **`PlacesAutodiscover.vue`** — the events/calendar feature: grid + modal editing of events, place autocomplete/discovery.
+- **`DocumentEditor.vue`** / **`SectionCard.vue`** / **`SectionHeaderView.vue`** — Tiptap "document" view of block lists flagged `list: { document: true }` (page sections); the data stays the same array of blocks (`lib/document.js`, `lib/document-extensions.js`).
+- **`DocumentPreviewModal.vue`** — opened from the sections field: `DocumentEditor` next to `Preview` (below it on narrow/portrait screens).
+- **`Preview.vue`** — iframe of the public site fed by `postMessage` (`theme`, `pages`). Takes an optional `page` prop (a `{ sections, ... }` object); without it, the first page (Diseño tab, the only top-level tab with a side preview).
 
 ## Non-obvious behavior worth knowing
 

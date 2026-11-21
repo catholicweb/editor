@@ -1,10 +1,10 @@
-// Helpers for RichTextEditor.vue. Kept free of Vue/DOM imports so the pure
-// functions can be unit-tested in plain Node (tests/richtext.test.js).
+// Pure helpers for the document editor (DocumentEditor.vue, lib/document*.js).
+// Kept free of Vue/DOM imports so they can be unit-tested in plain Node
+// (tests/richtext.test.js).
 
 // Stored markdown sometimes carries newlines as the two literal characters
 // backslash + "n" (double-escaped JSON/YAML written by an import or an external
-// tool). markdown-it shows them verbatim ("\n"), and turndown then escapes the
-// backslash on the next edit ("\\n"), so the damage grows with every save.
+// tool), which would show up verbatim and get re-escaped on every save.
 // Convert those sequences (and CRLF) to real newlines before rendering.
 export function normalizeNewlines(text) {
   if (text == null) return '';
@@ -43,45 +43,6 @@ export function normalizeExternalUrl(input) {
   if (/^\+?[\d\s().-]{7,}$/.test(url)) return 'tel:' + url.replace(/[^\d+]/g, '');
   if (/^(www\.|[^\s/]+\.[a-z]{2,}(?:[/?#:]|$))/i.test(url)) return 'https://' + url;
   return url;
-}
-
-const BLOCKED_TAGS = new Set([
-  'script', 'style', 'iframe', 'object', 'embed', 'link', 'meta', 'base',
-  'form', 'input', 'button', 'textarea', 'select', 'svg', 'math', 'template', 'noscript',
-]);
-const ALLOWED_ATTRS = new Set(['href', 'src', 'alt', 'title']);
-
-// The editor renders markdown with `html: true` (to match the public site) and
-// pastes arbitrary clipboard HTML into a contenteditable, both via innerHTML.
-// Without this, stored `<img src=x onerror=...>` runs inside the admin UI.
-// DOMParser documents are inert (no scripts, no image loads) while we clean them.
-export function sanitizeHtml(html) {
-  if (!html) return '';
-  if (typeof DOMParser === 'undefined') return '';
-  const doc = new DOMParser().parseFromString(String(html), 'text/html');
-  const body = doc.body;
-
-  const comments = [];
-  const walker = doc.createTreeWalker(body, NodeFilter.SHOW_COMMENT);
-  while (walker.nextNode()) comments.push(walker.currentNode);
-  comments.forEach((c) => c.remove());
-
-  for (const el of Array.from(body.querySelectorAll('*'))) {
-    const tag = el.tagName.toLowerCase();
-    if (BLOCKED_TAGS.has(tag)) {
-      el.remove();
-      continue;
-    }
-    for (const attr of Array.from(el.attributes)) {
-      const name = attr.name.toLowerCase();
-      if (!ALLOWED_ATTRS.has(name)) {
-        el.removeAttribute(attr.name);
-      } else if ((name === 'href' || name === 'src') && !isSafeUrl(attr.value, { media: name === 'src' })) {
-        el.removeAttribute(attr.name);
-      }
-    }
-  }
-  return body.innerHTML;
 }
 
 // Does a plain-text clipboard look like markdown (written elsewhere, e.g. in

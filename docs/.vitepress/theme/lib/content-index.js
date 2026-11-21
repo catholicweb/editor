@@ -16,7 +16,7 @@ import { stripLocalRoot } from './schema.js';
 //     displayName,            // tab display name
 //     groupLabel,             // content.label, for sidebar grouping
 //     icon,                   // optional icon
-//     tabPath,                // field path within config.json (e.g., 'events', 'pages')
+//     tabPath,                // config.json key the tab edits: the tab's `path:` or its name (e.g., 'events', 'pages')
 //   }
 export function buildFileIndex(schema) {
   const entries = [];
@@ -36,7 +36,9 @@ export function buildFileIndex(schema) {
         displayName: c.label || c.name,
         groupLabel: c.label || c.name,
         icon: c.icon || null,
-        tabPath: c.name, // The field path within config.json (e.g., 'events', 'pages')
+        // Config key this tab edits. Defaults to the tab name; `path:` lets several
+        // tabs edit the same key (editor-only grouping, the data does not move).
+        tabPath: c.path || c.name,
       });
     }
     // Note: 'file' and 'collection' types are no longer supported

@@ -37,8 +37,14 @@ async function parseDeepLink(retryCount = 0) {
   const tabName = parts[0];
   const fieldName = parts[1] || null;
 
-  // Find the tab in fileIndex by matching tabPath
-  const entry = state.fileIndex.find(e => e.tabPath === tabName);
+  // `tabName` is a tab's name, or a config key as in `source` links (info.places).
+  // Several tabs can share a config key (`path:` in pages.yml), so with a field
+  // name prefer the tab that actually has that field.
+  const candidates = state.fileIndex.filter(e => e.contentName === tabName || e.tabPath === tabName);
+  const entry =
+    (fieldName && candidates.find(e => (e.fields || []).some(f => f.name === fieldName))) ||
+    candidates.find(e => e.contentName === tabName) ||
+    candidates[0];
   if (!entry) {
     console.warn(`[DeepLink] Tab not found: ${tabName}`);
     return;
@@ -200,8 +206,8 @@ function onRestore({ config }) {
 const isCalendarDoc = computed(() =>
   (state.currentEntry?.fields || []).some((f) => f.type === 'calendario')
 );
-// The live site preview belongs to the theme/pages tabs only: never next to the built-in Inscripciones tab.
-const showPreviewSide = computed(() => !regView.open && (state.currentEntry?.tabPath === 'theme' || state.currentEntry?.tabPath === 'pages')); //
+// The side preview belongs to the Diseño tab only (pages get theirs in the sections editor modal).
+const showPreviewSide = computed(() => !regView.open && state.currentEntry?.contentName === 'theme');
 </script>
 
 <template>

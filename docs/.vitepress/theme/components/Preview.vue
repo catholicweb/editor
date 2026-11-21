@@ -6,54 +6,85 @@
       sandbox="allow-scripts allow-same-origin"
       title="Vista previa del sitio"
       class="preview-iframe"
+      @load="onLoad"
     />
   </div>
 </template>
 
 <script setup>
-import { computed, watch, ref } from 'vue';
+// Live preview: the public site in an iframe, fed with unsaved data through
+// postMessage (web-template/docs/.vitepress/theme/Layout.vue is the receiver).
+// - `theme` messages restyle the site (Diseño tab).
+// - `pages` messages replace the sections of the shown page with the given page.
+// Pass `page` to preview a specific page ({ sections, ... }: a page, a templo, an
+// event group or an event). Without it the first page of the site is shown (Diseño).
+import { computed, watch, ref, onBeforeUnmount } from 'vue';
 import { state } from '../lib/store.js';
 
-const iframeEl = ref(null);
-let postTimer = null;
+const props = defineProps({
+  page: { type: Object, default: null },
+});
 
+const iframeEl = ref(null);
 const isDev = import.meta.env?.DEV === true;
 
-const iframeUrl = computed(() => {
-  if (isDev) return 'http://localhost:5174';
-  const slug = state.slug || 'demo';
-  return `https://${slug}.parroquia.app`;
-});
+const origin = computed(() => (isDev ? 'http://localhost:5174' : `https://${state.slug || 'demo'}.parroquia.app`));
+const iframeUrl = computed(() => origin.value);
+
+const plain = (v) => JSON.parse(JSON.stringify(v));
+const shownPage = () => props.page ?? state.config?.pages?.list?.[0] ?? null;
+
+function postTheme() {
+  const win = iframeEl.value?.contentWindow;
+  const theme = state.config?.theme;
+  if (win && theme) win.postMessage({ theme: plain(theme) }, origin.value);
+}
+function postPage() {
+  const win = iframeEl.value?.contentWindow;
+  const page = shownPage();
+  if (win && page) win.postMessage({ pages: plain(page) }, origin.value);
+}
+
+let themeTimer = null;
+let pageTimer = null;
+let loadTimers = [];
 
 watch(
   () => state.config?.theme,
-  (theme) => {
-    clearTimeout(postTimer);
-    postTimer = setTimeout(() => {
-      if (iframeEl.value && iframeEl.value.contentWindow && theme) {
-        const targetOrigin = isDev ? 'http://localhost:5174' : `https://${state.slug || 'test'}.parroquia.app`;
-        const plainTheme = JSON.parse(JSON.stringify(theme));
-        iframeEl.value.contentWindow.postMessage({ theme: plainTheme }, targetOrigin);
-      }
-    }, 300);
+  () => {
+    clearTimeout(themeTimer);
+    themeTimer = setTimeout(postTheme, 300);
   },
-  { immediate: true, deep: true }
+  { deep: true }
 );
 
 watch(
-  () => state.config?.pages.list,
-  (pages) => {
-    clearTimeout(postTimer);
-    postTimer = setTimeout(() => {
-      if (iframeEl.value && iframeEl.value.contentWindow && pages) {
-        const targetOrigin = isDev ? 'http://localhost:5174' : `https://${state.slug || 'test'}.parroquia.app`;
-        const plainPage = JSON.parse(JSON.stringify(pages[0]));
-        iframeEl.value.contentWindow.postMessage({ pages: plainPage }, targetOrigin);
-      }
-    }, 300);
+  shownPage,
+  () => {
+    clearTimeout(pageTimer);
+    pageTimer = setTimeout(postPage, 300);
   },
-  { immediate: true, deep: true }
+  { deep: true }
 );
+
+// The site registers its message listener after hydration, which can happen a
+// moment after the iframe's `load` event, so send the initial state a few times
+// (the receiver drops superseded previews).
+function onLoad() {
+  loadTimers.forEach(clearTimeout);
+  loadTimers = [0, 600, 1800].map((ms) =>
+    setTimeout(() => {
+      postTheme();
+      postPage();
+    }, ms)
+  );
+}
+
+onBeforeUnmount(() => {
+  clearTimeout(themeTimer);
+  clearTimeout(pageTimer);
+  loadTimers.forEach(clearTimeout);
+});
 </script>
 
 <style scoped>
