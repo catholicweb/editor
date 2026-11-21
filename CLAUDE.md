@@ -52,7 +52,7 @@ Everything lives under `docs/.vitepress/theme/`. `docs/index.md` mounts `<Editor
 - **`SelectField.vue`**, **`ImagePickerModal.vue`**, **`fields/IconPicker.vue`** — select (multi/creatable), image picker + upload, icon picker (Heroicon names via `PeIcon.vue`).
 - **`CalendarEditor.vue`** / **`WeekGrid.vue`** / **`EventEditorModal.vue`** / **`PlacesAutodiscover.vue`** — the events/calendar feature: grid + modal editing of events, place autocomplete/discovery.
 - **`DocumentEditor.vue`** / **`SectionCard.vue`** / **`SectionHeaderView.vue`** — Tiptap "document" view of block lists flagged `list: { document: true }` (page sections); the data stays the same array of blocks (`lib/document.js`, `lib/document-extensions.js`).
-- **`DocumentPreviewModal.vue`** — opened from the sections field: `DocumentEditor` next to `Preview` (below it on narrow/portrait screens).
+- **`DocumentPreviewModal.vue`** — opened by the «Editar contenido» button of the sections field (the only place `DocumentEditor` is mounted): `DocumentEditor` next to `Preview` (below it on narrow/portrait screens).
 - **`Preview.vue`** — iframe of the public site fed by `postMessage` (`theme`, `pages`). Takes an optional `page` prop (a `{ sections, ... }` object); without it, the first page (Diseño tab, the only top-level tab with a side preview).
 
 ## Non-obvious behavior worth knowing
