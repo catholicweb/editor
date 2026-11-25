@@ -180,7 +180,7 @@ watch(
                 <td><a :href="`tel:${r.phone}`">{{ r.phone }}</a></td>
                 <td><a :href="`mailto:${r.email}`">{{ r.email }}</a></td>
                 <td class="num">{{ r.people }}</td>
-                <td class="notes">{{ r.notes }}</td>
+                <td class="notes">{{ regs.notesWithExtra(r) }}</td>
                 <td class="muted nowrap">{{ when(r.createdAt) }}</td>
               </tr>
             </tbody>

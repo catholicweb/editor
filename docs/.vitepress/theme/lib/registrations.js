@@ -64,7 +64,7 @@ const fold = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,
 export function matches(item, query) {
   const q = fold(query).trim();
   if (!q) return true;
-  return fold([item.name, item.phone, item.email, item.notes, item.eventLabel].join(' ')).includes(q);
+  return fold([item.name, item.phone, item.email, notesWithExtra(item), item.eventLabel].join(' ')).includes(q);
 }
 
 // Correos únicos (en minúsculas), listos para pegar en "Para/CCO".
@@ -77,12 +77,16 @@ const csvCell = (v) => {
   if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`; // evita fórmulas al abrir en Excel/Calc
   return /[",\n\r;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
+// Respuestas a las preguntas extra del formulario: [{ id, label, value }] -> "Pregunta: respuesta" por línea.
+export const extraText = (i) =>
+  (i.extra || []).map((e) => `${e.label}: ${e.value === true ? 'Sí' : e.value === false ? 'No' : e.value}`).join('\n');
+export const notesWithExtra = (i) => [i.notes, extraText(i)].filter(Boolean).join('\n');
 const stamp = (ms) => new Date(ms).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
 
 // CSV con BOM (Excel lo abre en UTF-8) y ';' como separador (Excel en español).
 export function toCsv(items) {
   const head = ['Evento', 'Alta', 'Responsable', 'Teléfono', 'Email', 'Personas', 'Observaciones'];
-  const rows = (items || []).map((i) => [i.eventLabel, stamp(i.createdAt), i.name, i.phone, i.email, i.people, i.notes]);
+  const rows = (items || []).map((i) => [i.eventLabel, stamp(i.createdAt), i.name, i.phone, i.email, i.people, notesWithExtra(i)]);
   return '\ufeff' + [head, ...rows].map((r) => r.map(csvCell).join(';')).join('\r\n') + '\r\n';
 }
 
@@ -111,7 +115,7 @@ export function printHtml(groups, { title = 'Inscripciones', date = new Date() }
 <table><thead><tr><th class="chk">✓</th><th>Responsable</th><th>Teléfono</th><th class="num">Pers.</th><th>Observaciones</th></tr></thead><tbody>
 ${g.items
   .map(
-    (i) => `<tr><td class="chk"><span class="box"></span></td><td>${esc(i.name)}<br><small>${esc(i.email)}</small></td><td>${esc(i.phone)}</td><td class="num">${esc(i.people)}</td><td class="notes">${esc(i.notes)}</td></tr>`,
+    (i) => `<tr><td class="chk"><span class="box"></span></td><td>${esc(i.name)}<br><small>${esc(i.email)}</small></td><td>${esc(i.phone)}</td><td class="num">${esc(i.people)}</td><td class="notes">${esc(notesWithExtra(i))}</td></tr>`,
   )
   .join('\n')}
 </tbody></table>
