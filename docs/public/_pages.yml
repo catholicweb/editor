@@ -486,6 +486,18 @@ components:
           Crea una página propia para este evento (además de la del grupo, si la tiene)
         type: boolean
       - { name: registration, type: boolean, default: false, label: "Crear formulario de inscripción para este evento" }
+      - name: customFields
+        label: Preguntas extra del formulario de inscripción
+        help: |-
+          Preguntas adicionales para el formulario (además de nombre, teléfono, correo, personas y observaciones). Responderlas es opcional. Si el evento no tiene preguntas propias, usa las de su grupo de eventos.
+        type: object
+        showif: "registration == true"
+        list: { collapsible: { collapsed: true, summary: "{fields.label}" } }
+        fields:
+          - { name: id, label: Identificador, type: uuid, hidden: true }
+          - { name: label, label: Pregunta, type: string }
+          - { name: kind, label: Tipo de respuesta, type: select, default: text, options: { multiple: false, values: [ { value: text, label: "Texto corto" }, { value: textarea, label: "Texto largo" }, { value: checkbox, label: "Casilla (sí/no)" }, { value: choice, label: "Elegir una opción" } ] } }
+          - { name: options, label: "Opciones (una por línea)", type: text, showif: "kind == choice" }
       - { name: sections, label: Contenido de la página creada para el evento, component: sections, showif: "createPage == true" }
       #- { name: duration, label: Duración (min), type: number }
   page:
