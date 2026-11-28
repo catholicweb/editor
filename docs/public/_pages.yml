@@ -339,17 +339,123 @@ components:
       values: [
         {
           "value": "flat",
-          "label": "Plana (sin sombra, botones de contorno)"
+          "label": "Plana (sin sombra)"
         },
         {
           "value": "soft",
-          "label": "Suave (sombra sutil, botones rellenos)"
+          "label": "Suave (sombra sutil)"
         },
         {
           "value": "bold",
-          "label": "Marcada (sombra fuerte, botones rellenos)"
-        }
+          "label": "Marcada (sombra fuerte)"
+        },
+        { "value": "outlined", "label": "Con contorno (línea fina en vez de sombra)" },
+        { "value": "hard", "label": "Gráfica (sombra dura desplazada)" }
       ]
+
+  # ---- Character tokens (read by web-template docs/.vitepress/themeTokens.js; keep the values in sync) ----
+  # Empty = the chosen "vibe" decides, and with no vibe the classic look. Numeric values are stored as text.
+  vibe:
+    label: Estilo general
+    description: "Punto de partida que ajusta muchos parámetros a la vez. Lo que fijes abajo tiene prioridad sobre el estilo."
+    type: select
+    options:
+      values:
+        - { value: classic, label: "Clásico: serif elegante, fondo cálido, cruz entre secciones" }
+        - { value: solemn, label: "Solemne: títulos en versalitas anchas, contornos finos" }
+        - { value: warm, label: "Cercano: esquinas redondas, tonos cálidos, botones píldora" }
+        - { value: modern, label: "Moderno: limpio, tonos fríos, secciones alternas" }
+        - { value: youth, label: "Juvenil: color vivo, sombras marcadas, movimiento" }
+        - { value: minimal, label: "Sobrio: sin adornos, color apagado, líneas finas" }
+        - { value: readable, label: "Lectura cómoda: letra grande y mucho contraste" }
+  bodySize:
+    label: Tamaño del texto
+    description: "Tamaño del texto de lectura (los títulos lo acompañan). Importante para la legibilidad."
+    type: select
+    options:
+      values:
+        - { value: "0.95", label: "Compacto" }
+        - { value: "1", label: "Normal" }
+        - { value: "1.1", label: "Cómodo" }
+        - { value: "1.25", label: "Grande" }
+        - { value: "1.4", label: "Muy grande" }
+  accentChroma:
+    label: Intensidad del color
+    description: "Del color apagado al vivo, con el mismo tono."
+    type: select
+    options:
+      values:
+        - { value: "0.4", label: "Apagado" }
+        - { value: "0.7", label: "Suave" }
+        - { value: "1", label: "Normal" }
+        - { value: "1.25", label: "Vivo" }
+  neutralTint:
+    label: Tono de los grises
+    description: "Los grises de textos, fondos y líneas pueden tener un matiz."
+    type: select
+    options:
+      values:
+        - { value: default, label: "Gris estándar" }
+        - { value: pure, label: "Gris puro" }
+        - { value: warm, label: "Cálido (beige)" }
+        - { value: cool, label: "Frío (azulado)" }
+        - { value: accent, label: "Del color de la web" }
+  pageBackground:
+    label: Fondo de la página
+    type: select
+    options:
+      values:
+        - { value: white, label: "Blanco" }
+        - { value: paper, label: "Papel (blanco cálido)" }
+        - { value: tint, label: "Tintado con el color de la web" }
+        - { value: mist, label: "Gris muy claro" }
+  sectionRhythm:
+    label: Ritmo de secciones
+    description: "Una de cada dos secciones con fondo diferente."
+    type: select
+    options:
+      values:
+        - { value: none, label: "Todas iguales" }
+        - { value: alternate, label: "Alternas (gris suave)" }
+        - { value: accent, label: "Alternas (color de la web)" }
+  buttonStyle:
+    label: Estilo de botones
+    type: select
+    options:
+      values:
+        - { value: solid, label: "Rellenos" }
+        - { value: outline, label: "Solo contorno" }
+        - { value: soft, label: "Suaves (fondo claro)" }
+        - { value: pill, label: "Píldora (muy redondos)" }
+        - { value: caps, label: "Mayúsculas" }
+  headingStyle:
+    label: Estilo de títulos
+    type: select
+    options:
+      values:
+        - { value: normal, label: "Normal" }
+        - { value: uppercase, label: "MAYÚSCULAS" }
+        - { value: wide, label: "M A Y Ú S C U L A S  A N C H A S" }
+        - { value: smallcaps, label: "Versalitas" }
+  divider:
+    label: Separador entre secciones
+    type: select
+    options:
+      values:
+        - { value: none, label: "Ninguno" }
+        - { value: line, label: "Línea fina" }
+        - { value: accent, label: "Barra de color" }
+        - { value: ornament, label: "Cruz" }
+  motionIntensity:
+    label: Movimiento
+    description: "Efectos al hacer scroll y al pasar el ratón. Se desactiva solo si el visitante lo pide en su dispositivo."
+    type: select
+    options:
+      values:
+        - { value: "0", label: "Ninguno" }
+        - { value: "2", label: "Sutil" }
+        - { value: "4", label: "Medio" }
+        - { value: "7", label: "Animado" }
 
 
 
@@ -851,10 +957,20 @@ content:
     fields:
       - { name: image, label: Imagen del sitio, type: image }
       - { name: icon, label: Icono del sitio, type: image }
+      - { name: vibe, label: "Estilo general", component: vibe }
       - { name: accentHue, label: "Tono de color", component: accentHue, options: { themeRole: accent } }
       - { name: fontPair, label: "Tipografía", component: fontPair, options: { themeRole: font } }
       - { name: navStyle, label: "Estilo de cabezera", component: headerFooterStyle }
       - { name: radius, label: "Redondeo de esquinas", component: radius }
-      - { name: spacingDensity, label: "Espaciado de elementos", component: spacingDensity }
-      #- { name: surfaceStyle, label: "Estilos de superficie", component: surfaceStyle }
-      #- { name: motionIntensity, label: "Dinamismo, efectos visuales", component: motionIntensity }
+      # Legacy: kept so stored values still validate and apply, no longer shown (it also scaled widths and icons).
+      - { name: spacingDensity, label: "Espaciado de elementos", component: spacingDensity, hidden: true }
+      - { name: bodySize, label: "Tamaño del texto", component: bodySize }
+      - { name: accentChroma, label: "Intensidad del color", component: accentChroma }
+      - { name: neutralTint, label: "Tono de los grises", component: neutralTint }
+      - { name: pageBackground, label: "Fondo de la página", component: pageBackground }
+      - { name: sectionRhythm, label: "Ritmo de secciones", component: sectionRhythm }
+      - { name: surfaceStyle, label: "Estilo de superficies", component: surfaceStyle }
+      - { name: buttonStyle, label: "Estilo de botones", component: buttonStyle }
+      - { name: headingStyle, label: "Estilo de títulos", component: headingStyle }
+      - { name: divider, label: "Separador entre secciones", component: divider }
+      - { name: motionIntensity, label: "Movimiento", component: motionIntensity }
